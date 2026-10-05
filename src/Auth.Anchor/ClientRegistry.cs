@@ -239,12 +239,15 @@ internal sealed partial class ClientRegistry
     /// A client registered by hand, or why the request cannot be one.
     /// </summary>
     /// <remarks>
-    /// A public client needs somewhere to send a code. A confidential one may have nowhere: a service
-    /// that authenticates with its secret and exchanges a token never takes a browser through a sign-in.
+    /// A public client needs somewhere to send a code, unless it signs in with the device grant: a device
+    /// is answered at <c>/token</c> and never takes a browser anywhere. A confidential one may have nowhere
+    /// either: a service that authenticates with its secret and exchanges a token never takes a browser
+    /// through a sign-in. A device client is public, because a device in somebody's living room keeps no
+    /// secret.
     /// </remarks>
     internal static (RegisteredClient? Client, string? Problem) Shape(
         string? clientId, string name, IReadOnlyList<string>? redirectUris, IReadOnlyList<string>? postLogoutUris,
-        string? applicationId, string? secretHash, DateTimeOffset now)
+        string? applicationId, string? secretHash, DateTimeOffset now, bool device = false)
     {
         string id = string.IsNullOrWhiteSpace(clientId)
             ? "cli_" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(8))
@@ -253,9 +256,12 @@ internal sealed partial class ClientRegistry
             return (null,
                 "A client id is 3–64 lowercase letters, digits, '.', '_' or '-', beginning with a letter or a digit.");
 
+        if (device && secretHash is not null)
+            return (null, "A device client is public: a device keeps no secret.");
+
         IReadOnlyList<string> redirects = redirectUris ?? [];
-        if (redirects.Count == 0 && secretHash is null)
-            return (null, "A public client needs at least one redirect URI.");
+        if (redirects.Count == 0 && secretHash is null && !device)
+            return (null, "A public client needs at least one redirect URI, unless it signs in with the device grant.");
 
         foreach (string uri in redirects.Concat(postLogoutUris ?? []))
         {
@@ -266,7 +272,7 @@ internal sealed partial class ClientRegistry
         return (new RegisteredClient(
             id, name, [.. redirects.Distinct(StringComparer.Ordinal)],
             [.. (postLogoutUris ?? []).Distinct(StringComparer.Ordinal)],
-            ClientSources.Admin, MemberId: null, now, applicationId, secretHash), null);
+            ClientSources.Admin, MemberId: null, now, applicationId, secretHash, device), null);
     }
 
     /// <summary>

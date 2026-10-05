@@ -103,6 +103,10 @@ internal static class ClientSources
 /// The hash of its client secret, for a confidential client; null for a public one, which has no secret
 /// to keep.
 /// </param>
+/// <param name="Device">
+/// Whether it signs in with the device grant (RFC 8628): a screen with no browser to bounce, approved by a
+/// person signed in here on another one.
+/// </param>
 internal sealed record RegisteredClient(
     string ClientId,
     string Name,
@@ -112,7 +116,8 @@ internal sealed record RegisteredClient(
     string? MemberId,
     DateTimeOffset Created,
     string? ApplicationId = null,
-    string? SecretHash = null)
+    string? SecretHash = null,
+    bool Device = false)
 {
     /// <summary>Whether it authenticates at <c>/token</c> with a secret.</summary>
     public bool Confidential => SecretHash is not null;
@@ -134,8 +139,15 @@ internal sealed record RegisteredClient(
 /// </remarks>
 internal sealed partial class SqliteSessionRegistry
 {
-    /// <summary>The <c>kind</c> a provider session's row carries. Every other row carries none.</summary>
+    /// <summary>The <c>kind</c> a provider session's row carries.</summary>
     internal const string ProviderKind = "provider";
+
+    /// <summary>
+    /// The <c>kind</c> a session signed in with the device grant carries. It is minted under no provider
+    /// session, because the browser that approved it is not the device that holds it; every other session
+    /// minted through the provider carries no kind.
+    /// </summary>
+    internal const string DeviceKind = "device";
 
     private static void InitializeProvider(SqliteConnection connection)
     {
@@ -211,10 +223,11 @@ internal sealed partial class SqliteSessionRegistry
             """;
         cmd.ExecuteNonQuery();
 
-        // Every session lives under a browser's sign-in here: a provider session, or one minted under
-        // one. A row that is neither is no session this anchor continues — nothing ends it on a
-        // sign-out and nothing lists it with the sign-in it came from — so it goes as the registry opens.
-        // Its bearer is refused at its next renewal and runs out within one access lifetime.
+        // Every session lives under a sign-in made here: a provider session, one minted under one, or a
+        // device's, approved by a person signed in on a browser and carrying its kind. A row that is none
+        // of these is no session this anchor continues — nothing ends it on a sign-out and nothing lists it
+        // with the sign-in it came from — so it goes as the registry opens. Its bearer is refused at its
+        // next renewal and runs out within one access lifetime.
         using SqliteCommand orphans = connection.CreateCommand();
         orphans.CommandText = "DELETE FROM sessions WHERE kind IS NULL AND provider_session IS NULL;";
         orphans.ExecuteNonQuery();
@@ -226,8 +239,14 @@ internal sealed partial class SqliteSessionRegistry
     /// Record a session minted through the provider, naming the provider session it came from and the
     /// client it was minted for.
     /// </summary>
+    /// <param name="session">The session.</param>
+    /// <param name="providerSession">The provider session it was minted under, or null for a device's.</param>
+    /// <param name="clientId">The client it was minted for, or null for KGSM's.</param>
+    /// <param name="kind"><see cref="DeviceKind"/> for a device's session, otherwise null.</param>
+    /// <param name="ct">Cancellation token.</param>
     internal Task CreateAsync(
-        SessionRegistration session, string providerSession, string? clientId = null, CancellationToken ct = default)
+        SessionRegistration session, string? providerSession, string? clientId = null, string? kind = null,
+        CancellationToken ct = default)
     {
         lock (_writeGate)
         {
@@ -237,10 +256,11 @@ internal sealed partial class SqliteSessionRegistry
                 """
                 INSERT INTO sessions
                     (session_id, user_id, host_id, created, expires, user_agent, current_jti, revoked,
-                     provider_session, client_id)
-                VALUES ($sid, $user, $host, $created, $expires, $ua, $jti, 0, $provider, $client);
+                     provider_session, client_id, kind)
+                VALUES ($sid, $user, $host, $created, $expires, $ua, $jti, 0, $provider, $client, $kind);
                 """;
             cmd.Parameters.AddWithValue("$client", (object?)clientId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$kind", (object?)kind ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$sid", session.SessionId);
             cmd.Parameters.AddWithValue("$user", session.UserId);
             cmd.Parameters.AddWithValue("$host", session.HostId);
@@ -248,7 +268,7 @@ internal sealed partial class SqliteSessionRegistry
             cmd.Parameters.AddWithValue("$expires", session.Expires.ToString("O"));
             cmd.Parameters.AddWithValue("$ua", (object?)session.UserAgent ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$jti", (object?)session.CurrentJti ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("$provider", providerSession);
+            cmd.Parameters.AddWithValue("$provider", (object?)providerSession ?? DBNull.Value);
             cmd.ExecuteNonQuery();
         }
 
@@ -603,7 +623,7 @@ internal sealed partial class SqliteSessionRegistry
         cmd.CommandText =
             """
             SELECT client_id, name, redirect_uris, post_logout_uris, source, member_id, created,
-                   application_id, secret_hash
+                   application_id, secret_hash, device_grant
               FROM clients ORDER BY client_id;
             """;
 
@@ -620,7 +640,8 @@ internal sealed partial class SqliteSessionRegistry
                 NullableString(reader, 5),
                 Parse(reader.GetString(6)),
                 NullableString(reader, 7),
-                NullableString(reader, 8)));
+                NullableString(reader, 8),
+                !reader.IsDBNull(9) && reader.GetInt64(9) == 1));
         }
 
         return Task.FromResult<IReadOnlyList<RegisteredClient>>(clients);
@@ -648,8 +669,9 @@ internal sealed partial class SqliteSessionRegistry
         cmd.CommandText =
             """
             INSERT INTO clients
-                (client_id, name, redirect_uris, post_logout_uris, source, member_id, created, application_id, secret_hash)
-            VALUES ($id, $name, $redirects, $logouts, $source, $member, $created, $application, $secret)
+                (client_id, name, redirect_uris, post_logout_uris, source, member_id, created, application_id, secret_hash,
+                 device_grant)
+            VALUES ($id, $name, $redirects, $logouts, $source, $member, $created, $application, $secret, $device)
             ON CONFLICT (client_id) DO NOTHING;
             """;
         BindClient(cmd, client);
@@ -726,8 +748,9 @@ internal sealed partial class SqliteSessionRegistry
                 upsert.CommandText =
                     """
                     INSERT INTO clients
-                        (client_id, name, redirect_uris, post_logout_uris, source, member_id, created, application_id, secret_hash)
-                    VALUES ($id, $name, $redirects, $logouts, $source, $member, $created, $application, $secret)
+                        (client_id, name, redirect_uris, post_logout_uris, source, member_id, created, application_id, secret_hash,
+                         device_grant)
+                    VALUES ($id, $name, $redirects, $logouts, $source, $member, $created, $application, $secret, $device)
                     ON CONFLICT (client_id) DO UPDATE SET
                         name = excluded.name,
                         redirect_uris = excluded.redirect_uris,
@@ -767,6 +790,7 @@ internal sealed partial class SqliteSessionRegistry
         cmd.Parameters.AddWithValue("$created", client.Created.ToString("O"));
         cmd.Parameters.AddWithValue("$application", (object?)client.ApplicationId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$secret", (object?)client.SecretHash ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$device", client.Device ? 1 : (object)DBNull.Value);
     }
 
     // A URI never contains a line break, so a list of them is stored one per line.

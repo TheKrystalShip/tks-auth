@@ -26,7 +26,7 @@ its own with a password, and an external identity is a credential attached to it
 **The repo also holds one deployable.** `src/Auth.Anchor` builds `tks-auth`, the OpenID Connect
 provider that holds the accounts and signs people in. It is built from these libraries by project
 reference, so a change to a library is a compile break here before it is anything else. Its pages —
-signing in, registering, the wait for approval, the account page, and the admin pages for accounts,
+signing in, registering, the wait for approval, the account page, signing a device in, and the admin pages for accounts,
 roles, permissions, the catalog, assignments, service requests and applications — are `web/`, a Vite
 + React app on krystal-ui, built into `ui/` beside the binary and served from there
 (`web/CLAUDE.md`).

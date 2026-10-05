@@ -53,6 +53,7 @@ internal sealed record OidcDiscovery(
     [property: JsonPropertyName("userinfo_endpoint")] string UserinfoEndpoint,
     [property: JsonPropertyName("jwks_uri")] string JwksUri,
     [property: JsonPropertyName("end_session_endpoint")] string EndSessionEndpoint,
+    [property: JsonPropertyName("device_authorization_endpoint")] string DeviceAuthorizationEndpoint,
     [property: JsonPropertyName("response_types_supported")] IReadOnlyList<string> ResponseTypesSupported,
     [property: JsonPropertyName("response_modes_supported")] IReadOnlyList<string> ResponseModesSupported,
     [property: JsonPropertyName("grant_types_supported")] IReadOnlyList<string> GrantTypesSupported,
@@ -73,6 +74,21 @@ internal sealed record TokenResponse(
     [property: JsonPropertyName("refresh_token")] string RefreshToken,
     [property: JsonPropertyName("id_token")] string? IdToken,
     [property: JsonPropertyName("scope")] string Scope);
+
+/// <summary>What <c>/device_authorization</c> answers a device with (RFC 8628 §3.2).</summary>
+/// <param name="DeviceCode">The device's own code, which it presents at <c>/token</c> and shows nobody.</param>
+/// <param name="UserCode">The code the device shows a person, as they type it.</param>
+/// <param name="VerificationUri">Where the person enters it.</param>
+/// <param name="VerificationUriComplete">The same, carrying the code, for a QR code or a link.</param>
+/// <param name="ExpiresIn">Seconds until both codes run out.</param>
+/// <param name="Interval">Seconds a device waits between asks.</param>
+internal sealed record DeviceAuthorizationResponse(
+    [property: JsonPropertyName("device_code")] string DeviceCode,
+    [property: JsonPropertyName("user_code")] string UserCode,
+    [property: JsonPropertyName("verification_uri")] string VerificationUri,
+    [property: JsonPropertyName("verification_uri_complete")] string VerificationUriComplete,
+    [property: JsonPropertyName("expires_in")] long ExpiresIn,
+    [property: JsonPropertyName("interval")] int Interval);
 
 /// <summary>An OAuth error, in the shape every OAuth client reads.</summary>
 internal sealed record OAuthError(
@@ -151,6 +167,28 @@ internal sealed record AuthorizeContextClient(string Id, string Name);
 
 /// <summary>The account a browser's provider session proves.</summary>
 internal sealed record AuthorizeContextAccount(string Username, string DisplayName, string Status);
+
+/// <summary>What the device page is told: who is approving, and the device a user code names.</summary>
+/// <param name="Account">The account this browser is signed in as.</param>
+/// <param name="Device">The device the user code asked about names, or null when none was asked about.</param>
+internal sealed record DeviceContext(AuthorizeContextAccount Account, DeviceContextRequest? Device);
+
+/// <summary>A device waiting for a person, as the person deciding on it is shown it.</summary>
+/// <param name="UserCode">The code, formatted as the device shows it.</param>
+/// <param name="Application">The application the device would be signed in to.</param>
+/// <param name="UserAgent">What the device said it is, or null when it said nothing.</param>
+/// <param name="ExpiresAt">When the code runs out.</param>
+internal sealed record DeviceContextRequest(string UserCode, string Application, string? UserAgent, DateTimeOffset ExpiresAt);
+
+/// <summary>A person's decision on a device, from the device page.</summary>
+/// <param name="UserCode">The code the device shows, as typed.</param>
+/// <param name="Approve">True to sign the device in, false to refuse it.</param>
+internal sealed record DeviceDecisionRequest(string? UserCode, bool? Approve);
+
+/// <summary>What deciding on a device came to.</summary>
+/// <param name="Decision"><c>approved</c> or <c>denied</c>.</param>
+/// <param name="Application">The application the device asked to be signed in to.</param>
+internal sealed record DeviceDecisionResult(string Decision, string Application);
 
 /// <summary>Everything the account page draws, for the account this browser is signed in to.</summary>
 /// <param name="UserId">The account.</param>

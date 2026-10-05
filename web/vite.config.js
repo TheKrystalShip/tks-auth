@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 // and nothing else of its origin belongs to this bundle.
 //
 // One document per page, each carrying its own floor: the daemon serves the one a request calls for
-// (`ProviderBundle`), reading it from disk on every request. The sign-in, wait and account documents
-// share one application that replaces the floor on mount; the admin document is its own application,
+// (`ProviderBundle`), reading it from disk on every request. The sign-in, wait, account and device
+// documents share one application that replaces the floor on mount; the admin document is its own application,
 // an OpenID Connect client of the provider that served it.
 const page = (name) => fileURLToPath(new URL(`./${name}.html`, import.meta.url));
 
@@ -23,6 +23,7 @@ export default defineConfig({
         "auth-sign-in": page("auth-sign-in"),
         "auth-wait": page("auth-wait"),
         "auth-account": page("auth-account"),
+        "auth-device": page("auth-device"),
         admin: page("admin"),
       },
     },

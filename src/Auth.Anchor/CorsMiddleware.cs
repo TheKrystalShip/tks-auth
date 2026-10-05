@@ -6,7 +6,7 @@ namespace TheKrystalShip.Auth.Anchor;
 /// <remarks>
 /// <para>
 /// A registered client's origin may read what a client of this provider reads across origins: the
-/// published documents, the token exchange, the account behind a bearer, the administration a Control
+/// published documents, the token endpoint, a device's codes, the account behind a bearer, the administration a Control
 /// Panel drives with the bearer it holds, and this anchor's own configuration and journal. Without a
 /// matching allowance the browser discards the answer before any of it is read, so the call fails with
 /// nothing in this daemon's log to explain it.
@@ -71,6 +71,7 @@ internal sealed class CorsMiddleware(RequestDelegate next, ClientRegistry client
     private static bool ClientReadable(PathString path) =>
         path.StartsWithSegments("/.well-known")
         || path.Equals("/token")
+        || path.Equals("/device_authorization")
         || path.Equals("/userinfo")
         || path.StartsWithSegments("/auth/cluster")
         || path.Equals("/me/access")

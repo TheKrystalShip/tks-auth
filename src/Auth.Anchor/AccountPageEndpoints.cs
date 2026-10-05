@@ -141,7 +141,7 @@ internal static class AccountPageEndpoints
             Sessions: [.. live.Select(s => new SessionRecord(
                 s.SessionId, s.UserId, s.Created, s.Expires, s.UserAgent, s.LastSeen,
                 Current: s.SessionId == session.SessionId,
-                Kind: s.Provider ? SqliteSessionRegistry.ProviderKind : null))]),
+                Kind: s.Kind))]),
             AnchorJsonContext.Default.AccountView);
     }
 

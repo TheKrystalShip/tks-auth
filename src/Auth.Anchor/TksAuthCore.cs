@@ -110,6 +110,7 @@ internal static class TksAuthCore
         services.AddSingleton<IdTokens>();
         services.AddSingleton<ProviderBundle>();
         services.AddSingleton<ReauthRoundTrips>();
+        services.AddSingleton<DeviceCodeGuesses>();
         services.AddSingleton<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions()));
         services.AddSingleton<ISessionValidator>(sp => new SessionValidator(
             sp.GetRequiredService<ISessionRegistry>(),
@@ -195,6 +196,14 @@ internal static class TksAuthCore
         app.MapPost("/userinfo", OidcEndpoints.UserInfo);
         app.MapGet("/sign-out", OidcEndpoints.SignOut);
         app.MapPost("/sign-out", OidcEndpoints.ConfirmSignOut);
+
+        // The device grant: a device asks for its codes here and collects its session at /token, and a
+        // person signed in on another screen approves it at /device.
+        app.MapPost("/device_authorization", DeviceAuthorization.Begin);
+        app.MapGet(DeviceAuthorization.VerificationPath, DevicePageEndpoints.Page);
+        app.MapGet("/device/context", DevicePageEndpoints.Context);
+        app.MapGet("/device/confirm", DevicePageEndpoints.Confirm);
+        app.MapPost("/device/decision", DevicePageEndpoints.Decide);
 
         // The provider's own pages, and the account page's calls. Every one of those is authenticated by
         // the provider's cookie and answered on this origin alone. The admin pages are a client of this

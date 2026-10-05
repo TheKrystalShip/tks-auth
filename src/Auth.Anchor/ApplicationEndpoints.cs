@@ -36,13 +36,15 @@ internal sealed record ApplicationRecord(
 /// <param name="Confidential">Whether it authenticates with a secret.</param>
 /// <param name="Source">Where it came from: <c>admin</c>, or for KGSM's, <c>member</c> or <c>config</c> too.</param>
 /// <param name="MemberId">The member announcing it, for a member's surface.</param>
+/// <param name="Device">Whether it signs in with the device grant.</param>
 internal sealed record ApplicationClientRecord(
     string ClientId,
     IReadOnlyList<string> RedirectUris,
     IReadOnlyList<string> PostLogoutRedirectUris,
     bool Confidential,
     string Source,
-    string? MemberId);
+    string? MemberId,
+    bool Device);
 
 /// <summary>What the last reading of an application's manifest came to.</summary>
 internal sealed record ApplicationManifestRecord(DateTimeOffset At, bool Taken, string? Problem, int Actions);
@@ -190,7 +192,7 @@ internal static class ApplicationEndpoints
             a.Id, a.Name, a.Audience, a.ManifestUrl, (int)a.AccessLifetime.TotalMinutes, a.DiscordApplications,
             a.ActForDiscord, a.IsKgsm ? null : Minting.ApplicationClaims.Actions, a.Source, a.Created,
             [.. registry.ClientsOf(a).Select(c => new ApplicationClientRecord(
-                c.ClientId, c.RedirectUris, c.PostLogoutRedirectUris, c.Confidential, c.Source, c.MemberId))],
+                c.ClientId, c.RedirectUris, c.PostLogoutRedirectUris, c.Confidential, c.Source, c.MemberId, c.Device))],
             catalog.StateOf(a) is { } state
                 ? new ApplicationManifestRecord(state.At, state.Taken, state.Problem, state.Actions)
                 : null);

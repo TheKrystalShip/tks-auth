@@ -59,7 +59,7 @@ internal static class SessionEndpoints
                 // True on exactly the row the calling bearer belongs to, so somebody reading
                 // their own account here sees which device is the one they are using.
                 Current: string.Equals(s.SessionId, caller.SessionId, StringComparison.Ordinal),
-                Kind: s.Provider ? SqliteSessionRegistry.ProviderKind : null))]),
+                Kind: s.Kind))]),
             AnchorJsonContext.Default.SessionsPage);
     }
 

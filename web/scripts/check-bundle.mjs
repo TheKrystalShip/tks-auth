@@ -22,7 +22,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = resolve(ROOT, "src");
 const ENTRY = resolve(SRC, "pages/main.jsx");
 const DIST = resolve(ROOT, "dist");
-const DOCUMENTS = ["auth-sign-in.html", "auth-wait.html", "auth-account.html", "admin.html"];
+const DOCUMENTS = ["auth-sign-in.html", "auth-wait.html", "auth-account.html", "auth-device.html", "admin.html"];
 
 const IMPORT_RE = /(?:from|import)\s*\(?\s*["']([^"']+)["']/g;
 
@@ -87,6 +87,10 @@ if (!existsSync(DIST)) {
     fail("✗ auth-sign-in.html lost the providers marker — the floor would offer no provider");
   if (!/<form[^>]*method="post"[^>]*action="\/authorize\/credentials"/.test(signIn))
     fail("✗ auth-sign-in.html has no floor form posting to /authorize/credentials");
+
+  const device = existsSync(resolve(DIST, "auth-device.html")) ? readFileSync(resolve(DIST, "auth-device.html"), "utf8") : "";
+  if (!/<form[^>]*method="get"[^>]*action="\/device\/confirm"/.test(device))
+    fail("✗ auth-device.html has no floor form asking /device/confirm — with scripting off no device could be signed in");
 
   if (!failed) console.log("✓ every document within the provider's policy, the floor intact");
 }

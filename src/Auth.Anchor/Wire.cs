@@ -107,8 +107,9 @@ internal sealed record CreateAccountRequest(
 /// </param>
 /// <param name="Current">True on exactly the session the calling bearer belongs to.</param>
 /// <param name="Kind">
-/// <c>provider</c> on a browser's sign-in at the anchor itself, absent on a session a surface holds.
-/// Ending one of those ends every session minted under it.
+/// <c>provider</c> on a browser's sign-in at the anchor itself, and ending one of those ends every session
+/// minted under it; <c>device</c> on a device signed in with the device grant, which lives under no
+/// browser's sign-in; absent on a session a surface holds.
 /// </param>
 internal sealed record SessionRecord(
     string Sid,
@@ -246,6 +247,10 @@ internal sealed record SessionRevoke(string Scope, string Sid);
 [JsonSerializable(typeof(ClientRecord))]
 [JsonSerializable(typeof(ClientRegistration))]
 [JsonSerializable(typeof(AuthorizeContext))]
+[JsonSerializable(typeof(DeviceAuthorizationResponse))]
+[JsonSerializable(typeof(DeviceContext))]
+[JsonSerializable(typeof(DeviceDecisionRequest))]
+[JsonSerializable(typeof(DeviceDecisionResult))]
 [JsonSerializable(typeof(AccountView))]
 [JsonSerializable(typeof(ApplicationRequest))]
 [JsonSerializable(typeof(ApplicationChange))]

@@ -11,14 +11,15 @@ npm run check             # every document within the provider's policy, the flo
 npm run lint              # 0 errors
 ```
 
-## Two applications, four documents
+## Two applications, five documents
 
-- **`auth-sign-in.html`, `auth-wait.html`, `auth-account.html` → `src/pages/`.** Signing in, the wait
-  for approval and the account page. Every call is same-origin and authenticated by the provider's
-  cookie; nothing these pages hold can call an application, so they may import nothing from
-  `src/admin/` (`npm run check` walks the import graph). Each document carries its own **floor** — a
-  sign-in form that posts without script, the providers' marker the daemon fills, a wait that refreshes
-  only under `<noscript>` — and the application removes it on mount.
+- **`auth-sign-in.html`, `auth-wait.html`, `auth-account.html`, `auth-device.html` → `src/pages/`.**
+  Signing in, the wait for approval, the account page, and signing a device in with the code it shows.
+  Every call is same-origin and authenticated by the provider's cookie; nothing these pages hold can call
+  an application, so they may import nothing from `src/admin/` (`npm run check` walks the import graph).
+  Each document carries its own **floor** — a sign-in form that posts without script, the providers'
+  marker the daemon fills, a wait that refreshes only under `<noscript>`, a code form the provider answers
+  with the device and its two buttons — and the application removes it on mount.
 - **`admin.html` → `src/admin/`.** Accounts and approval, roles, permissions, the catalog grouped by
   application, assignments, service requests and applications. An OpenID Connect client of the provider
   that served it — the built-in public client `tks-auth`, its redirect `/admin/` on the issuer's own

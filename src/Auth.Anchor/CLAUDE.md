@@ -83,7 +83,8 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
   same goes for a shape missing from `AnchorJsonContext`: it throws at runtime, not at build.
 - **The CORS allowance is a registered client's origin, never a wildcard and never with
   credentials.** It is answered only on what a client reads across origins — discovery, the key set,
-  `/token`, `/userinfo`, `/auth/identity`, `/auth/cluster/*` and this anchor's own surface — and never
+  `/token`, `/device_authorization`, `/userinfo`, `/auth/identity`, `/auth/cluster/*` and this anchor's
+  own surface — and never
   on anything that reads the provider's cookie. This is a surface that mints credentials; a wildcard
   invites any page to drive somebody's sign-in from their own browser.
 - **The package is preset-disabled.** A cluster has one anchor and which machine holds it is a
@@ -116,10 +117,10 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
   `KGSM_JOURNAL_STATE_ROOT`; left at its default, a suite that signs people in appends invented
   sign-ins to a live audit page.
 - **A sign-in is recorded where a session is minted, which is one place.** `MintSessionFor`, reached
-  only from the code exchange at `/token`, and every session it mints lives under a provider session. A
-  second mint site is a second place to forget the line, and forgetting is silent: the person is signed
-  in and nothing says so. The token exchange mints no session; it records `auth.token.exchanged` where it
-  mints, its one place.
+  from the code exchange and the device grant at `/token`; every session it mints lives under a provider
+  session or is a device's. A second mint site is a second place to forget the line, and forgetting is
+  silent: the person is signed in and nothing says so. The token exchange mints no session; it records
+  `auth.token.exchanged` where it mints, its one place.
 - **One line per fact that changed, never one per request**, and only when the action actually
   happened. A patch that changes an account's status writes its line; one that changes nothing writes none;
   a sign-out for a session that had already ended writes none. An access review reads for one fact at
@@ -127,9 +128,10 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
 
 ## Sessions and credentials
 
-- **Every session lives under a browser's sign-in here.** A row that is neither a provider session nor
-  minted under one is deleted as the registry opens: nothing would end it on a sign-out or list it with
-  the sign-in it came from.
+- **Every session lives under a sign-in made here.** A provider session, a session minted under one, or
+  a device's session (`kind = 'device'`), which a person signed in on a browser approved and which is a
+  sign-in of its own. A row that is none of these is deleted as the registry opens: nothing would end it
+  on a sign-out or list it with the sign-in it came from.
 - **Changing what proves an account asks for the credential again; nothing else here does.** Being
   signed in on a browser is not the same as having proved you own the account, and attaching an
   identity outlives the session that attached it — afterwards whoever holds that provider account signs
@@ -265,7 +267,7 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
   `client_secret_basic` or `client_secret_post` — both at once is `invalid_request` — and a client that
   fails is `invalid_client` with `401`, with a `Basic` challenge when Basic was tried. A code is therefore
   never spent by a request that could not have used it. A secret presented for a public client is
-  refused, never ignored. PKCE is required of every client.
+  refused, never ignored. PKCE is required of every client that takes the code flow.
 - **A session is continued only for the client it was minted for.** `sessions.client_id` records it at
   mint; the refresh of a confidential client's session needs that client authenticated, and naming any
   other client is `invalid_grant`. A session with no client recorded is KGSM's.
@@ -313,6 +315,40 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
   `Anchor__DiscordTokenCacheMinutes`.** Keyed by the token's SHA-256, never the token; bounded by entry
   count; a refusal and an outage are never held. The cap is how long a token revoked at Discord is still
   exchanged here, so it is a setting and not a constant.
+
+## The device grant (`DeviceAuthorization`, `DevicePageEndpoints`)
+
+- **`/token` takes `urn:ietf:params:oauth:grant-type:device_code` (RFC 8628) from a client marked
+  `device`, and from nothing else.** Such a client belongs to an application outside KGSM, is public — a
+  device keeps no secret — and needs no redirect. `/device_authorization` refuses any other client with
+  `unauthorized_client`, and `/token` refuses it the grant the same way.
+- **Both codes are stored hashed**, in `device_authorizations` beside the sessions: the device code is a
+  bearer until a session exists, and the user code is a lookup key nobody should read back out of the
+  file. A user code is eight of twenty consonants shown as two groups of four, read case-, dash- and
+  space-insensitively. A code lives ten minutes.
+- **A poll is answered from one transaction.** An approval is handed to exactly one poll and its row
+  deleted with it; a refusal and an expiry are each said once and deleted; a poll inside the row's
+  interval is `slow_down` and lengthens that row's interval by five seconds. Another client's device code
+  is `invalid_grant` and changes nothing.
+- **The device's session is a sign-in of its own.** Minted by `MintSessionFor` under no provider session
+  and carrying `kind = 'device'`: the approving browser's sign-out does not end it. It is listed on the
+  account page and under `/auth/cluster/users/{id}/sessions`, ended there like any session, and withdrawn
+  at its next refresh when the account is. The answer carries no `id_token`, because there is no provider
+  session for one to name.
+- **The account decides twice.** Approving needs an active account behind the browser's provider
+  session; collecting resolves the identity that approved again and needs the same account still active,
+  else `access_denied`.
+- **Nothing is approved without the person seeing what.** A code from a QR scan is already in the
+  address, so the page shows the application, the account, the code and the device's user agent, and the
+  decision is a separate post behind the same-origin gate a credential post passes (RFC 8628 §5.4). The
+  page's own sign-in is a request in flight for the `kgsm-device` pseudo-client, never registered and
+  never issued a code, which returns to `/device` with the code it arrived with.
+- **Codes that name no device are limited** (`DeviceCodeGuesses`): ten misses per browser sign-in and a
+  hundred across the provider in fifteen minutes, then `429` with `Retry-After` on every door that looks a
+  code up. Only misses count. In memory, because a restart buys a guesser ten more tries against about
+  2.6×10¹⁰ codes.
+- **Approving writes no line of its own.** The sign-in is recorded when the device collects, where the
+  session is minted; an approval nobody collects granted nothing.
 
 ## The Discord round trip (`DiscordDirectory`, `OAuthHandshake`)
 

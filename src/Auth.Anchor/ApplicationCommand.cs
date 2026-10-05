@@ -29,13 +29,14 @@ internal static class ApplicationCommand
         usage: tks-auth app list
                tks-auth app add <id> --name <name> [--audience <audience>] [--manifest <url>]
                                 [--lifetime <minutes>] [--discord-app <id>]... [--act-for-discord]
-                                [--client-id <id>] [--redirect <uri>]... [--post-logout <uri>]... [--confidential]
+                                [--client-id <id>] [--redirect <uri>]... [--post-logout <uri>]...
+                                [--confidential | --device]
                tks-auth app set <id> [--name <name>] [--audience <audience>] [--manifest <url> | --no-manifest]
                                 [--lifetime <minutes>] [--discord-app <id>]... [--no-discord-apps]
                                 [--act-for-discord | --no-act-for-discord]
                tks-auth app remove <id>
                tks-auth app client add <id> [--client-id <id>] [--redirect <uri>]... [--post-logout <uri>]...
-                                [--confidential]
+                                [--confidential | --device]
                tks-auth app client remove <id> <client-id>
                tks-auth app rotate-secret <id> <client-id>
         """;
@@ -59,8 +60,8 @@ internal static class ApplicationCommand
 
             case [Verb, "add", { Length: > 0 } id, .. var rest] when Options.Parse(rest) is { } o:
             {
-                ApplicationClientRequest? client = o.Has("client-id") || o.Has("redirect") || o.Has("confidential")
-                    ? new ApplicationClientRequest(o.One("client-id"), o.Many("redirect"), o.Many("post-logout"), o.Has("confidential"))
+                ApplicationClientRequest? client = o.Has("client-id") || o.Has("redirect") || o.Has("confidential") || o.Has("device")
+                    ? ClientRequest(o)
                     : null;
                 return Report(stdout, await registry.AddAsync(
                     new ApplicationRequest(id, o.One("name"), o.One("audience"), o.One("manifest"), o.Minutes("lifetime"),
@@ -83,9 +84,8 @@ internal static class ApplicationCommand
                 return Report(stdout, await registry.RemoveAsync(id, actor, origin: null, ct), registry, provider);
 
             case [Verb, "client", "add", { Length: > 0 } id, .. var rest] when Options.Parse(rest) is { } o:
-                return Report(stdout, await registry.AddClientAsync(id,
-                    new ApplicationClientRequest(o.One("client-id"), o.Many("redirect"), o.Many("post-logout"), o.Has("confidential")),
-                    actor, origin: null, ct), registry, provider);
+                return Report(stdout, await registry.AddClientAsync(id, ClientRequest(o), actor, origin: null, ct),
+                    registry, provider);
 
             case [Verb, "client", "remove", { Length: > 0 } id, { Length: > 0 } clientId]:
                 return Report(stdout, await registry.RemoveClientAsync(id, clientId, actor, origin: null, ct), registry, provider);
@@ -156,7 +156,7 @@ internal static class ApplicationCommand
             stdout.WriteLine("  may act for linked Discord users");
         foreach (ApplicationClientRecord c in r.Clients)
         {
-            stdout.WriteLine($"  client {c.ClientId}  {(c.Confidential ? "confidential" : "public")}  ({c.Source})");
+            stdout.WriteLine($"  client {c.ClientId}  {(c.Confidential ? "confidential" : "public")}{(c.Device ? ", device" : "")}  ({c.Source})");
             foreach (string uri in c.RedirectUris)
                 stdout.WriteLine($"    redirect {uri}");
             foreach (string uri in c.PostLogoutRedirectUris)
@@ -164,11 +164,14 @@ internal static class ApplicationCommand
         }
     }
 
+    private static ApplicationClientRequest ClientRequest(Options o) =>
+        new(o.One("client-id"), o.Many("redirect"), o.Many("post-logout"), o.Has("confidential"), o.Has("device"));
+
     /// <summary><c>--name value</c> options, repeatable, and bare flags.</summary>
     private sealed class Options
     {
         private static readonly HashSet<string> Flags =
-            ["act-for-discord", "no-act-for-discord", "confidential", "no-manifest", "no-discord-apps"];
+            ["act-for-discord", "no-act-for-discord", "confidential", "device", "no-manifest", "no-discord-apps"];
 
         private static readonly HashSet<string> Valued =
             ["name", "audience", "manifest", "lifetime", "discord-app", "client-id", "redirect", "post-logout"];

@@ -32,7 +32,7 @@ internal sealed class ProviderBundle(AnchorOptions options)
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
     /// <summary>The pages the bundle carries.</summary>
-    internal enum Page { SignIn, Wait, Account, Admin }
+    internal enum Page { SignIn, Wait, Account, Device, Admin }
 
     /// <summary>
     /// <c>GET /admin/</c>, with or without its slash: the admin pages, and where their client's codes and
@@ -122,6 +122,7 @@ internal sealed class ProviderBundle(AnchorOptions options)
         Page.SignIn => "auth-sign-in.html",
         Page.Wait => "auth-wait.html",
         Page.Account => "auth-account.html",
+        Page.Device => "auth-device.html",
         _ => "admin.html",
     });
 

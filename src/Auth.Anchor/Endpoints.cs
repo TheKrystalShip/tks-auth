@@ -176,19 +176,27 @@ internal static class Endpoints
     /// <param name="now">The clock, so a session's row and its tokens agree on when it started.</param>
     /// <param name="respond">Answers the caller with the session.</param>
     /// <param name="providerSession">
-    /// The browser's sign-in this was minted under, so ending that sign-in ends this too.
+    /// The browser's sign-in this was minted under, so ending that sign-in ends this too; null for a
+    /// device's, which <paramref name="kind"/> names instead.
     /// </param>
     /// <param name="client">The client it is minted for, which every refresh of it is held to.</param>
     /// <param name="application">
     /// The application that client signs people in to, which decides the access token's audience,
     /// lifetime and whether it lists actions.
     /// </param>
+    /// <param name="kind">
+    /// <see cref="SqliteSessionRegistry.DeviceKind"/> for a device signed in with the device grant: a
+    /// sign-in of its own, approved from a browser but not ended with it. Null for every other session.
+    /// </param>
     /// <returns>False, with nothing minted, when the account store could not be read.</returns>
     internal static async Task<bool> MintSessionFor(
         HttpContext ctx, KgsmIdentity identity, KgsmUser user, DateTimeOffset now,
-        Func<MintedToken, MintedToken, Task> respond, string providerSession,
-        RegisteredClient client, Application application)
+        Func<MintedToken, MintedToken, Task> respond, string? providerSession,
+        RegisteredClient client, Application application, string? kind = null)
     {
+        if ((providerSession is null) != (kind == SqliteSessionRegistry.DeviceKind))
+            throw new ArgumentException("A session lives under a browser's sign-in, or is a device's.", nameof(kind));
+
         var registry = ctx.RequestServices.GetRequiredService<ISessionRegistry>();
         AnchorOptions options = ctx.RequestServices.GetRequiredService<AnchorOptions>();
 
@@ -207,7 +215,8 @@ internal static class Endpoints
             UserAgent: UserAgentOf(ctx),
             CurrentJti: refresh.Jti);
 
-        await ((SqliteSessionRegistry)registry).CreateAsync(registration, providerSession, client.ClientId, ctx.RequestAborted);
+        await ((SqliteSessionRegistry)registry).CreateAsync(
+            registration, providerSession, client.ClientId, kind, ctx.RequestAborted);
 
         // Recorded after the session exists and before the caller is answered. The actor is the
         // identity that arrived rather than this daemon: nobody else was involved in a sign-in, and

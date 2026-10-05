@@ -60,9 +60,10 @@ internal static class OidcEndpoints
             UserinfoEndpoint: issuer + "/userinfo",
             JwksUri: issuer + "/.well-known/jwks.json",
             EndSessionEndpoint: issuer + "/sign-out",
+            DeviceAuthorizationEndpoint: issuer + "/device_authorization",
             ResponseTypesSupported: ["code"],
             ResponseModesSupported: ["query"],
-            GrantTypesSupported: ["authorization_code", "refresh_token", TokenExchange.GrantType],
+            GrantTypesSupported: ["authorization_code", "refresh_token", TokenExchange.GrantType, DeviceAuthorization.GrantType],
             SubjectTypesSupported: ["public"],
             IdTokenSigningAlgValuesSupported: ["ES256"],
             ScopesSupported: ["openid"],
@@ -611,9 +612,13 @@ internal static class OidcEndpoints
                 await TokenExchange.ExchangeAsync(ctx, form, auth);
                 return;
 
+            case DeviceAuthorization.GrantType:
+                await DeviceAuthorization.RedeemAsync(ctx, form, auth);
+                return;
+
             default:
                 await OAuthErrorAsync(ctx, StatusCodes.Status400BadRequest, "unsupported_grant_type",
-                    $"The grants served are authorization_code, refresh_token and {TokenExchange.GrantType}.");
+                    $"The grants served are authorization_code, refresh_token, {TokenExchange.GrantType} and {DeviceAuthorization.GrantType}.");
                 return;
         }
     }
@@ -1018,13 +1023,14 @@ internal static class OidcEndpoints
 
     /// <summary>Mint a code for the request, end it, and say where the browser goes with it.</summary>
     /// <remarks>
-    /// The account page's own sign-in is the one request that gets no code: what it needed was the
-    /// provider session, which is proved by now, and a code nobody exchanges is a bearer left lying about.
+    /// The account page's and the device page's own sign-ins are the requests that get no code: what they
+    /// needed was the provider session, which is proved by now, and a code nobody exchanges is a bearer
+    /// left lying about.
     /// </remarks>
     private static async Task<string> IssueCodeAsync(
         HttpContext ctx, AuthorizeRequest request, KgsmUser user, ProviderSessionRow session)
     {
-        if (request.ClientId == AccountPageEndpoints.AccountClientId)
+        if (request.ClientId is AccountPageEndpoints.AccountClientId or DevicePageEndpoints.DeviceClientId)
         {
             await EndRequestAsync(ctx, request);
             return request.RedirectUri;
@@ -1129,9 +1135,12 @@ internal static class OidcEndpoints
 
     /// <summary>Whose sign-in a request is, as a person reads it.</summary>
     private static string ClientName(HttpContext ctx, AuthorizeRequest request) =>
-        request.ClientId == AccountPageEndpoints.AccountClientId
-            ? AccountPageEndpoints.AccountClientName
-            : ctx.RequestServices.GetRequiredService<ClientRegistry>().Find(request.ClientId)?.Name ?? request.ClientId;
+        request.ClientId switch
+        {
+            AccountPageEndpoints.AccountClientId => AccountPageEndpoints.AccountClientName,
+            DevicePageEndpoints.DeviceClientId => DevicePageEndpoints.DeviceClientName,
+            _ => ctx.RequestServices.GetRequiredService<ClientRegistry>().Find(request.ClientId)?.Name ?? request.ClientId,
+        };
 
     private static void RedirectError(HttpContext ctx, string redirectUri, string? state, string error, string description)
     {

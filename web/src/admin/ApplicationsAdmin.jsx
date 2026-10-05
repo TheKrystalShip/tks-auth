@@ -226,6 +226,7 @@ function Clients({ app, builtin, busy, run }) {
               <span className="access-action__why">{c.redirectUris.join(" · ") || "—"}</span>
             </div>
             <span className="access-pill">{c.confidential ? "confidential" : "public"}</span>
+            {c.device && <span className="access-pill">device</span>}
             <span className="access-action__by">{c.memberId || c.source}</span>
             {!builtin && (
               <span className="access-row__tools">
@@ -256,13 +257,14 @@ function Clients({ app, builtin, busy, run }) {
 
 // One client's registration. An empty id is made by the provider.
 function useClientFields() {
-  const [client, setClient] = React.useState({ clientId: "", redirects: "", postLogout: "", confidential: false });
+  const [client, setClient] = React.useState({ clientId: "", redirects: "", postLogout: "", confidential: false, device: false });
   const set = (k) => (e) => setClient((c) => ({ ...c, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
   const body = {
     clientId: client.clientId.trim() || null,
     redirectUris: listOf(client.redirects),
     postLogoutRedirectUris: listOf(client.postLogout),
     confidential: client.confidential,
+    device: client.device,
   };
   return { client, set, body };
 }
@@ -280,6 +282,10 @@ function ClientFields({ prefix, client, set, busy }) {
       <label className="access-check app-form__check">
         <input type="checkbox" checked={client.confidential} disabled={busy} onChange={set("confidential")} />
         <span className="access-check__name">Confidential</span>
+      </label>
+      <label className="access-check app-form__check">
+        <input type="checkbox" checked={client.device} disabled={busy} onChange={set("device")} />
+        <span className="access-check__name">Device sign-in</span>
       </label>
     </>
   );
@@ -310,7 +316,7 @@ function RegisterForm({ onCancel, onDone }) {
     e.preventDefault();
     setBusy(true);
     setRefusal(null);
-    const hasClient = clientBody.clientId || clientBody.redirectUris.length || clientBody.confidential;
+    const hasClient = clientBody.clientId || clientBody.redirectUris.length || clientBody.confidential || clientBody.device;
     try {
       const answer = await api.applications.add({
         id: app.id.trim(),

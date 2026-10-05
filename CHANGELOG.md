@@ -7,6 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — device sign-in (daemon 4.5.0)
+
+- The device authorization grant (RFC 8628): `POST /device_authorization` hands a device its codes, and
+  `/token` takes `urn:ietf:params:oauth:grant-type:device_code`, answering `authorization_pending`,
+  `slow_down`, `access_denied`, `expired_token` or the application's access and refresh tokens.
+  Discovery names the endpoint and the grant.
+- `/device`: a person signed in here enters the code, or arrives with it from a QR code, sees the
+  application, their account and the device, and signs the device in or refuses it. It signs the browser
+  in first when it is not, and works without script.
+- A client is registered for it with `--device` (`tks-auth app client add`) or the Applications page's
+  Device sign-in switch: public, of an application outside KGSM, with no redirect needed.
+- A device's session is a sign-in of its own (`kind: "device"` in session listings): the approving
+  browser's sign-out leaves it, and the account page lists and ends it.
+- Codes that name no device are limited per browser sign-in and across the provider.
+
 ### Fixed — admin pages for an account with no password (daemon 4.4.1, users 3.0.1)
 
 - An account that signs in only through an external provider reaches the admin pages. The admin

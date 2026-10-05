@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="referrer" content="same-origin" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/png" href="/assets/tks-mark.png" />
+    <title>Sign in a device</title>
+  </head>
+  <!-- tks-auth serves this document to a browser signed in here, at the address a device shows beside
+       its code. The floor takes the code with no script at all and asks the provider, which shows the
+       device it names and the choice; the application replaces it on mount. -->
+  <body data-page="device">
+    <div id="floor" class="login-shell">
+      <div class="login-shell__inner">
+        <div class="login-shell__brand">
+          <img src="/assets/tks-mark.png" alt="" />
+          <div class="login-shell__brand-name">The Krystal Ship</div>
+          <div class="login-shell__tagline">Sign in a device.</div>
+        </div>
+        <div class="login-card">
+          <form class="login-form" method="get" action="/device/confirm">
+            <label class="login-form__label" for="floor-code">Code</label>
+            <input id="floor-code" class="login-form__input" name="user_code" type="text"
+              autocomplete="off" autocapitalize="characters" spellcheck="false" required />
+            <button type="submit" class="login-form__submit">Continue</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/pages/main.jsx"></script>
+  </body>
+</html>

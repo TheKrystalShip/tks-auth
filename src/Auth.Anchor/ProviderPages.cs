@@ -82,6 +82,58 @@ internal static class ProviderPages
         return WriteAsync(ctx, StatusCodes.Status200OK, "Waiting for approval", body, clientOrigin, refreshSeconds: 15);
     }
 
+    /// <summary>Where a person types the code a device shows, without script.</summary>
+    /// <param name="ctx">The request being answered.</param>
+    /// <param name="code">The code to fill in, as it arrived, or null.</param>
+    /// <param name="message">Why the last code was refused, or null.</param>
+    /// <param name="status">The status to answer with.</param>
+    public static Task DeviceEntryAsync(HttpContext ctx, string? code, string? message, int status = StatusCodes.Status200OK)
+    {
+        var body = new StringBuilder();
+        body.Append("<h1>Sign in a device</h1>");
+        body.Append("<p class=\"lead\">Enter the code the device shows.</p>");
+        if (message is { Length: > 0 })
+            body.Append("<p class=\"error\" role=\"alert\">").Append(Encode(message)).Append("</p>");
+
+        body.Append("<form method=\"get\" action=\"/device/confirm\">")
+            .Append("<label>Code<input name=\"user_code\" autocomplete=\"off\" autocapitalize=\"characters\" ")
+            .Append("spellcheck=\"false\" required autofocus value=\"").Append(Encode(code ?? "")).Append("\"></label>")
+            .Append("<button type=\"submit\">Continue</button>")
+            .Append("</form>");
+        return WriteAsync(ctx, status, "Sign in a device", body.ToString(), clientOrigin: null);
+    }
+
+    /// <summary>The device a code names, and the choice, without script.</summary>
+    /// <param name="ctx">The request being answered.</param>
+    /// <param name="code">The code, formatted as the device shows it.</param>
+    /// <param name="application">The application the device asks to be signed in to.</param>
+    /// <param name="userAgent">What the device said it is, or null.</param>
+    /// <param name="who">Who is signed in on this browser, whose account the device would be signed in to.</param>
+    public static Task DeviceConfirmAsync(HttpContext ctx, string code, string application, string? userAgent, string who)
+    {
+        var body = new StringBuilder();
+        body.Append("<h1>Sign in a device</h1>");
+        body.Append("<p class=\"lead\">Sign in to <strong>").Append(Encode(application)).Append("</strong> as <strong>")
+            .Append(Encode(who)).Append("</strong> on the device showing <strong>").Append(Encode(code)).Append("</strong>?</p>");
+        if (userAgent is { Length: > 0 })
+            body.Append("<p class=\"note\">").Append(Encode(userAgent)).Append("</p>");
+
+        body.Append("<form method=\"post\" action=\"/device/decision\">");
+        Hidden(body, "user_code", code);
+        body.Append("<button type=\"submit\" name=\"decision\" value=\"approve\">Sign in</button>")
+            .Append("<button type=\"submit\" name=\"decision\" value=\"deny\" class=\"secondary\">Refuse</button>")
+            .Append("</form>");
+        return WriteAsync(ctx, StatusCodes.Status200OK, "Sign in a device", body.ToString(), clientOrigin: null);
+    }
+
+    /// <summary>A decision on a device, recorded.</summary>
+    public static Task DeviceDecidedAsync(HttpContext ctx, bool approved, string application) =>
+        WriteAsync(ctx, StatusCodes.Status200OK, approved ? "Device signed in" : "Device refused",
+            approved
+                ? $"<h1>Device signed in</h1><p>The device is signing in to <strong>{Encode(application)}</strong>. You can close this page.</p>"
+                : $"<h1>Device refused</h1><p>The device was not signed in to <strong>{Encode(application)}</strong>.</p>",
+            clientOrigin: null);
+
     /// <summary>A refusal that has nowhere to redirect to, answered on this origin.</summary>
     public static Task ProblemAsync(HttpContext ctx, int status, string title, string message) =>
         WriteAsync(ctx, status, title, $"<h1>{Encode(title)}</h1><p>{Encode(message)}</p>", clientOrigin: null);
@@ -205,6 +257,7 @@ internal static class ProviderPages
         button, .provider { font: inherit; font-weight: 600; border-radius: 8px; padding: 10px 12px; text-align: center;
                             cursor: pointer; text-decoration: none; }
         button { background: var(--accent); color: var(--accent-fg); border: 0; margin-top: 4px; }
+        button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
         .providers { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; padding-top: 18px;
                      border-top: 1px solid var(--line); }
         .provider { color: var(--fg); border: 1px solid var(--line); }

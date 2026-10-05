@@ -4,10 +4,11 @@ import "../styles/kit.css";
 import "./pages.css";
 
 import { AccountApp } from "./AccountApp.jsx";
+import { DeviceApp } from "./DeviceApp.jsx";
 import { SignInApp } from "./SignInApp.jsx";
 import { WaitApp } from "./WaitApp.jsx";
 
-// tks-auth's own pages: signing in, waiting for approval, and the account page.
+// tks-auth's own pages: signing in, waiting for approval, the account page, and signing a device in.
 //
 // Each page is a document of its own, served by the provider, with its floor already in it — a working
 // form, or a wait that polls without script. This application replaces that floor when it mounts, so
@@ -25,7 +26,7 @@ const applyTheme = () =>
 applyTheme();
 if (light && light.addEventListener) light.addEventListener("change", applyTheme);
 
-const PAGES = { "sign-in": SignInApp, wait: WaitApp, account: AccountApp };
+const PAGES = { "sign-in": SignInApp, wait: WaitApp, account: AccountApp, device: DeviceApp };
 const Page = PAGES[document.body.dataset.page] || SignInApp;
 
 const floor = document.getElementById("floor");

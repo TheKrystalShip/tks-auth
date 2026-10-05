@@ -84,6 +84,7 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
 
         InitializeProvider(connection);
         InitializeApplications(connection);
+        InitializeDevice(connection);
     }
 
     /// <summary>One live session, as a person reviewing their own devices sees it.</summary>
@@ -98,10 +99,11 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
     /// to a member and is verified offline — so it is a rotation, named as the nearest true thing
     /// rather than as a request count nothing counts.
     /// </param>
-    /// <param name="Provider">
-    /// Whether this is a browser's sign-in at the anchor itself rather than a session a surface holds.
-    /// Listed beside the others because it is one more way in, and ending it ends every session minted
-    /// under it.
+    /// <param name="Kind">
+    /// <see cref="ProviderKind"/> for a browser's sign-in at the anchor itself, listed beside the others
+    /// because it is one more way in and ending it ends every session minted under it;
+    /// <see cref="DeviceKind"/> for a device signed in with the device grant; null for a session a surface
+    /// holds under a browser's sign-in.
     /// </param>
     internal sealed record LiveSession(
         string SessionId,
@@ -110,7 +112,11 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
         DateTimeOffset Expires,
         string? UserAgent,
         DateTimeOffset? LastSeen,
-        bool Provider = false);
+        string? Kind = null)
+    {
+        /// <summary>Whether this is a browser's sign-in at the anchor itself.</summary>
+        public bool Provider => Kind == ProviderKind;
+    }
 
     public Task CreateAsync(SessionRegistration session, CancellationToken ct = default)
     {
@@ -249,7 +255,7 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
                 reader.IsDBNull(5)
                     ? null
                     : DateTimeOffset.Parse(reader.GetString(5), CultureInfo.InvariantCulture),
-                Provider: !reader.IsDBNull(6) && reader.GetString(6) == ProviderKind));
+                Kind: reader.IsDBNull(6) ? null : reader.GetString(6)));
         }
 
         return Task.FromResult<IReadOnlyList<LiveSession>>(sessions);
@@ -332,14 +338,15 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
             cmd.Parameters.AddWithValue("$now", now.ToString("O"));
             int sessions = cmd.ExecuteNonQuery();
 
-            // The requests in flight and the codes go with the sessions: short-lived rows whose only
-            // use after their expiry would be a replay. Not counted, because the number returned is
-            // what the sweep reports as sessions.
+            // The requests in flight, the codes and the device authorizations go with the sessions:
+            // short-lived rows whose only use after their expiry would be a replay. Not counted, because
+            // the number returned is what the sweep reports as sessions.
             using SqliteCommand rest = connection.CreateCommand();
             rest.CommandText =
                 """
                 DELETE FROM authorize_requests WHERE expires <= $now;
                 DELETE FROM authorization_codes WHERE expires <= $now;
+                DELETE FROM device_authorizations WHERE expires <= $now;
                 """;
             rest.Parameters.AddWithValue("$now", now.ToString("O"));
             rest.ExecuteNonQuery();

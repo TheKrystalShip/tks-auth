@@ -456,6 +456,47 @@ Every exchange an authenticated client asks for is journaled — `auth.token.exc
 `auth.token.exchange_refused` with its reason — with the client, the application, the Discord identity,
 the account and the acting client.
 
+### Signing a device in
+
+A screen with no browser to bounce — a television — signs in with the **device authorization grant**
+(RFC 8628), as a public client of an application outside KGSM registered for it:
+
+```bash
+tks-auth app client add cinema --client-id cinema-tv --device
+```
+
+The device asks for its codes, naming only its client:
+
+```http
+POST /device_authorization
+Content-Type: application/x-www-form-urlencoded
+
+client_id=cinema-tv&scope=openid
+```
+
+```json
+{ "device_code": "…", "user_code": "BKMR-QTFX",
+  "verification_uri": "https://auth.example/device",
+  "verification_uri_complete": "https://auth.example/device?user_code=BKMR-QTFX",
+  "expires_in": 600, "interval": 5 }
+```
+
+It shows the user code, and `verification_uri_complete` as a QR code, then asks `/token` every `interval`
+seconds with `grant_type=urn:ietf:params:oauth:grant-type:device_code`, its `device_code` and its
+`client_id`. Until somebody decides the answer is `authorization_pending`; asking sooner than the interval
+is `slow_down` and adds five seconds to it; a refusal is `access_denied` and a code nobody decided in ten
+minutes `expired_token`, each said once. An approval answers with an access token for the application and
+a refresh token, the code flow's pair without an `id_token`.
+
+The person opens `/device` on a phone or a computer, signs in if that browser is not signed in here, and
+is shown the application, their account, the code and what the device said it is before the two buttons.
+Only an active account approves, and the account is read again when the device collects. A browser that
+keeps entering codes that name no device is made to wait.
+
+**The device's session is a sign-in of its own.** It is listed on the account page as a device, renews
+with its refresh token like any other, and ends when it is ended there or the account is disabled — not
+when the browser that approved it signs out.
+
 ### One member of a cluster
 
 With the KGSM module, the anchor joins a cluster **directly** — not through a node, not through an

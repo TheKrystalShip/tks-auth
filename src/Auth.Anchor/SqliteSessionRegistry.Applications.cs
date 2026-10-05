@@ -25,12 +25,13 @@ internal sealed partial class SqliteSessionRegistry
     private static void InitializeApplications(SqliteConnection connection)
     {
         // Additive and nullable, like every column this file has gained: a client registered before an
-        // application could be named is KGSM's and public, and a session minted before one was recorded
-        // is KGSM's, which null says.
+        // application could be named is KGSM's and public, a session minted before one was recorded is
+        // KGSM's, and a client with no device grant recorded signs in through a browser, which null says.
         foreach ((string table, string column) in (ReadOnlySpan<(string, string)>)
         [
             ("clients", "application_id TEXT NULL"),
             ("clients", "secret_hash TEXT NULL"),
+            ("clients", "device_grant INTEGER NULL"),
             ("sessions", "client_id TEXT NULL"),
         ])
         {

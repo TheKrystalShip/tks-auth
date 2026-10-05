@@ -153,11 +153,13 @@ internal sealed record ApplicationChange(
 /// <param name="RedirectUris">Where codes may be sent, matched exactly.</param>
 /// <param name="PostLogoutRedirectUris">Where a signed-out browser may be returned, matched exactly.</param>
 /// <param name="Confidential">Whether it authenticates with a secret, made here and shown once.</param>
+/// <param name="Device">Whether it signs in with the device grant, approved from another screen.</param>
 internal sealed record ApplicationClientRequest(
     string? ClientId,
     IReadOnlyList<string>? RedirectUris,
     IReadOnlyList<string>? PostLogoutRedirectUris,
-    bool? Confidential);
+    bool? Confidential,
+    bool? Device = null);
 
 /// <summary>
 /// The applications this provider signs people in to, and the one code path every change to them takes.
@@ -502,7 +504,7 @@ internal sealed partial class ApplicationRegistry(
         string? secret = request.Confidential == true ? ProviderCookies.NewSecret() : null;
         (RegisteredClient? client, string? problem) = ClientRegistry.Shape(
             request.ClientId, application.Name, request.RedirectUris, request.PostLogoutRedirectUris,
-            application.Id, secret is null ? null : ProviderCookies.Hash(secret), now);
+            application.Id, secret is null ? null : ProviderCookies.Hash(secret), now, device: request.Device == true);
 
         return client is null
             ? (null, null, problem)
