@@ -210,4 +210,17 @@ public sealed class AuthorityAccountStoreTests : IDisposable
         Assert.Equal(AccountOrigin.Arrived, user.Origin);
         Assert.Equal(AccountStatus.Pending, (await _store.LoadAsync()).Accounts[user.UserId].Status);
     }
+
+    [Fact]
+    public async Task AnAccountWithNoPassword_IsFoundByItsLocalHandle()
+    {
+        IdentityLinkService links = new(_store);
+        await links.ResolveOrProvisionAsync(
+            new KgsmIdentity("discord", "42", "haru", "Haru", null, []), Now, new PendingPolicy(25, TimeSpan.FromDays(14)));
+        KgsmUser user = (await _store.FindByCredentialAsync("discord:42"))!;
+
+        Assert.Equal(user.UserId, await _store.FindAccountIdByHandleAsync("discord:42"));
+        Assert.Equal(user.UserId, await _store.FindAccountIdByHandleAsync(UserCredentials.LocalHandle(user.UserId)));
+        Assert.Null(await _store.FindAccountIdByHandleAsync(UserCredentials.LocalHandle("usr_nobody")));
+    }
 }

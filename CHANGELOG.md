@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — admin pages for an account with no password (daemon 4.4.1, users 3.0.1)
+
+- An account that signs in only through an external provider reaches the admin pages. The admin
+  routes find the caller's account by its local handle, and a local handle names its account whether
+  or not the account holds a password; the lookup answered no account for one without, and the pages
+  bounced between sign-in and a 401.
+
 ### Added — tks-auth's own pages and admin UI (daemon 4.4.0)
 
 - The sign-in, registration, wait and account pages ship in this package (`web/`, installed at

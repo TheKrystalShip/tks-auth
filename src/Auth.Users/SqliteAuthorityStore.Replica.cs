@@ -193,11 +193,20 @@ public sealed partial class SqliteAuthorityStore
     }
 
     /// <summary>The account a credential handle identifies, or <see langword="null"/>.</summary>
+    /// <remarks>
+    /// A local handle's subject <em>is</em> the account id, so it names the account whether or not the
+    /// account holds a password: one that signs in only through Discord is still the account a token
+    /// minted for it names.
+    /// </remarks>
     public async Task<string?> FindAccountIdByHandleAsync(string handle, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(handle);
 
         await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
+        if (KgsmActor.TryParse(handle, out string provider, out string subject)
+            && provider == KgsmActorProvider.Local)
+            return Scalar(connection, null, "SELECT user_id FROM users WHERE user_id = $id;", ("$id", subject)) as string;
+
         return Scalar(connection, null, "SELECT user_id FROM credentials WHERE handle = $h;", ("$h", handle)) as string;
     }
 
