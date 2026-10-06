@@ -208,7 +208,7 @@ is `../hosted-sign-in-plan.md`; this is what the daemon serves.
 | | |
 |---|---|
 | `GET /health` | the ecosystem's liveness probe |
-| `GET /authorize`, `POST /token`, `GET /sign-out` | the OpenID Connect doors; the only way a session is minted, renewed or ended by its holder |
+| `GET /authorize`, `POST /token`, `POST /revoke`, `GET /sign-out` | the OpenID Connect doors; the only way a session is minted, renewed or ended by its holder |
 | `GET /.well-known/jwks.json` | the verification key set |
 | `GET /auth/cluster/users` | every account, to a caller holding any `auth:*` action |
 | `GET /auth/cluster/users/{id}/sessions` | an account's live sessions, on `auth:accounts.disable` |
@@ -281,6 +281,7 @@ browser-facing URL (`https://auth.anchors.example.com`); with anything else ever
 | `POST /authorize/register` | make an account against the request in flight, same-origin only; the wait follows |
 | `GET /authorize/{provider}` | an external provider's round trip for the request in flight |
 | `POST /token` | `authorization_code` or `refresh_token`; access, refresh and `id_token`. A confidential client authenticates by `client_secret_basic` or `client_secret_post`, and may exchange a Discord credential for an access token (see [Exchanging a Discord credential](#exchanging-a-discord-credential)) |
+| `POST /revoke` | end the session a refresh token belongs to (RFC 7009), on behalf of the client it was minted for; `200` for any token that ends nothing (see [Signing a device out](#signing-a-device-out)) |
 | `GET /userinfo` | the account behind a KGSM bearer |
 | `GET /sign-out`, `POST /sign-out` | end a browser's sign-in and everything minted under it; asks without a hint |
 | `GET/POST /auth/cluster/clients`, `DELETE /auth/cluster/clients/{id}` | KGSM's clients, on `auth:config.read` and `auth:config.write` |
@@ -306,7 +307,7 @@ removable through the registry. Anything else for KGSM is registered through `/a
 application outside KGSM has the clients registered with it. Redirects are matched exactly and must be HTTPS, or HTTP where
 the cluster itself accepts plaintext — this machine, a private network or a local name — so a cluster of
 one on a LAN has somewhere to send a code. A registered client's origin may read discovery, the key set,
-`/token`, `/userinfo` and the account API across origins, without credentials; nothing that reads the
+`/token`, `/revoke`, `/device_authorization`, `/userinfo` and the account API across origins, without credentials; nothing that reads the
 anchor's cookie answers another origin.
 
 **The floor.** The sign-in page is a plain document with a working form and the provider links, under a
@@ -496,6 +497,31 @@ keeps entering codes that name no device is made to wait.
 **The device's session is a sign-in of its own.** It is listed on the account page as a device, renews
 with its refresh token like any other, and ends when it is ended there or the account is disabled — not
 when the browser that approved it signs out.
+
+### Signing a device out
+
+A device has no `id_token` and no browser sign-in for `/sign-out` to end, so it signs out by **revoking
+its refresh token** (RFC 7009) at the `revocation_endpoint` discovery names — what an OIDC client
+library's revocation call sends:
+
+```http
+POST /revoke
+Content-Type: application/x-www-form-urlencoded
+
+token=<refresh token>&token_type_hint=refresh_token&client_id=cinema-tv
+```
+
+The answer is `200` with no body. The session that refresh token belongs to ends here and on every
+member, and the line is `auth.session.revoked` with scope `self`. Any client ends its own sessions this
+way; a session minted under a browser's sign-in ends alone and the browser stays signed in.
+
+- **Only the client the session was minted for.** A public client names its `client_id`; a confidential
+  one authenticates as at `/token`, and without its secret is `invalid_client`. A token presented by, or
+  naming, another client is `unauthorized_client` and ends nothing. A KGSM session, recorded with no
+  client, ends for whoever presents its refresh token, as it continues for them.
+- **Nothing is learned from the answer.** A token that does not verify, has expired, or belongs to a
+  session already ended is `200`, the same as one that was revoked. An access token is `200` and ends
+  nothing: it is a bearer resource servers hold, and it lives minutes. The hint is not read.
 
 ### One member of a cluster
 

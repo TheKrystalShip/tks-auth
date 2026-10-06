@@ -193,6 +193,41 @@ public sealed class DeviceGrantTests(AnchorFixture anchor)
     }
 
     [Fact]
+    public async Task A_device_signs_out_by_revoking_its_refresh_token()
+    {
+        Registered app = await ApplicationAsync();
+        (_, AnchorFixture.Session browser) = await anchor.SignedInAsync(prefix: "device");
+        Codes codes = await BeginAsync(app.Client);
+        Assert.Equal(HttpStatusCode.OK, (await DecideAsync(browser, codes.UserCode, approve: true)).StatusCode);
+        JsonElement tokens = await Json(await PollAsync(app.Client, codes.DeviceCode));
+        string refresh = tokens.GetProperty("refresh_token").GetString()!;
+        string sid = Claims(tokens.GetProperty("access_token").GetString()!).GetProperty("sid").GetString()!;
+
+        // As an OIDC client library sends it: the token, the hint and the public client's id.
+        using HttpClient device = anchor.Following();
+        HttpResponseMessage revoked = await device.PostAsync("/revoke", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["token"] = refresh,
+            ["token_type_hint"] = "refresh_token",
+            ["client_id"] = app.Client,
+        }));
+        Assert.Equal(HttpStatusCode.OK, revoked.StatusCode);
+
+        var registry = anchor.Service<SqliteSessionRegistry>();
+        Assert.False(await registry.IsAliveAsync(sid));
+        HttpResponseMessage renewed = await device.PostAsync("/token", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refresh,
+            ["client_id"] = app.Client,
+        }));
+        Assert.Equal("invalid_grant", await ErrorOf(renewed));
+
+        // The phone that approved it is still signed in.
+        Assert.NotNull(await registry.FindProviderSessionAsync(browser.ProviderSession));
+    }
+
+    [Fact]
     public async Task A_refused_device_is_told_so_once()
     {
         Registered app = await ApplicationAsync();

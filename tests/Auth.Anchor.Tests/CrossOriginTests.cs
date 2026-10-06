@@ -34,6 +34,8 @@ public sealed class CrossOriginTests(AnchorFixture anchor)
     [Theory]
     [InlineData("/.well-known/openid-configuration")]
     [InlineData("/token")]
+    [InlineData("/revoke")]
+    [InlineData("/device_authorization")]
     [InlineData("/userinfo")]
     [InlineData("/auth/cluster/users")]
     [InlineData("/auth/identity")]

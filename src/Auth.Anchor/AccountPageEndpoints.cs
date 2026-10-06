@@ -402,9 +402,7 @@ internal static class AccountPageEndpoints
         }
         else
         {
-            await registry.RevokeAsync(target, ctx.RequestAborted);
-            ctx.RequestServices.GetRequiredService<ISessionValidator>().Evict(target);
-            await ctx.RequestServices.GetRequiredService<ISessionAnnouncer>().RevokedAsync(target, ctx.RequestAborted);
+            await Endpoints.EndSessionAsync(ctx, target);
             await journal.SessionRevokedAsync(SessionRevokeScopes.Self, user.UserId, user.Username, target,
                 count: null, actor, AnchorJournal.OriginUi, ctx.RequestAborted);
         }

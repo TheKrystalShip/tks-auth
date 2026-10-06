@@ -7,6 +7,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — token revocation (daemon 4.6.0)
+
+- `POST /revoke` (RFC 7009), advertised in discovery as `revocation_endpoint` with
+  `revocation_endpoint_auth_methods_supported`: a client ends its session by presenting the session's
+  refresh token, which is how a device signed in with the device grant signs out. The session ends on
+  every member and is journaled as `auth.session.revoked`, scope `self`.
+- Only the client the session was minted for may end it — a confidential one with its secret
+  (`invalid_client` without), any other client `unauthorized_client` — and a KGSM session ends for
+  whoever holds its refresh token. A token that ends nothing, an access token included, answers `200`.
+- `/revoke` answers a registered client's origin across origins, as `/token` does.
+
 ### Added — device sign-in (daemon 4.5.0)
 
 - The device authorization grant (RFC 8628): `POST /device_authorization` hands a device its codes, and

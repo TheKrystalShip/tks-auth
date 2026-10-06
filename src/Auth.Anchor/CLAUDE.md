@@ -83,7 +83,7 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
   same goes for a shape missing from `AnchorJsonContext`: it throws at runtime, not at build.
 - **The CORS allowance is a registered client's origin, never a wildcard and never with
   credentials.** It is answered only on what a client reads across origins — discovery, the key set,
-  `/token`, `/device_authorization`, `/userinfo`, `/auth/identity`, `/auth/cluster/*` and this anchor's
+  `/token`, `/revoke`, `/device_authorization`, `/userinfo`, `/auth/identity`, `/auth/cluster/*` and this anchor's
   own surface — and never
   on anything that reads the provider's cookie. This is a surface that mints credentials; a wildcard
   invites any page to drive somebody's sign-in from their own browser.
@@ -270,7 +270,8 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
   refused, never ignored. PKCE is required of every client that takes the code flow.
 - **A session is continued only for the client it was minted for.** `sessions.client_id` records it at
   mint; the refresh of a confidential client's session needs that client authenticated, and naming any
-  other client is `invalid_grant`. A session with no client recorded is KGSM's.
+  other client is `invalid_grant`. A session with no client recorded is KGSM's. Ending one at `/revoke`
+  is held to the same rule (`Endpoints.CheckHolder`).
 - **A client secret is made here, shown once and stored as its SHA-256 hash.** It is 256 random bits,
   so a slow hash buys nothing, and nobody can choose a weak one. It is never journaled, logged or listed,
   and rotating it ends the old one at once.
@@ -349,6 +350,22 @@ by project reference. Its own design authority is `../cluster-auth-plan.md`, its
   2.6×10¹⁰ codes.
 - **Approving writes no line of its own.** The sign-in is recorded when the device collects, where the
   session is minted; an approval nobody collects granted nothing.
+- **A device signs out at `/revoke` (RFC 7009, `TokenRevocation`), advertised as `revocation_endpoint`.**
+  `/sign-out` needs an `id_token` and a browser's sign-in, and a device has neither. Any client ends its
+  own session there: a refresh token ends the session it belongs to — the current one or one already
+  rotated away, since a client whose last rotation was lost still signs out — through
+  `Endpoints.EndSessionAsync`, the path every single-session end takes, and writes
+  `auth.session.revoked` with scope `self`, its actor the session's identity, only when the session was
+  live. A session minted under a browser's sign-in ends alone.
+- **Who may end a session is who may continue it.** `Endpoints.CheckHolder` is the one rule for both
+  `/revoke` and the refresh grant: the session's client, authenticated when confidential (else
+  `invalid_client`); another client, authenticated or named, is `unauthorized_client`; a KGSM session,
+  recorded with no client, is held by whoever presents its refresh token. A public client naming a
+  client id nobody registered is `invalid_client`.
+- **`/revoke` is no oracle** (RFC 7009 §2.2): a token that does not verify, has expired, belongs to an
+  ended session or to none this provider continues is `200` with no body, as a revoked one is. An access
+  token is `200` and ends nothing — it is a bearer resource servers hold, and ending a session on one
+  would let any of them sign its holder out. The hint is not read.
 
 ## The Discord round trip (`DiscordDirectory`, `OAuthHandshake`)
 

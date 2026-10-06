@@ -61,6 +61,7 @@ internal static class OidcEndpoints
             JwksUri: issuer + "/.well-known/jwks.json",
             EndSessionEndpoint: issuer + "/sign-out",
             DeviceAuthorizationEndpoint: issuer + "/device_authorization",
+            RevocationEndpoint: issuer + "/revoke",
             ResponseTypesSupported: ["code"],
             ResponseModesSupported: ["query"],
             GrantTypesSupported: ["authorization_code", "refresh_token", TokenExchange.GrantType, DeviceAuthorization.GrantType],
@@ -70,6 +71,7 @@ internal static class OidcEndpoints
             ClaimsSupported: ["sub", "sid", "auth_time", "nonce", "preferred_username", "name", "picture"],
             CodeChallengeMethodsSupported: ["S256"],
             TokenEndpointAuthMethodsSupported: ["none", "client_secret_basic", "client_secret_post"],
+            RevocationEndpointAuthMethodsSupported: ["none", "client_secret_basic", "client_secret_post"],
             PromptValuesSupported: ["none", "login"],
             AuthorizationResponseIssParameterSupported: true),
             AnchorJsonContext.Default.OidcDiscovery);

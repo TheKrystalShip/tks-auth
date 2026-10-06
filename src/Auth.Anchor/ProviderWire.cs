@@ -54,6 +54,7 @@ internal sealed record OidcDiscovery(
     [property: JsonPropertyName("jwks_uri")] string JwksUri,
     [property: JsonPropertyName("end_session_endpoint")] string EndSessionEndpoint,
     [property: JsonPropertyName("device_authorization_endpoint")] string DeviceAuthorizationEndpoint,
+    [property: JsonPropertyName("revocation_endpoint")] string RevocationEndpoint,
     [property: JsonPropertyName("response_types_supported")] IReadOnlyList<string> ResponseTypesSupported,
     [property: JsonPropertyName("response_modes_supported")] IReadOnlyList<string> ResponseModesSupported,
     [property: JsonPropertyName("grant_types_supported")] IReadOnlyList<string> GrantTypesSupported,
@@ -63,6 +64,7 @@ internal sealed record OidcDiscovery(
     [property: JsonPropertyName("claims_supported")] IReadOnlyList<string> ClaimsSupported,
     [property: JsonPropertyName("code_challenge_methods_supported")] IReadOnlyList<string> CodeChallengeMethodsSupported,
     [property: JsonPropertyName("token_endpoint_auth_methods_supported")] IReadOnlyList<string> TokenEndpointAuthMethodsSupported,
+    [property: JsonPropertyName("revocation_endpoint_auth_methods_supported")] IReadOnlyList<string> RevocationEndpointAuthMethodsSupported,
     [property: JsonPropertyName("prompt_values_supported")] IReadOnlyList<string> PromptValuesSupported,
     [property: JsonPropertyName("authorization_response_iss_parameter_supported")] bool AuthorizationResponseIssParameterSupported);
 

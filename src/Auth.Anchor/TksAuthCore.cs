@@ -192,6 +192,7 @@ internal static class TksAuthCore
         app.MapPost("/authorize/register", OidcEndpoints.Register);
         app.MapGet("/authorize/{provider}", OidcEndpoints.ProviderStart);
         app.MapPost("/token", OidcEndpoints.Token);
+        app.MapPost("/revoke", TokenRevocation.Revoke);
         app.MapGet("/userinfo", OidcEndpoints.UserInfo);
         app.MapPost("/userinfo", OidcEndpoints.UserInfo);
         app.MapGet("/sign-out", OidcEndpoints.SignOut);

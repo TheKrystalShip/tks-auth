@@ -190,13 +190,7 @@ internal static class SessionEndpoints
             return;
         }
 
-        await ctx.RequestServices.GetRequiredService<ISessionRegistry>()
-            .RevokeAsync(sid, ctx.RequestAborted);
-
-        ctx.RequestServices.GetRequiredService<ISessionValidator>().Evict(sid);
-
-        await ctx.RequestServices.GetRequiredService<ISessionAnnouncer>()
-            .RevokedAsync(sid, ctx.RequestAborted);
+        await Endpoints.EndSessionAsync(ctx, sid);
     }
 
     /// <summary>

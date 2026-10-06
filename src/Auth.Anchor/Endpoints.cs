@@ -329,34 +329,18 @@ internal static class Endpoints
         var registry = ctx.RequestServices.GetRequiredService<ISessionRegistry>();
         var validator = ctx.RequestServices.GetRequiredService<ISessionValidator>();
         var accounts = ctx.RequestServices.GetRequiredService<AccountResolver>();
-        var applications = ctx.RequestServices.GetRequiredService<ApplicationRegistry>();
-        AnchorOptions options = ctx.RequestServices.GetRequiredService<AnchorOptions>();
 
-        // A session recorded without a client is KGSM's, and any request may continue it as it always could.
-        string? clientId = ((SqliteSessionRegistry)registry).SessionClient(claims.SessionId);
-        RegisteredClient? client = null;
-        if (clientId is not null)
+        switch (CheckHolder(ctx, claims, auth, out string? clientId, out Application? held))
         {
-            client = ctx.RequestServices.GetRequiredService<ClientRegistry>().Find(clientId);
-            if (client is null)
+            case HolderCheck.ClientUnauthenticated:
+                return new Rotation(RotationOutcome.ClientRefused, null, null);
+            case HolderCheck.Holder:
+                break;
+            default:
                 return new Rotation(RotationOutcome.Invalid, null, null);
-
-            if (!auth.Speaks(client))
-            {
-                return client.Confidential && auth.Result == ClientAuthentication.Outcome.Unauthenticated
-                    ? new Rotation(RotationOutcome.ClientRefused, null, null)
-                    : new Rotation(RotationOutcome.Invalid, null, null);
-            }
         }
 
-        if ((client is null ? applications.Kgsm : applications.Of(client)) is not { } application)
-            return new Rotation(RotationOutcome.Invalid, null, null);
-
-        // The token says which kind of session it continues; the row says which client. They agree for every
-        // token this provider minted.
-        string expectedAudience = application.IsKgsm ? options.ClusterId : options.Issuer;
-        if (!string.Equals(claims.Audience, expectedAudience, StringComparison.Ordinal))
-            return new Rotation(RotationOutcome.Invalid, null, null);
+        Application application = held!;
 
         // Standing is re-read rather than carried over from the presented token, so a disable takes
         // effect at the next rotation instead of at the end of the session.
@@ -375,10 +359,7 @@ internal static class Endpoints
             // A withdrawn account keeps no session. Killing the row here is what stops the remaining
             // access bearer from being refreshed into a new one for its whole lifetime, and telling
             // the other members is what stops that bearer from being spent on them meanwhile.
-            await registry.RevokeAsync(claims.SessionId, ctx.RequestAborted);
-            validator.Evict(claims.SessionId);
-            await ctx.RequestServices.GetRequiredService<ISessionAnnouncer>()
-                .RevokedAsync(claims.SessionId, ctx.RequestAborted);
+            await EndSessionAsync(ctx, claims.SessionId);
 
             // A separate fact from the disable that caused it, and worth its own line because the two
             // can be hours apart: an account switched off at noon keeps working until its access
@@ -416,6 +397,89 @@ internal static class Endpoints
         }
 
         return new Rotation(RotationOutcome.Rotated, access, refresh);
+    }
+
+    /// <summary>Whether a request speaks for the session a refresh token belongs to.</summary>
+    internal enum HolderCheck
+    {
+        /// <summary>It does: the session's client, or anyone for a session recorded without one.</summary>
+        Holder,
+
+        /// <summary>
+        /// The token names no session this provider continues: its client or application is gone, or its
+        /// audience is not the one that session's kind is minted with.
+        /// </summary>
+        NotHeld,
+
+        /// <summary>The session belongs to a confidential client, and the request did not authenticate.</summary>
+        ClientUnauthenticated,
+
+        /// <summary>The request authenticated as, or named, a different client.</summary>
+        OtherClient,
+    }
+
+    /// <summary>
+    /// Whether <paramref name="auth"/> speaks for the session <paramref name="claims"/> belong to, with that
+    /// session's client and application when it does.
+    /// </summary>
+    /// <remarks>
+    /// The one rule for continuing and for ending a session by its refresh token, so the two cannot
+    /// disagree about who holds it. A session recorded without a client is KGSM's, and whoever presents its
+    /// refresh token holds it.
+    /// </remarks>
+    internal static HolderCheck CheckHolder(
+        HttpContext ctx, RefreshClaims claims, ClientAuthentication auth,
+        out string? clientId, out Application? application)
+    {
+        var registry = ctx.RequestServices.GetRequiredService<SqliteSessionRegistry>();
+        var applications = ctx.RequestServices.GetRequiredService<ApplicationRegistry>();
+        AnchorOptions options = ctx.RequestServices.GetRequiredService<AnchorOptions>();
+
+        application = null;
+        clientId = registry.SessionClient(claims.SessionId);
+        RegisteredClient? client = null;
+        if (clientId is not null)
+        {
+            client = ctx.RequestServices.GetRequiredService<ClientRegistry>().Find(clientId);
+            if (client is null)
+                return HolderCheck.NotHeld;
+
+            if (!auth.Speaks(client))
+            {
+                return client.Confidential && auth.Result == ClientAuthentication.Outcome.Unauthenticated
+                    ? HolderCheck.ClientUnauthenticated
+                    : HolderCheck.OtherClient;
+            }
+        }
+
+        if ((client is null ? applications.Kgsm : applications.Of(client)) is not { } found)
+            return HolderCheck.NotHeld;
+
+        // The token says which kind of session it continues; the row says which client. They agree for every
+        // token this provider minted.
+        string expectedAudience = found.IsKgsm ? options.ClusterId : options.Issuer;
+        if (!string.Equals(claims.Audience, expectedAudience, StringComparison.Ordinal))
+            return HolderCheck.NotHeld;
+
+        application = found;
+        return HolderCheck.Holder;
+    }
+
+    /// <summary>
+    /// End one session that is not a browser's sign-in here: revoke its row, drop the cached answer, and
+    /// tell the other members. True when the row was live until now.
+    /// </summary>
+    /// <remarks>
+    /// Every member is told whether or not the row changed. A cluster session is accepted on every member
+    /// and has a row only here, so a member that missed the first announcement hears it again.
+    /// </remarks>
+    internal static async Task<bool> EndSessionAsync(HttpContext ctx, string sid)
+    {
+        bool ended = await ctx.RequestServices.GetRequiredService<ISessionRegistry>()
+            .RevokeAsync(sid, ctx.RequestAborted);
+        ctx.RequestServices.GetRequiredService<ISessionValidator>().Evict(sid);
+        await ctx.RequestServices.GetRequiredService<ISessionAnnouncer>().RevokedAsync(sid, ctx.RequestAborted);
+        return ended;
     }
 
     // ── Accounts ──────────────────────────────────────────────────────────────
