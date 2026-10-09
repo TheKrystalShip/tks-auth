@@ -6,7 +6,7 @@ the "what you must not break".
 ## What this is
 
 The shared authorization model for the ecosystem, and the organization's sign-in provider. The packages are
-consumed by kgsm-api, kgsm-llm, kgsm-bot and kgsm-dns, so a change here changes who can do what on
+consumed by kgsm-api, kgsm-assistant, kgsm-bot and kgsm-dns, so a change here changes who can do what on
 every surface at once.
 
 **The packages match the roles.** The anchor is the provider: it mints every session, and minting,
@@ -121,5 +121,5 @@ the daemon. Only the bare `v*` fires the release workflow, which asserts the tag
 - A change to how access is evaluated changes it on every running surface at once. The tests in
   `tests/Auth.Access.Tests/` and `tests/Auth.Users.Tests/` are the specification — extend them before
   the code.
-- The packages are referenced by projects in four other repos — kgsm-api, kgsm-llm, kgsm-bot and
+- The packages are referenced by projects in four other repos — kgsm-api, kgsm-assistant, kgsm-bot and
   kgsm-dns. Build those before declaring work done.

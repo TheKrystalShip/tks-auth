@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Raw ADO, not EF: kgsm-api sits on EF and kgsm-llm does not, and the store has to be the
+    <!-- Raw ADO, not EF: kgsm-api sits on EF and kgsm-assistant does not, and the store has to be the
          same file read the same way from both. Microsoft.Data.Sqlite is what EF's provider itself
          sits on, so the two surfaces share one native SQLite rather than stacking a second. -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
