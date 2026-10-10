@@ -202,8 +202,8 @@ revoked session still presenting its token is exactly what a stolen one does.
 `tks-auth` holds the accounts. One store, one writer, one address a person signs in at — an OpenID
 Connect provider every browser surface is a client of. In a KGSM cluster it is the member that holds
 the cluster's accounts, and a session it mints is valid on **every** member, because its audience is
-the cluster rather than a machine. The identity design is `../cluster-auth-plan.md` and the sign-in's
-is `../hosted-sign-in-plan.md`; this is what the daemon serves.
+the cluster rather than a machine. The identity design is `kgsm-docs/systems/identity/` (the anchor in a
+cluster in `cluster.md`, the sign-in in `sign-in.md`); this is what the daemon serves.
 
 | | |
 |---|---|
@@ -268,7 +268,8 @@ anchor is unreachable.
 The anchor is also the cluster's OpenID Connect provider — authorization code with PKCE (S256), public
 and confidential clients, no consent screen — served at its issuer. `Anchor__Issuer` has to be the anchor's
 browser-facing URL (`https://auth.anchors.example.com`); with anything else every door below answers
-`no_issuer` and mints nothing. The design is `../hosted-sign-in-plan.md`.
+`no_issuer` and mints nothing. The design is `kgsm-docs/systems/identity/sign-in.md`, the wire
+`kgsm-docs/reference/oidc-provider.md`.
 
 | | |
 |---|---|

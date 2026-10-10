@@ -118,4 +118,4 @@ The account store: one file per host, holding the accounts and the authority ove
   approved automatically; one the manifest stops listing is kept with `declared = 0` and grants nothing
   until listed again.
 
-The account-store design is also covered by `../auth-internal-users-plan.md` at the workspace root.
+Canon: `kgsm-docs/systems/identity/accounts.md` and `kgsm-docs/systems/authorization/`.
