@@ -111,6 +111,7 @@ internal sealed record CreateAccountRequest(
 /// minted under it; <c>device</c> on a device signed in with the device grant, which lives under no
 /// browser's sign-in; absent on a session a surface holds.
 /// </param>
+/// <param name="Name">A device's name, as the person who approved it left it; absent when it has none.</param>
 internal sealed record SessionRecord(
     string Sid,
     string UserId,
@@ -119,7 +120,8 @@ internal sealed record SessionRecord(
     string? UserAgent,
     DateTimeOffset? LastSeen,
     bool Current,
-    string? Kind = null);
+    string? Kind = null,
+    string? Name = null);
 
 /// <summary>Every live session for one account.</summary>
 /// <param name="Data">The sessions, most recent first.</param>

@@ -224,7 +224,7 @@ function AccountApp() {
         {me.sessions.map((row) => (
           <SettingsRow key={row.sid}
             icon={row.kind === "provider" ? "globe" : row.kind === "device" ? "tv" : /mobile|android|iphone|ipad/i.test(row.userAgent || "") ? "smartphone" : "monitor"}
-            title={row.current ? "This browser" : deviceName(row.userAgent)}
+            title={row.current ? "This browser" : row.name || deviceName(row.userAgent)}
             sub={(row.kind === "provider" ? "Signed in here" : row.kind === "device" ? "A device" : "An application") + " · " + when(row.created)}>
             <button className="host-btn host-btn--ghost" disabled={busy === row.sid}
               title={row.userAgent || undefined} onClick={() => endSession(row)}>

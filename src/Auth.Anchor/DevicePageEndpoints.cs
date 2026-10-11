@@ -178,7 +178,7 @@ internal static class DevicePageEndpoints
             return;
 
         await ProviderPages.DeviceConfirmAsync(ctx, found.Request.UserCode, found.Request.Application,
-            found.Request.UserAgent, user.DisplayName);
+            found.Request.UserAgent, found.Request.Name, user.DisplayName);
     }
 
     /// <summary><c>POST /device/decision</c>: approve or refuse the device a code names.</summary>
@@ -195,22 +195,23 @@ internal static class DevicePageEndpoints
             return;
         }
 
-        string? typed;
+        string? typed, named;
         bool? approve;
         if (json)
         {
             DeviceDecisionRequest? body = await Endpoints.ReadBodyAsync(ctx, AnchorJsonContext.Default.DeviceDecisionRequest);
-            (typed, approve) = (body?.UserCode, body?.Approve);
+            (typed, approve, named) = (body?.UserCode, body?.Approve, body?.Name);
         }
         else if (ctx.Request.HasFormContentType && ctx.Request.ContentLength is null or <= MaxFormBytes)
         {
             IFormCollection form = await ctx.Request.ReadFormAsync(ctx.RequestAborted);
             typed = form["user_code"].ToString();
             approve = form["decision"].ToString() switch { "approve" => true, "deny" => false, _ => null };
+            named = form.ContainsKey(DeviceAuthorization.NameParameter) ? form[DeviceAuthorization.NameParameter].ToString() : null;
         }
         else
         {
-            (typed, approve) = (null, null);
+            (typed, approve, named) = (null, null, null);
         }
 
         if (approve is not { } approved)
@@ -223,8 +224,10 @@ internal static class DevicePageEndpoints
         if (await LookUpAsync(ctx, session, typed, json) is not { } found)
             return;
 
+        // What the person typed replaces what the device sent, emptied to none; nothing typed keeps it.
+        string? name = named is null ? found.Request.Name : DeviceAuthorization.CleanName(named);
         if (!await ctx.RequestServices.GetRequiredService<SqliteSessionRegistry>().DecideDeviceAsync(
-                found.Hash, approved, session.Identity.ToJson(), user.UserId, ctx.RequestAborted))
+                found.Hash, approved, session.Identity.ToJson(), user.UserId, name, ctx.RequestAborted))
         {
             await RefuseAsync(ctx, json, StatusCodes.Status404NotFound, "no_such_code",
                 "Code not found", "That code is not waiting for approval any more. Start again on the device.");
@@ -288,7 +291,8 @@ internal static class DevicePageEndpoints
         }
 
         return new Found(hash, new DeviceContextRequest(
-            DeviceAuthorization.Format(DeviceAuthorization.Normalize(typed)!), application.Name, pending.UserAgent, pending.Expires));
+            DeviceAuthorization.Format(DeviceAuthorization.Normalize(typed)!), application.Name, pending.UserAgent, pending.Expires,
+            pending.Name));
     }
 
     /// <summary>

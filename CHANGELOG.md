@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — device names (daemon 4.7.0, testing 2.3.0)
+
+- `POST /device_authorization` takes an optional `device_name`, what the device's owner calls it, kept
+  cleaned (no control characters, one space for each run of white space, trimmed) and cut to 64
+  characters a person sees.
+- `/device` offers that name in a field the person approving may change, on the page and on the page
+  without script; the decision's `name` (`device_name` from the form) replaces it, empty for none.
+- The name decided is the device session's: listed with it on the account page and in
+  `GET /auth/cluster/users/{id}/sessions` (`name`), and carried on its application access tokens as
+  `tks_device_name`, read from the session at every mint and refresh.
+- `ApplicationAccess.DeviceName` and `ApplicationClaims.DeviceName` in the minter, which `Auth.Testing`
+  compiles.
+
 ### Added — token revocation (daemon 4.6.0)
 
 - `POST /revoke` (RFC 7009), advertised in discovery as `revocation_endpoint` with

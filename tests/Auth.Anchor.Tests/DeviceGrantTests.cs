@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 using TheKrystalShip.Auth.Journal;
+using TheKrystalShip.Auth.Minting;
 using TheKrystalShip.Auth.Users;
 
 namespace TheKrystalShip.Auth.Anchor.Tests;
@@ -43,20 +44,23 @@ public sealed class DeviceGrantTests(AnchorFixture anchor)
 
     private sealed record Codes(string DeviceCode, string UserCode, string VerificationUri, string Complete, long ExpiresIn, int Interval);
 
-    private async Task<HttpResponseMessage> BeginRawAsync(string client)
+    private async Task<HttpResponseMessage> BeginRawAsync(string client, string? name = null)
     {
         using HttpClient device = anchor.Following();
+        var form = new Dictionary<string, string> { ["client_id"] = client, ["scope"] = "openid" };
+        if (name is not null)
+            form["device_name"] = name;
         using var request = new HttpRequestMessage(HttpMethod.Post, "/device_authorization")
         {
-            Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["client_id"] = client, ["scope"] = "openid" }),
+            Content = new FormUrlEncodedContent(form),
         };
         request.Headers.UserAgent.ParseAdd(Television);
         return await device.SendAsync(request);
     }
 
-    private async Task<Codes> BeginAsync(string client)
+    private async Task<Codes> BeginAsync(string client, string? name = null)
     {
-        HttpResponseMessage response = await BeginRawAsync(client);
+        HttpResponseMessage response = await BeginRawAsync(client, name);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
         JsonElement body = await Json(response);
@@ -98,11 +102,12 @@ public sealed class DeviceGrantTests(AnchorFixture anchor)
         return JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(payload))).RootElement.Clone();
     }
 
-    private async Task<HttpResponseMessage> DecideAsync(AnchorFixture.Session session, string userCode, bool approve)
+    private async Task<HttpResponseMessage> DecideAsync(AnchorFixture.Session session, string userCode, bool approve, string? name = null)
     {
         using HttpClient browser = anchor.Following();
-        using HttpRequestMessage request = session.AtTheAccountPage(HttpMethod.Post, "/device/decision",
-            new { userCode, approve });
+        using HttpRequestMessage request = name is null
+            ? session.AtTheAccountPage(HttpMethod.Post, "/device/decision", new { userCode, approve })
+            : session.AtTheAccountPage(HttpMethod.Post, "/device/decision", new { userCode, approve, name });
         return await browser.SendAsync(request);
     }
 
@@ -190,6 +195,93 @@ public sealed class DeviceGrantTests(AnchorFixture anchor)
             ["client_id"] = app.Client,
         }));
         Assert.Equal(HttpStatusCode.OK, renewed.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_device_is_named_by_what_it_sends_and_by_the_person_who_approves_it()
+    {
+        Registered app = await ApplicationAsync();
+        (KgsmUser user, AnchorFixture.Session browser) = await anchor.SignedInAsync(prefix: "device");
+
+        // The name the TV's owner gave it, as the device sends it, arrives cleaned for the page.
+        Codes codes = await BeginAsync(app.Client, "  Fire TV de\tCristina \u0007");
+        JsonElement shown = (await Json(await ContextAsync(browser, codes.UserCode))).GetProperty("device");
+        Assert.Equal("Fire TV de Cristina", shown.GetProperty("name").GetString());
+
+        // The person approving it names it as they see fit, and that is the session's name.
+        Assert.Equal(HttpStatusCode.OK, (await DecideAsync(browser, codes.UserCode, approve: true, name: "Living room TV")).StatusCode);
+        JsonElement tokens = await Json(await PollAsync(app.Client, codes.DeviceCode));
+        JsonElement access = Claims(tokens.GetProperty("access_token").GetString()!);
+        Assert.Equal("Living room TV", access.GetProperty(ApplicationClaims.DeviceName).GetString());
+        string sid = access.GetProperty("sid").GetString()!;
+
+        var registry = anchor.Service<SqliteSessionRegistry>();
+        IReadOnlyList<SqliteSessionRegistry.LiveSession> live = await registry.ListAsync([user.AsIdentity().Handle]);
+        Assert.Equal("Living room TV", live.Single(s => s.SessionId == sid).Name);
+
+        // Every token the session is renewed with carries it, read from the session rather than the old token.
+        using HttpClient device = anchor.Following();
+        JsonElement renewed = await Json(await device.PostAsync("/token", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = tokens.GetProperty("refresh_token").GetString()!,
+            ["client_id"] = app.Client,
+        })));
+        Assert.Equal("Living room TV",
+            Claims(renewed.GetProperty("access_token").GetString()!).GetProperty(ApplicationClaims.DeviceName).GetString());
+    }
+
+    [Fact]
+    public async Task A_device_keeps_the_name_it_sent_when_the_person_does_not_change_it()
+    {
+        Registered app = await ApplicationAsync();
+        (_, AnchorFixture.Session browser) = await anchor.SignedInAsync(prefix: "device");
+        Codes codes = await BeginAsync(app.Client, "Fire TV de Cristina");
+
+        Assert.Equal(HttpStatusCode.OK, (await DecideAsync(browser, codes.UserCode, approve: true)).StatusCode);
+        JsonElement access = Claims((await Json(await PollAsync(app.Client, codes.DeviceCode))).GetProperty("access_token").GetString()!);
+        Assert.Equal("Fire TV de Cristina", access.GetProperty(ApplicationClaims.DeviceName).GetString());
+    }
+
+    [Fact]
+    public async Task A_device_with_no_name_carries_none()
+    {
+        Registered app = await ApplicationAsync();
+        (_, AnchorFixture.Session browser) = await anchor.SignedInAsync(prefix: "device");
+
+        // Sent none; and a name the person clears is none too.
+        Codes unnamed = await BeginAsync(app.Client);
+        JsonElement shown = (await Json(await ContextAsync(browser, unnamed.UserCode))).GetProperty("device");
+        Assert.True(!shown.TryGetProperty("name", out JsonElement name) || name.ValueKind == JsonValueKind.Null);
+        Assert.Equal(HttpStatusCode.OK, (await DecideAsync(browser, unnamed.UserCode, approve: true)).StatusCode);
+        JsonElement access = Claims((await Json(await PollAsync(app.Client, unnamed.DeviceCode))).GetProperty("access_token").GetString()!);
+        Assert.False(access.TryGetProperty(ApplicationClaims.DeviceName, out _));
+
+        Codes cleared = await BeginAsync(app.Client, "Fire TV de Cristina");
+        Assert.Equal(HttpStatusCode.OK, (await DecideAsync(browser, cleared.UserCode, approve: true, name: "   ")).StatusCode);
+        access = Claims((await Json(await PollAsync(app.Client, cleared.DeviceCode))).GetProperty("access_token").GetString()!);
+        Assert.False(access.TryGetProperty(ApplicationClaims.DeviceName, out _));
+    }
+
+    [Theory]
+    [InlineData("Living room TV", "Living room TV")]
+    [InlineData("  Living\n\nroom   TV  ", "Living room TV")]
+    [InlineData("\u0000\u0007", null)]
+    [InlineData("   ", null)]
+    [InlineData(null, null)]
+    public void A_device_name_is_cleaned(string? sent, string? kept) =>
+        Assert.Equal(kept, DeviceAuthorization.CleanName(sent));
+
+    [Fact]
+    public void A_device_name_is_cut_rather_than_refused()
+    {
+        string kept = DeviceAuthorization.CleanName(new string('a', 70) + "\U0001F4FA")!;
+        Assert.Equal(DeviceAuthorization.MaxNameLength, kept.Length);
+
+        // Cut between characters a person sees, never through one.
+        string emoji = string.Concat(Enumerable.Repeat("\U0001F4FA", 70));
+        Assert.Equal(DeviceAuthorization.MaxNameLength,
+            new System.Globalization.StringInfo(DeviceAuthorization.CleanName(emoji)!).LengthInTextElements);
     }
 
     [Fact]

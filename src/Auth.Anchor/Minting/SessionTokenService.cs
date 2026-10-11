@@ -68,6 +68,12 @@ public sealed record ApplicationAccess(
     /// or null when the account's holder is the one presenting it.
     /// </summary>
     public string? Actor { get; init; }
+
+    /// <summary>
+    /// The name of the device the session is, carried as <see cref="ApplicationClaims.DeviceName"/>, or null
+    /// for a session that is not a named device.
+    /// </summary>
+    public string? DeviceName { get; init; }
 }
 
 /// <summary>The claims an access token for an application outside KGSM carries beyond the registered ones.</summary>
@@ -90,6 +96,12 @@ public static class ApplicationClaims
     /// A resource server holding a token with it is being called by that client on the subject's behalf.
     /// </summary>
     public const string Actor = "act";
+
+    /// <summary>
+    /// A device's name, on a token of a session signed in with the device grant whose name is known: what
+    /// the person who approved it called it.
+    /// </summary>
+    public const string DeviceName = "tks_device_name";
 }
 
 /// <summary>How the anchor mints session tokens.</summary>
@@ -248,6 +260,8 @@ public sealed class SessionTokenService : ISessionTokenService
             claims["picture"] = access.Picture;
         if (access.Actor is not null)
             claims[ApplicationClaims.Actor] = new Dictionary<string, object>(StringComparer.Ordinal) { ["sub"] = access.Actor };
+        if (access.DeviceName is not null)
+            claims[ApplicationClaims.DeviceName] = access.DeviceName;
 
         string token = _handler.CreateToken(new SecurityTokenDescriptor
         {

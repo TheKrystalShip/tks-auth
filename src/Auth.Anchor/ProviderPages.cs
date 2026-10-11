@@ -109,7 +109,7 @@ internal static class ProviderPages
     /// <param name="application">The application the device asks to be signed in to.</param>
     /// <param name="userAgent">What the device said it is, or null.</param>
     /// <param name="who">Who is signed in on this browser, whose account the device would be signed in to.</param>
-    public static Task DeviceConfirmAsync(HttpContext ctx, string code, string application, string? userAgent, string who)
+    public static Task DeviceConfirmAsync(HttpContext ctx, string code, string application, string? userAgent, string? name, string who)
     {
         var body = new StringBuilder();
         body.Append("<h1>Sign in a device</h1>");
@@ -120,6 +120,10 @@ internal static class ProviderPages
 
         body.Append("<form method=\"post\" action=\"/device/decision\">");
         Hidden(body, "user_code", code);
+        body.Append("<label for=\"device_name\">Name</label><input id=\"device_name\" name=\"")
+            .Append(DeviceAuthorization.NameParameter).Append("\" type=\"text\" maxlength=\"")
+            .Append(DeviceAuthorization.MaxNameLength).Append("\" autocomplete=\"off\" value=\"")
+            .Append(Encode(name ?? "")).Append("\">");
         body.Append("<button type=\"submit\" name=\"decision\" value=\"approve\">Sign in</button>")
             .Append("<button type=\"submit\" name=\"decision\" value=\"deny\" class=\"secondary\">Refuse</button>")
             .Append("</form>");

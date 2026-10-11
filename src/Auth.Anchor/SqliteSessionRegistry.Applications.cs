@@ -285,6 +285,15 @@ internal sealed partial class SqliteSessionRegistry
     // ── The client a session was minted for ───────────────────────────────────
 
     /// <summary>The client a session was minted for, or null for one recorded without one.</summary>
+    internal string? SessionName(string sessionId)
+    {
+        using SqliteConnection connection = Open();
+        using SqliteCommand cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT name FROM sessions WHERE session_id = $sid;";
+        cmd.Parameters.AddWithValue("$sid", sessionId);
+        return cmd.ExecuteScalar() as string;
+    }
+
     internal string? SessionClient(string sessionId)
     {
         using SqliteConnection connection = Open();

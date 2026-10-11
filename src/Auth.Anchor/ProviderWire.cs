@@ -180,12 +180,16 @@ internal sealed record DeviceContext(AuthorizeContextAccount Account, DeviceCont
 /// <param name="Application">The application the device would be signed in to.</param>
 /// <param name="UserAgent">What the device said it is, or null when it said nothing.</param>
 /// <param name="ExpiresAt">When the code runs out.</param>
-internal sealed record DeviceContextRequest(string UserCode, string Application, string? UserAgent, DateTimeOffset ExpiresAt);
+/// <param name="Name">The name the device sent, which the person may change before deciding; absent when it sent none.</param>
+internal sealed record DeviceContextRequest(string UserCode, string Application, string? UserAgent, DateTimeOffset ExpiresAt, string? Name = null);
 
 /// <summary>A person's decision on a device, from the device page.</summary>
 /// <param name="UserCode">The code the device shows, as typed.</param>
 /// <param name="Approve">True to sign the device in, false to refuse it.</param>
-internal sealed record DeviceDecisionRequest(string? UserCode, bool? Approve);
+/// <param name="Name">
+/// The name to sign the device in under, replacing the one it sent; empty for none. Absent keeps the one it sent.
+/// </param>
+internal sealed record DeviceDecisionRequest(string? UserCode, bool? Approve, string? Name = null);
 
 /// <summary>What deciding on a device came to.</summary>
 /// <param name="Decision"><c>approved</c> or <c>denied</c>.</param>

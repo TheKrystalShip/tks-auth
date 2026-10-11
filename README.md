@@ -467,13 +467,13 @@ A screen with no browser to bounce — a television — signs in with the **devi
 tks-auth app client add cinema --client-id cinema-tv --device
 ```
 
-The device asks for its codes, naming only its client:
+The device asks for its codes, naming its client and, when it has one, the name its owner gave it:
 
 ```http
 POST /device_authorization
 Content-Type: application/x-www-form-urlencoded
 
-client_id=cinema-tv&scope=openid
+client_id=cinema-tv&scope=openid&device_name=Living%20room%20TV
 ```
 
 ```json
@@ -491,7 +491,9 @@ minutes `expired_token`, each said once. An approval answers with an access toke
 a refresh token, the code flow's pair without an `id_token`.
 
 The person opens `/device` on a phone or a computer, signs in if that browser is not signed in here, and
-is shown the application, their account, the code and what the device said it is before the two buttons.
+is shown the application, their account, the code and what the device said it is before the two buttons,
+with the device's name in a field they may change. The name left there, cleaned and cut to 64 characters,
+is the device session's: listed with it and carried on its access tokens as `tks_device_name`.
 Only an active account approves, and the account is read again when the device collects. A browser that
 keeps entering codes that name no device is made to wait.
 

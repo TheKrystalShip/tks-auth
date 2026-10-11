@@ -5,14 +5,16 @@ namespace TheKrystalShip.Auth.Anchor;
 /// <summary>A device authorization waiting for a person, as the page that approves it reads it.</summary>
 /// <param name="ClientId">The client the device asked as.</param>
 /// <param name="UserAgent">What the device said it is, or null when it sent nothing.</param>
+/// <param name="Name">The name the device sent, cleaned, or null when it sent none.</param>
 /// <param name="Expires">When it can no longer be approved.</param>
-internal sealed record PendingDevice(string ClientId, string? UserAgent, DateTimeOffset Expires);
+internal sealed record PendingDevice(string ClientId, string? UserAgent, string? Name, DateTimeOffset Expires);
 
 /// <summary>A device authorization a person approved, taken out of the store by the device redeeming it.</summary>
 /// <param name="ClientId">The client the device asked as.</param>
 /// <param name="IdentityJson">The identity the approving browser's sign-in was proved with.</param>
 /// <param name="UserId">The account that approved it.</param>
-internal sealed record ApprovedDevice(string ClientId, string IdentityJson, string UserId);
+/// <param name="Name">The name the person approved it under, or null for none.</param>
+internal sealed record ApprovedDevice(string ClientId, string IdentityJson, string UserId, string? Name);
 
 /// <summary>What a device asking at <c>/token</c> is told.</summary>
 internal enum DevicePoll
@@ -66,6 +68,7 @@ internal sealed partial class SqliteSessionRegistry
                 user_code_hash   TEXT NOT NULL UNIQUE,
                 client_id        TEXT NOT NULL,
                 user_agent       TEXT NULL,
+                device_name      TEXT NULL,
                 created          TEXT NOT NULL,
                 expires          TEXT NOT NULL,
                 interval_s       INTEGER NOT NULL,
@@ -83,7 +86,7 @@ internal sealed partial class SqliteSessionRegistry
     /// another device's, which the caller answers by drawing another.
     /// </summary>
     internal Task<bool> CreateDeviceAuthorizationAsync(
-        string deviceCodeHash, string userCodeHash, string clientId, string? userAgent,
+        string deviceCodeHash, string userCodeHash, string clientId, string? userAgent, string? name,
         DateTimeOffset now, DateTimeOffset expires, int intervalSeconds, CancellationToken ct = default)
     {
         lock (_writeGate)
@@ -93,14 +96,15 @@ internal sealed partial class SqliteSessionRegistry
             cmd.CommandText =
                 """
                 INSERT INTO device_authorizations
-                    (device_code_hash, user_code_hash, client_id, user_agent, created, expires, interval_s)
-                VALUES ($device, $user, $client, $ua, $now, $expires, $interval)
+                    (device_code_hash, user_code_hash, client_id, user_agent, device_name, created, expires, interval_s)
+                VALUES ($device, $user, $client, $ua, $name, $now, $expires, $interval)
                 ON CONFLICT DO NOTHING;
                 """;
             cmd.Parameters.AddWithValue("$device", deviceCodeHash);
             cmd.Parameters.AddWithValue("$user", userCodeHash);
             cmd.Parameters.AddWithValue("$client", clientId);
             cmd.Parameters.AddWithValue("$ua", (object?)userAgent ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$name", (object?)name ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$now", now.ToString("O"));
             cmd.Parameters.AddWithValue("$expires", expires.ToString("O"));
             cmd.Parameters.AddWithValue("$interval", intervalSeconds);
@@ -115,7 +119,7 @@ internal sealed partial class SqliteSessionRegistry
         using SqliteCommand cmd = connection.CreateCommand();
         cmd.CommandText =
             """
-            SELECT client_id, user_agent, expires
+            SELECT client_id, user_agent, device_name, expires
               FROM device_authorizations
              WHERE user_code_hash = $user AND decision IS NULL AND expires > $now;
             """;
@@ -124,7 +128,7 @@ internal sealed partial class SqliteSessionRegistry
 
         using SqliteDataReader reader = cmd.ExecuteReader();
         return Task.FromResult(reader.Read()
-            ? new PendingDevice(reader.GetString(0), NullableString(reader, 1), Parse(reader.GetString(2)))
+            ? new PendingDevice(reader.GetString(0), NullableString(reader, 1), NullableString(reader, 2), Parse(reader.GetString(3)))
             : null);
     }
 
@@ -136,9 +140,10 @@ internal sealed partial class SqliteSessionRegistry
     /// <param name="approve">Whether they approved it.</param>
     /// <param name="identityJson">The identity their browser's sign-in was proved with.</param>
     /// <param name="userId">Their account.</param>
+    /// <param name="name">The name they approved it under, which replaces the one it sent; null for none.</param>
     /// <param name="ct">Cancellation token.</param>
     internal Task<bool> DecideDeviceAsync(
-        string userCodeHash, bool approve, string identityJson, string userId, CancellationToken ct = default)
+        string userCodeHash, bool approve, string identityJson, string userId, string? name, CancellationToken ct = default)
     {
         lock (_writeGate)
         {
@@ -147,12 +152,13 @@ internal sealed partial class SqliteSessionRegistry
             cmd.CommandText =
                 """
                 UPDATE device_authorizations
-                   SET decision = $decision, identity = $identity, user_id = $userId
+                   SET decision = $decision, identity = $identity, user_id = $userId, device_name = $name
                  WHERE user_code_hash = $user AND decision IS NULL AND expires > $now;
                 """;
             cmd.Parameters.AddWithValue("$decision", approve ? Approved : Denied);
             cmd.Parameters.AddWithValue("$identity", identityJson);
             cmd.Parameters.AddWithValue("$userId", userId);
+            cmd.Parameters.AddWithValue("$name", (object?)name ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$user", userCodeHash);
             cmd.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
             return Task.FromResult(cmd.ExecuteNonQuery() == 1);
@@ -176,7 +182,7 @@ internal sealed partial class SqliteSessionRegistry
             using SqliteConnection connection = Open();
             using SqliteTransaction tx = connection.BeginTransaction();
 
-            string? owner, decision, identity, userId, lastPoll;
+            string? owner, decision, identity, userId, lastPoll, name;
             DateTimeOffset expires;
             int interval;
             using (SqliteCommand read = connection.CreateCommand())
@@ -184,7 +190,7 @@ internal sealed partial class SqliteSessionRegistry
                 read.Transaction = tx;
                 read.CommandText =
                     """
-                    SELECT client_id, expires, interval_s, last_poll, decision, identity, user_id
+                    SELECT client_id, expires, interval_s, last_poll, decision, identity, user_id, device_name
                       FROM device_authorizations WHERE device_code_hash = $device;
                     """;
                 read.Parameters.AddWithValue("$device", deviceCodeHash);
@@ -199,6 +205,7 @@ internal sealed partial class SqliteSessionRegistry
                 decision = NullableString(reader, 4);
                 identity = NullableString(reader, 5);
                 userId = NullableString(reader, 6);
+                name = NullableString(reader, 7);
             }
 
             // Another client's code is not this client's to learn anything about, and asking with it
@@ -215,7 +222,7 @@ internal sealed partial class SqliteSessionRegistry
             else if (decision == Approved && identity is not null && userId is not null)
             {
                 outcome = DevicePoll.Approved;
-                approval = new ApprovedDevice(owner, identity, userId);
+                approval = new ApprovedDevice(owner, identity, userId, name);
             }
             else if (lastPoll is not null && now - Parse(lastPoll) < TimeSpan.FromSeconds(interval))
                 outcome = DevicePoll.SlowDown;

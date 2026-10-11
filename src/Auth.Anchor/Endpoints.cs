@@ -192,7 +192,7 @@ internal static class Endpoints
     internal static async Task<bool> MintSessionFor(
         HttpContext ctx, KgsmIdentity identity, KgsmUser user, DateTimeOffset now,
         Func<MintedToken, MintedToken, Task> respond, string? providerSession,
-        RegisteredClient client, Application application, string? kind = null)
+        RegisteredClient client, Application application, string? kind = null, string? name = null)
     {
         if ((providerSession is null) != (kind == SqliteSessionRegistry.DeviceKind))
             throw new ArgumentException("A session lives under a browser's sign-in, or is a device's.", nameof(kind));
@@ -201,7 +201,7 @@ internal static class Endpoints
         AnchorOptions options = ctx.RequestServices.GetRequiredService<AnchorOptions>();
 
         string sessionId = NewSessionId();
-        if (await MintPairAsync(ctx, identity, user, sessionId, client.ClientId, application) is not ({ } access, { } refresh))
+        if (await MintPairAsync(ctx, identity, user, sessionId, client.ClientId, application, name) is not ({ } access, { } refresh))
             return false;
 
         var registration = new SessionRegistration(
@@ -216,7 +216,7 @@ internal static class Endpoints
             CurrentJti: refresh.Jti);
 
         await ((SqliteSessionRegistry)registry).CreateAsync(
-            registration, providerSession, client.ClientId, kind, ctx.RequestAborted);
+            registration, providerSession, client.ClientId, kind, name, ctx.RequestAborted);
 
         // Recorded after the session exists and before the caller is answered. The actor is the
         // identity that arrived rather than this daemon: nobody else was involved in a sign-in, and
@@ -245,11 +245,12 @@ internal static class Endpoints
     /// KGSM's are the cluster's session: audienced to the cluster, carrying no actions, verified by every
     /// member and evaluated there from its replica. Any other application's access token is audienced to
     /// it, lives its lifetime and lists its actions the account holds, evaluated here at every mint; its
-    /// refresh token is audienced to this provider, the one place it is presented.
+    /// refresh token is audienced to this provider, the one place it is presented. A device's name rides on
+    /// the application's access token, read from the session at every mint, so a rename reaches the next one.
     /// </remarks>
     private static async Task<(MintedToken Access, MintedToken Refresh)?> MintPairAsync(
         HttpContext ctx, KgsmIdentity identity, KgsmUser user, string sessionId,
-        string? clientId, Application application)
+        string? clientId, Application application, string? deviceName)
     {
         var tokens = ctx.RequestServices.GetRequiredService<ISessionTokenService>();
         if (application.IsKgsm)
@@ -275,7 +276,7 @@ internal static class Endpoints
             ClientId: clientId ?? throw new InvalidOperationException("An application's session is minted for a client."),
             Audience: application.Audience,
             Lifetime: application.AccessLifetime,
-            Actions: held));
+            Actions: held) { DeviceName = deviceName });
         return (access, tokens.MintApplicationRefresh(identity, sessionId));
     }
 
@@ -380,7 +381,8 @@ internal static class Endpoints
             return new Rotation(RotationOutcome.Withdrawn, null, null);
         }
 
-        if (await MintPairAsync(ctx, claims.Identity, answer.User!, claims.SessionId, clientId, application)
+        string? deviceName = ctx.RequestServices.GetRequiredService<SqliteSessionRegistry>().SessionName(claims.SessionId);
+        if (await MintPairAsync(ctx, claims.Identity, answer.User!, claims.SessionId, clientId, application, deviceName)
             is not ({ } access, { } refresh))
             return new Rotation(RotationOutcome.Unavailable, null, null);
 

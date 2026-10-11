@@ -141,7 +141,8 @@ internal static class AccountPageEndpoints
             Sessions: [.. live.Select(s => new SessionRecord(
                 s.SessionId, s.UserId, s.Created, s.Expires, s.UserAgent, s.LastSeen,
                 Current: s.SessionId == session.SessionId,
-                Kind: s.Kind))]),
+                Kind: s.Kind,
+                Name: s.Name))]),
             AnchorJsonContext.Default.AccountView);
     }
 

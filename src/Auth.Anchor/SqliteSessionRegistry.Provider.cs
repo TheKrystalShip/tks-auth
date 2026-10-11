@@ -246,7 +246,7 @@ internal sealed partial class SqliteSessionRegistry
     /// <param name="ct">Cancellation token.</param>
     internal Task CreateAsync(
         SessionRegistration session, string? providerSession, string? clientId = null, string? kind = null,
-        CancellationToken ct = default)
+        string? name = null, CancellationToken ct = default)
     {
         lock (_writeGate)
         {
@@ -256,11 +256,12 @@ internal sealed partial class SqliteSessionRegistry
                 """
                 INSERT INTO sessions
                     (session_id, user_id, host_id, created, expires, user_agent, current_jti, revoked,
-                     provider_session, client_id, kind)
-                VALUES ($sid, $user, $host, $created, $expires, $ua, $jti, 0, $provider, $client, $kind);
+                     provider_session, client_id, kind, name)
+                VALUES ($sid, $user, $host, $created, $expires, $ua, $jti, 0, $provider, $client, $kind, $name);
                 """;
             cmd.Parameters.AddWithValue("$client", (object?)clientId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$kind", (object?)kind ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$name", (object?)name ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$sid", session.SessionId);
             cmd.Parameters.AddWithValue("$user", session.UserId);
             cmd.Parameters.AddWithValue("$host", session.HostId);

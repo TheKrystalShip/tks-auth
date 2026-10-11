@@ -61,6 +61,7 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
                 created     TEXT NOT NULL,
                 expires     TEXT NOT NULL,
                 user_agent  TEXT NULL,
+                name        TEXT NULL,
                 current_jti TEXT NULL,
                 revoked     INTEGER NOT NULL DEFAULT 0
             );
@@ -112,7 +113,8 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
         DateTimeOffset Expires,
         string? UserAgent,
         DateTimeOffset? LastSeen,
-        string? Kind = null)
+        string? Kind = null,
+        string? Name = null)
     {
         /// <summary>Whether this is a browser's sign-in at the anchor itself.</summary>
         public bool Provider => Kind == ProviderKind;
@@ -235,7 +237,7 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
         string slots = Bind(cmd, handles);
         cmd.CommandText =
             $"""
-            SELECT session_id, user_id, created, expires, user_agent, last_seen, kind
+            SELECT session_id, user_id, created, expires, user_agent, last_seen, kind, name
               FROM sessions
              WHERE user_id IN ({slots}) AND revoked = 0 AND expires > $now
              ORDER BY created DESC;
@@ -255,7 +257,8 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
                 reader.IsDBNull(5)
                     ? null
                     : DateTimeOffset.Parse(reader.GetString(5), CultureInfo.InvariantCulture),
-                Kind: reader.IsDBNull(6) ? null : reader.GetString(6)));
+                Kind: reader.IsDBNull(6) ? null : reader.GetString(6),
+                Name: reader.IsDBNull(7) ? null : reader.GetString(7)));
         }
 
         return Task.FromResult<IReadOnlyList<LiveSession>>(sessions);

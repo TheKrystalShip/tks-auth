@@ -196,6 +196,9 @@ this repo's `README.md` documents the doors. Minting is `Minting/CLAUDE.md`.
   same-origin gate a credential post passes (RFC 8628 section 5.4). The page's own sign-in is a request in
   flight for the `kgsm-device` pseudo-client, never registered and never issued a code.
 - **Codes that name no device are limited by `DeviceCodeGuesses`,** in memory on purpose.
+- **A device's name is cleaned in one place, `DeviceAuthorization.CleanName`,** for what the device sends and
+  for what the person types alike, and is cut rather than refused. It lives on the session (`sessions.name`),
+  and `tks_device_name` is read from there at every mint, never carried over from the previous token.
 - **`/revoke` ends a session through `Endpoints.EndSessionAsync`, the path every single-session end takes,**
   is no oracle (RFC 7009 section 2.2), and ends nothing for an access token.
 

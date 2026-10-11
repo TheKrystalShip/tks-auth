@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -61,6 +62,15 @@ internal static class DeviceAuthorization
     private const int MaxFormBytes = 8 * 1024;
 
     /// <summary>
+    /// The extension parameter (RFC 8628 §3.1 allows them) a device names itself with: the name its owner
+    /// gave it, which the person approving it sees and may change.
+    /// </summary>
+    internal const string NameParameter = "device_name";
+
+    /// <summary>The longest a device's name is kept, in characters a person sees.</summary>
+    internal const int MaxNameLength = 64;
+
+    /// <summary>
     /// <c>POST /device_authorization</c> (RFC 8628 §3.1): a device asks for its codes.
     /// </summary>
     internal static async Task Begin(HttpContext ctx)
@@ -118,6 +128,7 @@ internal static class DeviceAuthorization
         var registry = ctx.RequestServices.GetRequiredService<SqliteSessionRegistry>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
         string deviceCode = ProviderCookies.NewSecret();
+        string? name = CleanName(OidcEndpoints.Single(form, NameParameter));
 
         // A user code is short enough to collide with one another device is showing. The store refuses the
         // second, and another is drawn; a run of collisions this long means the table is full of them.
@@ -126,7 +137,7 @@ internal static class DeviceAuthorization
             string userCode = NewUserCode();
             if (!await registry.CreateDeviceAuthorizationAsync(
                     ProviderCookies.Hash(deviceCode), HashUserCode(userCode), client.ClientId, Endpoints.UserAgentOf(ctx),
-                    now, now.Add(Lifetime), IntervalSeconds, ctx.RequestAborted))
+                    name, now, now.Add(Lifetime), IntervalSeconds, ctx.RequestAborted))
                 continue;
 
             string verification = options.Issuer + VerificationPath;
@@ -254,7 +265,7 @@ internal static class DeviceAuthorization
                 IdToken: null,
                 Scope: "openid"),
                 AnchorJsonContext.Default.TokenResponse),
-            providerSession: null, client, application, SqliteSessionRegistry.DeviceKind);
+            providerSession: null, client, application, SqliteSessionRegistry.DeviceKind, approval.Name);
 
         if (!minted)
         {
@@ -272,6 +283,49 @@ internal static class DeviceAuthorization
         return ctx.RequestServices.GetRequiredService<ApplicationRegistry>().Of(client) is { IsKgsm: false }
             ? null
             : "The device grant signs in to an application outside KGSM.";
+    }
+
+    // ── Names ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A device's name as it is kept: control characters dropped, every run of white space one space,
+    /// trimmed, and cut to <see cref="MaxNameLength"/> characters a person sees — or null when nothing is
+    /// left.
+    /// </summary>
+    /// <remarks>
+    /// A name too long is cut rather than refused: a device sends what its system calls it, and refusing it
+    /// would refuse the sign-in over a label the person can change on the next page anyway.
+    /// </remarks>
+    internal static string? CleanName(string? sent)
+    {
+        if (sent is null)
+            return null;
+
+        var kept = new StringBuilder(sent.Length);
+        bool space = false;
+        foreach (char c in sent)
+        {
+            if (char.IsWhiteSpace(c))
+            {
+                space = kept.Length > 0;
+                continue;
+            }
+            if (char.IsControl(c))
+                continue;
+            if (space)
+                kept.Append(' ');
+            space = false;
+            kept.Append(c);
+        }
+
+        if (kept.Length == 0)
+            return null;
+
+        string name = kept.ToString();
+        var elements = new StringInfo(name);
+        return elements.LengthInTextElements <= MaxNameLength
+            ? name
+            : elements.SubstringByTextElements(0, MaxNameLength).TrimEnd();
     }
 
     // ── User codes ────────────────────────────────────────────────────────────

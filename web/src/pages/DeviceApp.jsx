@@ -10,6 +10,9 @@ import { getJson, postJson } from "./api.js";
 // device said it is, and the person has pressed one of the two buttons: a code in the address proves
 // only that a link was opened.
 //
+// The name the device sent (what its owner calls it) is offered in a field the person may change; what
+// they leave there is the name the device is signed in under, and an emptied field signs it in unnamed.
+//
 // Every call is same-origin and authenticated by the provider's cookie. A browser that is not signed in
 // is sent back to /device, which signs it in and returns here with the code.
 
@@ -30,6 +33,7 @@ function DeviceApp() {
   const [code, setCode] = React.useState(formatCode(initial));
   const [account, setAccount] = React.useState(null);
   const [device, setDevice] = React.useState(null);
+  const [name, setName] = React.useState("");
   const [done, setDone] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -43,6 +47,7 @@ function DeviceApp() {
     if (!r.ok) { setDevice(null); setError(r.error); return; }
     setAccount(r.body.account);
     setDevice(r.body.device || null);
+    setName((r.body.device && r.body.device.name) || "");
   }, []);
 
   React.useEffect(() => { look(formatCode(initial)); }, [look, initial]);
@@ -50,7 +55,7 @@ function DeviceApp() {
   const decide = async (approve) => {
     setBusy(true);
     setError(null);
-    const r = await postJson("/device/decision", { userCode: device.userCode, approve });
+    const r = await postJson("/device/decision", { userCode: device.userCode, approve, name });
     setBusy(false);
     if (r.status === 401) { signInAgain(device.userCode); return; }
     if (!r.ok) { setError(r.error); return; }
@@ -85,6 +90,16 @@ function DeviceApp() {
             <dt>Code</dt><dd className="device-summary__code">{device.userCode}</dd>
             {device.userAgent ? (<><dt>Device</dt><dd className="device-summary__agent">{device.userAgent}</dd></>) : null}
           </dl>
+          <label className="login-form__label" htmlFor="device-name">Name</label>
+          <input
+            id="device-name"
+            className="login-form__input"
+            type="text"
+            autoComplete="off"
+            maxLength={64}
+            value={name}
+            disabled={busy}
+            onChange={(e) => setName(e.target.value)} />
           <div className="device-actions">
             <button type="button" className="login-form__submit" disabled={busy} onClick={() => decide(true)}>
               Sign in
