@@ -81,6 +81,7 @@ function AccountApp() {
   const [proving, setProving] = React.useState(null);   // the action waiting on a proof
   const [changingPassword, setChangingPassword] = React.useState(false);
   const [disconnecting, setDisconnecting] = React.useState(null);
+  const [renaming, setRenaming] = React.useState(null);   // the device row being renamed
   const [busy, setBusy] = React.useState(null);
   const [error, setError] = React.useState(null);
 
@@ -226,6 +227,11 @@ function AccountApp() {
             icon={row.kind === "provider" ? "globe" : row.kind === "device" ? "tv" : /mobile|android|iphone|ipad/i.test(row.userAgent || "") ? "smartphone" : "monitor"}
             title={row.current ? "This browser" : row.name || deviceName(row.userAgent)}
             sub={(row.kind === "provider" ? "Signed in here" : row.kind === "device" ? "A device" : "An application") + " · " + when(row.created)}>
+            {row.kind === "device" ? (
+              <button className="host-btn host-btn--ghost" disabled={busy === row.sid} onClick={() => setRenaming(row)}>
+                Rename
+              </button>
+            ) : null}
             <button className="host-btn host-btn--ghost" disabled={busy === row.sid}
               title={row.userAgent || undefined} onClick={() => endSession(row)}>
               {row.current ? "Sign out" : "End"}
@@ -233,6 +239,10 @@ function AccountApp() {
           </SettingsRow>
         ))}
       </SettingsSection>
+
+      {renaming ? (
+        <RenameDialog row={renaming} onClose={() => setRenaming(null)} onDone={() => { setRenaming(null); reload(); }} />
+      ) : null}
 
       {proving ? (
         <ProveDialog
@@ -271,6 +281,45 @@ function AccountApp() {
 
 // Asking for a proof. The password where the account has one; otherwise a provider it already holds,
 // which is a round trip rather than a field.
+// Renaming a device signed in to this account: the name it is listed by here and carries on its tokens,
+// which the device reads at its next refresh. An emptied field takes the name away.
+function RenameDialog({ row, onClose, onDone }) {
+  const [name, setName] = React.useState(row.name || "");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState(null);
+
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const r = await postJson("/account/sessions/name", { sid: row.sid, name });
+    setBusy(false);
+    if (r.ok) onDone();
+    else setError(r.error);
+  };
+
+  return (
+    <Modal onClose={busy ? undefined : onClose} canClose={!busy}>
+      <div className="modal settings-users__form">
+        <h2 className="host-remove__title">Rename device</h2>
+        {error ? <div className="login-card__error" role="alert"><Icon name="alert-triangle" size={14} />{error}</div> : null}
+        <label className="login-form__label" htmlFor="device-rename">Name</label>
+        <input id="device-rename" className="login-form__input" type="text" value={name} maxLength={64}
+          autoComplete="off" autoFocus disabled={busy}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
+        <div className="settings-users__actions">
+          <span className="account-page__spacer" />
+          <button className="host-btn host-btn--ghost" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="host-btn host-btn--primary" onClick={submit} disabled={busy}>
+            {busy ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function ProveDialog({ me, onClose, onProved, onProvider }) {
   const [password, setPassword] = React.useState("");
   const [busy, setBusy] = React.useState(false);

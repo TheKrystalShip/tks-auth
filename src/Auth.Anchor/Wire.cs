@@ -134,6 +134,15 @@ internal sealed record SessionsPage(IReadOnlyList<SessionRecord> Data);
 /// <param name="All">Every session they hold, the calling one included.</param>
 internal sealed record RevokeRequest(string? Sid, bool? All);
 
+/// <summary>What the caller posts to rename a device signed in to their account.</summary>
+/// <param name="Sid">The device's session.</param>
+/// <param name="Name">Its new name, cleaned as a device's name always is; empty for none.</param>
+internal sealed record RenameRequest(string? Sid, string? Name);
+
+/// <summary>The name a device was left with.</summary>
+/// <param name="Name">The name as kept, or null for none.</param>
+internal sealed record RenameResult(string? Name);
+
 /// <summary>How many sessions a revocation ended.</summary>
 /// <param name="Revoked">The count.</param>
 internal sealed record RevokeResult(int Revoked);
@@ -236,6 +245,8 @@ internal sealed record SessionRevoke(string Scope, string Sid);
 [JsonSerializable(typeof(AccountEntry))]
 [JsonSerializable(typeof(SessionsPage))]
 [JsonSerializable(typeof(RevokeRequest))]
+[JsonSerializable(typeof(RenameRequest))]
+[JsonSerializable(typeof(RenameResult))]
 [JsonSerializable(typeof(RevokeResult))]
 [JsonSerializable(typeof(StoredIdentity))]
 [JsonSerializable(typeof(OidcDiscovery))]

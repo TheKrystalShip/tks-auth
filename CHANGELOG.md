@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — renaming a device (daemon 4.8.0)
+
+- `POST /account/sessions/name` with `{sid, name}` renames a device signed in to the caller's account,
+  cleaned as at the approval page; empty takes the name away, a session of another account is
+  `no_such_session` and one that is not a device `not_a_device`. The device reads the new name at its
+  next refresh, as `tks_device_name`.
+- The account page's Signed in list has Rename on every device.
+
 ### Added — device names (daemon 4.7.0, testing 2.3.0)
 
 - `POST /device_authorization` takes an optional `device_name`, what the device's owner calls it, kept

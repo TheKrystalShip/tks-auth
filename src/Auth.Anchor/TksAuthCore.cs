@@ -220,6 +220,7 @@ internal static class TksAuthCore
         app.MapPost("/account/identities/{provider}/start", AccountPageEndpoints.StartLink);
         app.MapDelete("/account/identities/{credentialId}", AccountPageEndpoints.Unlink);
         app.MapPost("/account/sessions/revoke", AccountPageEndpoints.Revoke);
+        app.MapPost("/account/sessions/name", AccountPageEndpoints.Rename);
         app.MapPost("/account/sign-out", AccountPageEndpoints.SignOut);
 
         // The clients it answers that were registered by hand. In a KGSM cluster the surfaces members

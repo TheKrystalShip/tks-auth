@@ -341,6 +341,7 @@ page's parameters ride in its address, so another surface opens it at a scope:
 | `POST /account/password` | set its own password |
 | `POST /account/identities/{provider}/start`, `DELETE /account/identities/{id}` | attach or detach an identity |
 | `POST /account/sessions/revoke`, `POST /account/sign-out` | end a session, all of them, or this browser's sign-in |
+| `POST /account/sessions/name` | rename a device signed in to the account, `{sid, name}`; empty takes the name away, and anything not a device is `not_a_device` |
 
 Every call is authenticated by `kgsm_anchor` and every write is same-origin only. **Changing how
 somebody signs in needs a recent proof** — the provider session's last credential inside

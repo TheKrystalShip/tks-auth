@@ -198,7 +198,8 @@ this repo's `README.md` documents the doors. Minting is `Minting/CLAUDE.md`.
 - **Codes that name no device are limited by `DeviceCodeGuesses`,** in memory on purpose.
 - **A device's name is cleaned in one place, `DeviceAuthorization.CleanName`,** for what the device sends and
   for what the person types alike, and is cut rather than refused. It lives on the session (`sessions.name`),
-  and `tks_device_name` is read from there at every mint, never carried over from the previous token.
+  and `tks_device_name` is read from there at every mint, never carried over from the previous token. The
+  account page renames it (`POST /account/sessions/name`), and the device learns the name at its next refresh.
 - **`/revoke` ends a session through `Endpoints.EndSessionAsync`, the path every single-session end takes,**
   is no oracle (RFC 7009 section 2.2), and ends nothing for an access token.
 

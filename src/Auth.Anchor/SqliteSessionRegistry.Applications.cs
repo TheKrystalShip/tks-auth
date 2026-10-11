@@ -285,6 +285,29 @@ internal sealed partial class SqliteSessionRegistry
     // ── The client a session was minted for ───────────────────────────────────
 
     /// <summary>The client a session was minted for, or null for one recorded without one.</summary>
+    /// <summary>
+    /// Give a live device session a name, or take its name away with null. False when the session is not a
+    /// live device's.
+    /// </summary>
+    internal Task<bool> RenameDeviceAsync(string sessionId, string? name, CancellationToken ct = default)
+    {
+        lock (_writeGate)
+        {
+            using SqliteConnection connection = Open();
+            using SqliteCommand cmd = connection.CreateCommand();
+            cmd.CommandText =
+                """
+                UPDATE sessions SET name = $name
+                 WHERE session_id = $sid AND kind = $device AND revoked = 0 AND expires > $now;
+                """;
+            cmd.Parameters.AddWithValue("$name", (object?)name ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$sid", sessionId);
+            cmd.Parameters.AddWithValue("$device", DeviceKind);
+            cmd.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
+            return Task.FromResult(cmd.ExecuteNonQuery() == 1);
+        }
+    }
+
     internal string? SessionName(string sessionId)
     {
         using SqliteConnection connection = Open();

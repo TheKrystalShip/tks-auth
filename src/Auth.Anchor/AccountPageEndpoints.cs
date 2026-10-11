@@ -411,6 +411,41 @@ internal static class AccountPageEndpoints
         await Endpoints.WriteJson(ctx, StatusCodes.Status200OK, new RevokeResult(1), AnchorJsonContext.Default.RevokeResult);
     }
 
+    /// <summary>
+    /// <c>POST /account/sessions/name</c>: rename a device signed in to this account, or take its name away.
+    /// </summary>
+    /// <remarks>
+    /// Not gated on a recent proof: a name grants nothing. The device reads it at its next refresh, from the
+    /// session, as <c>tks_device_name</c>. Only a device has a name; anything else is <c>not_a_device</c>.
+    /// </remarks>
+    internal static async Task Rename(HttpContext ctx)
+    {
+        if (await CallerAsync(ctx, write: true) is not var (_, user))
+            return;
+
+        RenameRequest? body = await Endpoints.ReadBodyAsync(ctx, AnchorJsonContext.Default.RenameRequest);
+        var registry = ctx.RequestServices.GetRequiredService<SqliteSessionRegistry>();
+        IReadOnlyList<string> handles = [.. (await ctx.RequestServices.GetRequiredService<IUserStore>()
+            .ListCredentialsAsync(user.UserId, ctx.RequestAborted)).Select(c => c.Handle).Distinct(StringComparer.Ordinal)];
+
+        if (body?.Sid is not { Length: > 0 } target
+            || await registry.OwnerAsync(target, ctx.RequestAborted) is not { } owner
+            || !handles.Contains(owner, StringComparer.Ordinal))
+        {
+            await Endpoints.Refuse(ctx, StatusCodes.Status404NotFound, "no_such_session", "This account has no such session.");
+            return;
+        }
+
+        string? name = DeviceAuthorization.CleanName(body.Name);
+        if (!await registry.RenameDeviceAsync(target, name, ctx.RequestAborted))
+        {
+            await Endpoints.Refuse(ctx, StatusCodes.Status400BadRequest, "not_a_device", "Only a device signed in here has a name.");
+            return;
+        }
+
+        await Endpoints.WriteJson(ctx, StatusCodes.Status200OK, new RenameResult(name), AnchorJsonContext.Default.RenameResult);
+    }
+
     /// <summary><c>POST /account/sign-out</c>: end this browser's sign-in and every session under it.</summary>
     internal static async Task SignOut(HttpContext ctx)
     {

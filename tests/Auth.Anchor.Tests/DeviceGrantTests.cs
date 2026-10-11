@@ -284,6 +284,81 @@ public sealed class DeviceGrantTests(AnchorFixture anchor)
             new System.Globalization.StringInfo(DeviceAuthorization.CleanName(emoji)!).LengthInTextElements);
     }
 
+    private async Task<HttpResponseMessage> RenameAsync(AnchorFixture.Session session, string sid, string? name)
+    {
+        using HttpClient browser = anchor.Following();
+        using HttpRequestMessage request = session.AtTheAccountPage(HttpMethod.Post, "/account/sessions/name", new { sid, name });
+        return await browser.SendAsync(request);
+    }
+
+    private async Task<JsonElement> RefreshAsync(string client, string refreshToken)
+    {
+        using HttpClient device = anchor.Following();
+        HttpResponseMessage renewed = await device.PostAsync("/token", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+            ["client_id"] = client,
+        }));
+        Assert.Equal(HttpStatusCode.OK, renewed.StatusCode);
+        return await Json(renewed);
+    }
+
+    [Fact]
+    public async Task A_device_is_renamed_from_the_account_page_and_its_next_token_says_so()
+    {
+        Registered app = await ApplicationAsync();
+        (KgsmUser user, AnchorFixture.Session browser) = await anchor.SignedInAsync(prefix: "device");
+        Codes codes = await BeginAsync(app.Client, "Fire TV de Cristina");
+        Assert.Equal(HttpStatusCode.OK, (await DecideAsync(browser, codes.UserCode, approve: true)).StatusCode);
+        JsonElement tokens = await Json(await PollAsync(app.Client, codes.DeviceCode));
+        string sid = Claims(tokens.GetProperty("access_token").GetString()!).GetProperty("sid").GetString()!;
+
+        // Cleaned as at the approval page, and answered as kept.
+        HttpResponseMessage renamed = await RenameAsync(browser, sid, "  Bedroom\t TV ");
+        Assert.Equal(HttpStatusCode.OK, renamed.StatusCode);
+        Assert.Equal("Bedroom TV", (await Json(renamed)).GetProperty("name").GetString());
+
+        var registry = anchor.Service<SqliteSessionRegistry>();
+        Assert.Equal("Bedroom TV",
+            (await registry.ListAsync([user.AsIdentity().Handle])).Single(s => s.SessionId == sid).Name);
+
+        // The device learns it at its next refresh; the session goes on as it was.
+        JsonElement renewed = await RefreshAsync(app.Client, tokens.GetProperty("refresh_token").GetString()!);
+        Assert.Equal("Bedroom TV",
+            Claims(renewed.GetProperty("access_token").GetString()!).GetProperty(ApplicationClaims.DeviceName).GetString());
+
+        // Emptied, it has none, and its tokens carry none.
+        HttpResponseMessage cleared = await RenameAsync(browser, sid, "   ");
+        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+        Assert.False((await Json(cleared)).TryGetProperty("name", out _));
+        renewed = await RefreshAsync(app.Client, renewed.GetProperty("refresh_token").GetString()!);
+        Assert.False(Claims(renewed.GetProperty("access_token").GetString()!).TryGetProperty(ApplicationClaims.DeviceName, out _));
+    }
+
+    [Fact]
+    public async Task Only_your_own_device_is_renamed()
+    {
+        Registered app = await ApplicationAsync();
+        (_, AnchorFixture.Session owner) = await anchor.SignedInAsync(prefix: "device");
+        (_, AnchorFixture.Session stranger) = await anchor.SignedInAsync(prefix: "device");
+        Codes codes = await BeginAsync(app.Client, "Fire TV de Cristina");
+        Assert.Equal(HttpStatusCode.OK, (await DecideAsync(owner, codes.UserCode, approve: true)).StatusCode);
+        string sid = Claims((await Json(await PollAsync(app.Client, codes.DeviceCode))).GetProperty("access_token").GetString()!)
+            .GetProperty("sid").GetString()!;
+
+        HttpResponseMessage theirs = await RenameAsync(stranger, sid, "Mine now");
+        Assert.Equal(HttpStatusCode.NotFound, theirs.StatusCode);
+
+        // A browser's own sign-in is not a device, and has no name to give.
+        HttpResponseMessage browser = await RenameAsync(owner, owner.ProviderSession, "My phone");
+        Assert.Equal(HttpStatusCode.BadRequest, browser.StatusCode);
+        Assert.Equal("not_a_device", (await Json(browser)).GetProperty("error").GetProperty("code").GetString());
+
+        var registry = anchor.Service<SqliteSessionRegistry>();
+        Assert.Equal("Fire TV de Cristina", registry.SessionName(sid));
+    }
+
     [Fact]
     public async Task A_device_signs_out_by_revoking_its_refresh_token()
     {
