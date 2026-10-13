@@ -13,17 +13,29 @@
     <title>Waiting for approval</title>
   </head>
   <body data-page="wait">
-    <div id="floor" class="login-shell">
-      <div class="login-shell__inner">
-        <div class="login-shell__brand">
-          <img src="/assets/tks-mark.png" alt="" />
-          <div class="login-shell__brand-name">The Krystal Ship</div>
+    <div id="floor" class="k-cardscreen k-cardscreen--sm">
+      <div class="k-cardscreen__inner">
+        <div class="k-cardscreen__brand">
+          <img class="k-cardscreen__mark" src="/assets/tks-mark.png" alt="" />
+          <h1 class="k-cardscreen__wordmark">The Krystal Ship</h1>
         </div>
-        <div class="pending">
-          <h1 class="pending__title">Waiting for approval</h1>
-          <p class="pending__body">An administrator has to approve your account.</p>
-          <div class="pending__actions">
-            <a class="login-form__submit" href="/authorize/wait">Check again</a>
+        <div class="k-cardscreen__card">
+          <div class="k-empty k-empty--neutral">
+            <span class="k-empty__icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <path d="M5 22h14" />
+                <path d="M5 2h14" />
+                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
+              </svg>
+            </span>
+            <h2 class="k-empty__title">Waiting for approval</h2>
+            <div class="k-empty__body"><p>Your account has to be approved.</p></div>
+            <div class="k-empty__actions">
+              <a class="k-btn k-btn--primary k-btn--lg" href="/authorize/wait">Check again</a>
+            </div>
           </div>
         </div>
       </div>

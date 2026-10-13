@@ -13,19 +13,21 @@
        its code. The floor takes the code with no script at all and asks the provider, which shows the
        device it names and the choice; the application replaces it on mount. -->
   <body data-page="device">
-    <div id="floor" class="login-shell">
-      <div class="login-shell__inner">
-        <div class="login-shell__brand">
-          <img src="/assets/tks-mark.png" alt="" />
-          <div class="login-shell__brand-name">The Krystal Ship</div>
-          <div class="login-shell__tagline">Sign in a device.</div>
+    <div id="floor" class="k-cardscreen k-cardscreen--sm">
+      <div class="k-cardscreen__inner">
+        <div class="k-cardscreen__brand">
+          <img class="k-cardscreen__mark" src="/assets/tks-mark.png" alt="" />
+          <h1 class="k-cardscreen__wordmark">The Krystal Ship</h1>
+          <div class="k-cardscreen__tagline">Sign in a device.</div>
         </div>
-        <div class="login-card">
-          <form class="login-form" method="get" action="/device/confirm">
-            <label class="login-form__label" for="floor-code">Code</label>
-            <input id="floor-code" class="login-form__input" name="user_code" type="text"
-              autocomplete="off" autocapitalize="characters" spellcheck="false" required />
-            <button type="submit" class="login-form__submit">Continue</button>
+        <div class="k-cardscreen__card">
+          <form class="signin-form" method="get" action="/device/confirm">
+            <label class="k-field">
+              <span class="k-field__label">Code</span>
+              <input id="floor-code" class="k-input k-input--md k-input--mono k-input--wide" name="user_code" type="text"
+                autocomplete="off" autocapitalize="characters" spellcheck="false" required />
+            </label>
+            <button type="submit" class="k-btn k-btn--primary k-btn--lg k-btn--wide">Continue</button>
           </form>
         </div>
       </div>

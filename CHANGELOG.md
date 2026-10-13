@@ -1800,6 +1800,19 @@ the correction reaches consumers on the next version bump.
   `settings-link__btn`, `host-remove*`, the assignment chips and form) are deleted. The confirmation of
   ending a session is a `Dialog`.
 
+### Changed — the no-script floors are drawn with krystal-ui's classes (web)
+
+- The five documents' `#floor` is `k-cardscreen*` furniture: the sign-in form's fields are `k-field`
+  with `k-input`, its submit a `k-btn k-btn--primary k-btn--lg k-btn--wide`; the device code form the
+  same with a monospace input; the wait is the `k-empty` markup with an inline hourglass and a `Check
+  again` anchor in `k-btn` classes (its `<noscript>` refresh stays); the account and admin documents
+  carry their needs-JavaScript line as the card screen's tagline. The first paint matches the
+  application's, so the swap on mount does not move.
+- The daemon's `.floor-provider` anchors keep one local rule in `pages.css` that mirrors the kit's
+  secondary large wide button from tokens, with a rule under the group in place of the divider.
+- `login-shell*`, `login-card`, `login-form`, `login-form__submit`, `floor-note` and the shell's
+  responsive rules are deleted; `login-form__label` and `login-form__input` stay for the admin forms.
+
 ## [1.0.0]
 
 ### Added

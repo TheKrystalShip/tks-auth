@@ -14,24 +14,28 @@
        the provider with no script at all, and the provider writes its links at the marker. The
        application replaces it on mount. -->
   <body data-page="sign-in">
-    <div id="floor" class="login-shell">
-      <div class="login-shell__inner">
-        <div class="login-shell__brand">
-          <img src="/assets/tks-mark.png" alt="" />
-          <div class="login-shell__brand-name">The Krystal Ship</div>
-          <div class="login-shell__tagline">Sign in.</div>
+    <div id="floor" class="k-cardscreen k-cardscreen--sm">
+      <div class="k-cardscreen__inner">
+        <div class="k-cardscreen__brand">
+          <img class="k-cardscreen__mark" src="/assets/tks-mark.png" alt="" />
+          <h1 class="k-cardscreen__wordmark">The Krystal Ship</h1>
+          <div class="k-cardscreen__tagline">Sign in.</div>
         </div>
-        <div class="login-card">
-          <form class="login-form" method="post" action="/authorize/credentials">
-            <label class="login-form__label" for="floor-username">Username</label>
-            <input id="floor-username" class="login-form__input" name="username" type="text"
-              autocomplete="username" autocapitalize="off" spellcheck="false" required />
-            <label class="login-form__label" for="floor-password">Password</label>
-            <input id="floor-password" class="login-form__input" name="password" type="password"
-              autocomplete="current-password" required />
-            <button type="submit" class="login-form__submit">Sign in</button>
-          </form>
+        <div class="k-cardscreen__card">
           <div class="floor-providers"><!--kgsm-floor-providers--></div>
+          <form class="signin-form" method="post" action="/authorize/credentials">
+            <label class="k-field">
+              <span class="k-field__label">Username</span>
+              <input id="floor-username" class="k-input k-input--md k-input--wide" name="username" type="text"
+                autocomplete="username" autocapitalize="off" spellcheck="false" required />
+            </label>
+            <label class="k-field">
+              <span class="k-field__label">Password</span>
+              <input id="floor-password" class="k-input k-input--md k-input--wide" name="password" type="password"
+                autocomplete="current-password" required />
+            </label>
+            <button type="submit" class="k-btn k-btn--primary k-btn--lg k-btn--wide">Sign in</button>
+          </form>
         </div>
       </div>
     </div>
