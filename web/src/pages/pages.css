@@ -107,7 +107,7 @@
   gap: 14px;
 }
 
-/* The device page: what a code names, laid out as label and value, and the two answers to it. */
+/* The device page: what a code names, laid out as label and value. */
 .device-summary {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -137,19 +137,6 @@
   color: var(--fg-2);
   font-family: var(--font-mono);
   font-size: 12px;
-}
-
-.device-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.device-actions .host-btn {
-  height: 46px;
-  width: 100%;
-  font-size: 14px;
 }
 
 .device-code {

@@ -4,7 +4,7 @@
    The package's sheets keep the order of its own styles.css (only the sheets these pages draw with
    are imported). Order is load-bearing — later rules win on equal specificity, so each partial sits
    just after the design-system sheet it restyles or places what it draws (a dialog's `.modal` width
-   wins over the form inside it, a page's `.pending__actions > *` over the button it holds). Add a
+   wins over the form inside it). Add a
    rule to the partial that owns its domain. */
 @import "@thekrystalship/krystal-ui/styles/tokens.css";
 @import "@thekrystalship/krystal-ui/styles/motion.css";
@@ -33,5 +33,4 @@
 @import "./responsive.css";
 @import "./settings.css";
 @import "./hosts.css";
-@import "./states.css";
 @import "./access.css";

@@ -1,6 +1,5 @@
 import React from "react";
-import { Icon } from "@thekrystalship/krystal-ui";
-import { AuthShell } from "./AuthChrome.jsx";
+import { Button, CardScreen, EmptyState } from "@thekrystalship/krystal-ui";
 
 // PendingPage — an account the provider knows, waiting to be let in.
 //
@@ -17,6 +16,8 @@ import { AuthShell } from "./AuthChrome.jsx";
 // (nobody is watching a background tab for a redirect), and resumed with an immediate read when it
 // comes back — which is also the case that matters most, since somebody who was told "you're in"
 // alt-tabs straight here.
+
+const MARK = import.meta.env.BASE_URL + "assets/tks-mark.png";
 
 const POLL_MS = 5000;
 
@@ -60,22 +61,19 @@ function PendingPage({ user, onCheck }) {
   }, [onCheck]);
 
   return (
-    <AuthShell tagline={null}>
-      <div className="pending">
-        <div className="pending__icon">
-          <Icon name="hourglass" size={26} strokeWidth={1.7} />
-        </div>
-        <h1 className="pending__title">Waiting for approval</h1>
-        <p className="pending__body">Your account has to be approved.</p>
-        {handle ? <div className="pending__who">{handle}</div> : null}
-        <div className="pending__actions">
-          <button className="login-form__submit" onClick={check} disabled={checking}>
-            <Icon name="rotate-cw" size={15} className={checking ? "is-spinning" : ""} />
+    <CardScreen mark={MARK} wordmark="The Krystal Ship">
+      <EmptyState
+        icon="hourglass"
+        title="Waiting for approval"
+        actions={
+          <Button variant="primary" size="lg" busy={checking} onClick={check}>
             {checking ? "Checking…" : "Check again"}
-          </button>
-        </div>
-      </div>
-    </AuthShell>
+          </Button>
+        }>
+        <p>Your account has to be approved.</p>
+        {handle ? <p data-pending-who>{handle}</p> : null}
+      </EmptyState>
+    </CardScreen>
   );
 }
 

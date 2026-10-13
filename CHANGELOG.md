@@ -19,6 +19,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `AuthChrome` are deleted, with the stylesheet rules they drew (`oauth-btn`, `authseg`, `pw-meter`,
   `field-note`, `login-divider`, `login-note`, `doorway`, the reveal button and the field states).
 
+### Changed — the wait and device pages are krystal-ui's `CardScreen` (web)
+
+- The wait for approval is an `EmptyState` (hourglass, "Waiting for approval", the account's handle)
+  in the card with a `Check again` `Button` that holds busy while it reads. The polling is unchanged.
+- The device page is a `CardScreen`: the code entry is a `Field` with a monospace `Input`, the device
+  summary sits above an editable name `Field`, `Sign in` and `Refuse` are `Button`s, refusals are
+  `Notice`s. The settled states are `EmptyState`s; an approved device links to `/account#/devices`.
+- `AuthChrome` (`AuthShell`, `AuthError`) and the `pending__*`, `device-actions`, `login-error` and
+  `login-card__error` rules, the `oauth-spinner` and `is-spinning` animations are deleted.
+
 ### Changed — the account page is four pages in the sidebar frame (web)
 
 - `/account` is drawn in the same sidebar frame as `/admin/`, as Profile, Sign-in methods, Devices &
@@ -1772,8 +1782,6 @@ the correction reaches consumers on the next version bump.
     no server-side pending store and the state is bound to the browser that started the login.
   - `DiscordTierCache`: short-TTL per-user tier cache for surfaces that re-derive authority per
     request. Caches denials too.
-
-## [1.0.0]
 
 ### Added
 

@@ -1,6 +1,5 @@
 import React from "react";
-import { Icon } from "@thekrystalship/krystal-ui";
-import { AuthError, AuthShell } from "../chrome/AuthChrome.jsx";
+import { Button, CardScreen, EmptyState, Field, Input, Notice } from "@thekrystalship/krystal-ui";
 import { getJson, postJson } from "./api.js";
 
 // DeviceApp — signing a device in with the code it shows.
@@ -15,6 +14,8 @@ import { getJson, postJson } from "./api.js";
 //
 // Every call is same-origin and authenticated by the provider's cookie. A browser that is not signed in
 // is sent back to /device, which signs it in and returns here with the code.
+
+const MARK = import.meta.env.BASE_URL + "assets/tks-mark.png";
 
 const CODE_CHARS = /[^BCDFGHJKLMNPQRSTVWXZ]/g;
 
@@ -67,49 +68,41 @@ function DeviceApp() {
   if (done) {
     const approved = done.decision === "approved";
     return (
-      <AuthShell tagline={null}>
-        <div className="pending">
-          <div className="pending__icon">
-            <Icon name={approved ? "check" : "x"} size={26} strokeWidth={1.7} />
-          </div>
-          <h1 className="pending__title">{approved ? "Device signed in" : "Device refused"}</h1>
-          <p className="pending__body">{done.application}</p>
-        </div>
-      </AuthShell>
+      <CardScreen mark={MARK} wordmark="The Krystal Ship">
+        <EmptyState
+          icon={approved ? "check" : "x"}
+          tone={approved ? "ok" : "neutral"}
+          title={approved ? "Device signed in" : "Device refused"}
+          actions={approved ? <Button variant="primary" href="/account#/devices">Your devices</Button> : null}>
+          <p>{done.application}</p>
+        </EmptyState>
+      </CardScreen>
     );
   }
 
   if (device) {
     return (
-      <AuthShell tagline="Sign in a device.">
-        <div className="login-card">
-          <AuthError>{error}</AuthError>
-          <dl className="device-summary">
-            <dt>Application</dt><dd>{device.application}</dd>
-            <dt>Account</dt><dd>{who}</dd>
-            <dt>Code</dt><dd className="device-summary__code">{device.userCode}</dd>
-            {device.userAgent ? (<><dt>Device</dt><dd className="device-summary__agent">{device.userAgent}</dd></>) : null}
-          </dl>
-          <label className="login-form__label" htmlFor="device-name">Name</label>
-          <input
-            id="device-name"
-            className="login-form__input"
+      <CardScreen mark={MARK} wordmark="The Krystal Ship" tagline="Sign in a device.">
+        {error ? <Notice tone="danger">{error}</Notice> : null}
+        <dl className="device-summary">
+          <dt>Application</dt><dd>{device.application}</dd>
+          <dt>Account</dt><dd>{who}</dd>
+          <dt>Code</dt><dd className="device-summary__code">{device.userCode}</dd>
+          {device.userAgent ? (<><dt>Device</dt><dd className="device-summary__agent">{device.userAgent}</dd></>) : null}
+        </dl>
+        <Field label="Name">
+          <Input
+            id="device-name" wide
             type="text"
             autoComplete="off"
             maxLength={64}
             value={name}
             disabled={busy}
             onChange={(e) => setName(e.target.value)} />
-          <div className="device-actions">
-            <button type="button" className="login-form__submit" disabled={busy} onClick={() => decide(true)}>
-              Sign in
-            </button>
-            <button type="button" className="host-btn host-btn--ghost" disabled={busy} onClick={() => decide(false)}>
-              Refuse
-            </button>
-          </div>
-        </div>
-      </AuthShell>
+        </Field>
+        <Button variant="primary" size="lg" wide busy={busy} onClick={() => decide(true)}>Sign in</Button>
+        <Button variant="outline" tone="danger" size="lg" wide disabled={busy} onClick={() => decide(false)}>Refuse</Button>
+      </CardScreen>
     );
   }
 
@@ -119,14 +112,13 @@ function DeviceApp() {
   };
 
   return (
-    <AuthShell tagline="Sign in a device.">
-      <div className="login-card">
-        <form className="login-form" onSubmit={submit}>
-          <AuthError field>{error}</AuthError>
-          <label className="login-form__label" htmlFor="device-code">Code</label>
-          <input
-            id="device-code"
-            className="login-form__input device-code"
+    <CardScreen mark={MARK} wordmark="The Krystal Ship" tagline="Sign in a device.">
+      <form className="signin-form" onSubmit={submit}>
+        {error ? <Notice tone="danger">{error}</Notice> : null}
+        <Field label="Code">
+          <Input
+            id="device-code" wide mono
+            className="device-code"
             type="text"
             autoComplete="off"
             autoCapitalize="characters"
@@ -135,12 +127,12 @@ function DeviceApp() {
             value={code}
             disabled={busy}
             onChange={(e) => { setCode(formatCode(e.target.value)); if (error) setError(null); }} />
-          <button type="submit" className="login-form__submit" disabled={busy || code.length !== 9}>
-            {busy ? (<><span className="oauth-spinner" /> Checking…</>) : "Continue"}
-          </button>
-        </form>
-      </div>
-    </AuthShell>
+        </Field>
+        <Button type="submit" variant="primary" size="lg" wide busy={busy} disabled={code.length !== 9}>
+          {busy ? "Checking…" : "Continue"}
+        </Button>
+      </form>
+    </CardScreen>
   );
 }
 
