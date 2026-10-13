@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the sign-in and register page is krystal-ui's `CardScreen` (web)
+
+- `SignInApp` stands on `CardScreen`. The Sign in / Register switch is a segmented `OptionList`; one
+  provider is a branded wide `ProviderButton`, several a neutral 2-up grid; the fields are `Field` with
+  `Input` and `PasswordInput` (`#auth-username`, `#auth-display`, `#auth-password`, `#auth-confirm`
+  keep their ids); the register strength bar is the account page's `PasswordStrength` (a four-segment
+  `Meter`); refusals are `Notice`s; the submit is a `Button` that holds busy once the credential is
+  accepted. The client being signed in to is the card's foot.
+- `SignInCard`, `oauth-icons` and the provider buttons, password field and strength bar of
+  `AuthChrome` are deleted, with the stylesheet rules they drew (`oauth-btn`, `authseg`, `pw-meter`,
+  `field-note`, `login-divider`, `login-note`, `doorway`, the reveal button and the field states).
+
 ### Changed — the account page is four pages in the sidebar frame (web)
 
 - `/account` is drawn in the same sidebar frame as `/admin/`, as Profile, Sign-in methods, Devices &

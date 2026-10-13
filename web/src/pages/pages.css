@@ -1,8 +1,8 @@
 /* The sign-in, wait, device and account pages — what they need beyond the kit.
 
    What is here is what only these pages have: the floor's provider links (written by the daemon into
-   a static document, so they are plain anchors rather than the kit's buttons), a doorway line that
-   names a client rather than opening a picker, and the account document's column. */
+   a static document, so they are plain anchors rather than the kit's buttons), the sign-in card's
+   arrangement, and the account document's column. */
 
 /* The floor — the provider links the daemon writes at its marker, drawn as the kit's provider button. */
 .floor-providers {
@@ -45,14 +45,42 @@
   margin: 0 0 12px;
 }
 
-/* Whose sign-in this is: the doorway pill, with nothing to change and so no affordance. */
-.doorway--static {
-  cursor: default;
+/* The sign-in card's own arrangement: the neutral providers as a 2-up grid, the rule between the two
+   doors, the form's column, and the client named under the card. */
+.signin-providers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
 }
 
-.doorway--static:hover {
-  border-color: var(--border-subtle);
-  background: var(--surface-1);
+.signin-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fg-4);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.signin-divider::before,
+.signin-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.k-cardscreen__foot b {
+  color: var(--fg-1);
+  font-weight: 600;
 }
 
 /* The account document's body: the column the four pages stand in, and a stack of buttons in a dialog. */

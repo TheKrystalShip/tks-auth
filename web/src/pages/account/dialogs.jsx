@@ -2,24 +2,12 @@
 // provider's refusal stands in the dialog as a danger Notice.
 
 import React from "react";
-import { Button, Dialog, Field, Input, Meter, Notice, PasswordInput, ProviderButton, providerLabel } from "@thekrystalship/krystal-ui";
-import { passwordOk, passwordStrength } from "../../lib/credentialRules.js";
+import { Button, Dialog, Field, Input, Notice, PasswordInput, ProviderButton, providerLabel } from "@thekrystalship/krystal-ui";
+import { passwordOk } from "../../lib/credentialRules.js";
 import { deleteJson, postJson } from "../api.js";
+import { PasswordStrength } from "../PasswordStrength.jsx";
 
 const submitting = (submit) => (e) => { e.preventDefault(); submit(); };
-
-// The segments lit by a strength level, toned by how far it is.
-const STRENGTH_TONES = [null, "danger", "warn", "accent", "success"];
-
-function Strength({ value }) {
-  const { level, label } = passwordStrength(value);
-  if (!level) return null;
-  return (
-    <Meter label="Password strength" max={4} valueText={label} data-strength={level}
-      segments={[1, 2, 3, 4].map((i) => ({ value: 1, tone: i <= level ? STRENGTH_TONES[level] : "neutral" }))}
-      end={label} />
-  );
-}
 
 // Renaming a device signed in to this account: the name it is listed by here and carries on its tokens,
 // which the device reads at its next refresh. An emptied field takes the name away.
@@ -140,7 +128,7 @@ function PasswordDialog({ hasPassword, onClose, onReauth, onDone }) {
         <Field label="New password">
           <PasswordInput id="pw-new" wide value={next} autoComplete="new-password" autoFocus disabled={busy}
             onChange={(e) => setNext(e.target.value)} />
-          <Strength value={next} />
+          <PasswordStrength value={next} />
         </Field>
         <Field label="New password again" error={again && again !== next ? "Passwords don’t match" : undefined}>
           <PasswordInput id="pw-again" wide value={again} autoComplete="new-password" disabled={busy}

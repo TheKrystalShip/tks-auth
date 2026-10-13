@@ -27,8 +27,7 @@
   }
 
   /* Forms: bump touch target heights */
-  .fb-editor__btn,
-  .oauth-btn {
+  .fb-editor__btn {
     min-height: 40px;
   }
 }
