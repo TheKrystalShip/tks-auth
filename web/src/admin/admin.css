@@ -12,10 +12,6 @@
   padding: 16px 16px 64px;
 }
 
-.admin-spacer {
-  flex: 1;
-}
-
 /* The scope an Assignments page is about, chosen in its header. */
 .admin-scope {
   width: min(360px, 60vw);
@@ -119,6 +115,29 @@
 
 .admin-loading { display: flex; flex-direction: column; gap: 8px; }
 
+/* A sentence where a list has nothing to show, inside a section. */
+.admin-quiet {
+  padding: 8px 2px;
+  font-size: 12.5px;
+  color: var(--fg-3);
+}
+
+/* The form of a dialog: fields one under another. */
+.admin-form { display: flex; flex-direction: column; gap: 12px; }
+
+.admin-dialog-text { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--fg-2); }
+
+/* ── The assignments editor ── */
+.admin-assign { display: flex; flex-direction: column; gap: 10px; }
+
+.admin-assign__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-assign__form > .k-select { flex: 1 1 160px; min-width: 0; }
+
 /* ── Overview ── */
 .overview-grid {
   display: grid;
@@ -143,3 +162,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* A lock's reason in a row's meta is read whole: the row's own wrapping makes room for it. */
+.k-listrow__meta .admin-locked { max-width: none; overflow: visible; white-space: normal; }

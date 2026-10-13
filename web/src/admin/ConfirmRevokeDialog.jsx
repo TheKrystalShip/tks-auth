@@ -1,8 +1,8 @@
-import { Icon, Modal } from "@thekrystalship/krystal-ui";
+import { Button, Dialog } from "@thekrystalship/krystal-ui";
 
 // ConfirmRevokeDialog — the confirmation in front of ending somebody else's session, for whoever
-// holds auth:accounts.disable on the Accounts page. A person's own sessions are ended on the
-// account page, which asks for its own confirmation.
+// holds auth:accounts.disable, on the account's page. A person's own sessions are ended on their
+// own account document, which asks for its own confirmation.
 //
 // Two variants over the same markup:
 //   "other-one" — one of another person's sessions
@@ -21,22 +21,17 @@ function ConfirmRevokeDialog({ mode, targetName, busy, onConfirm, onClose }) {
     : `This ends that one session. ${who}'s other devices stay signed in.`;
 
   return (
-    <Modal onClose={busy ? undefined : onClose} canClose={!busy}>
-      <div className="modal host-remove">
-        <div className="host-remove__icon host-remove__icon--danger">
-          <Icon name="log-out" size={20} />
-        </div>
-        <h2 className="host-remove__title">{title}</h2>
-        <p className="host-remove__text">{text}</p>
-        <div className="host-remove__foot">
-          <button className="host-btn host-btn--ghost" onClick={onClose} disabled={busy}>Cancel</button>
-          <button className="host-btn host-btn--danger" onClick={onConfirm} disabled={busy}>
-            <Icon name="log-out" size={14} />{" "}
+    <Dialog title={title} icon="log-out" onClose={onClose} canClose={!busy}
+      foot={(
+        <>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="danger" icon="log-out" busy={busy} onClick={onConfirm}>
             {busy ? "Working…" : isAll ? "Sign out" : "End session"}
-          </button>
-        </div>
-      </div>
-    </Modal>
+          </Button>
+        </>
+      )}>
+      <p className="admin-dialog-text" data-dialog="confirm-revoke">{text}</p>
+    </Dialog>
   );
 }
 

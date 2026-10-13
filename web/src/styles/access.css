@@ -237,62 +237,8 @@
 .access-create .login-form__input { flex: 1; min-width: 0; }
 .access-create--inline { margin: 0 0 8px; }
 
-.access-assign { display: flex; flex-direction: column; gap: 8px; }
-
-.access-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.access-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  padding: 3px 4px 3px 10px;
-  border-radius: var(--r-pill);
-  background: var(--veil-1);
-  border: var(--edge);
-  font-size: 12px;
-  color: var(--fg-2);
-}
-
-.access-chip__scope { color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.access-chip__x {
-  display: inline-grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: none;
-  border: none;
-  color: var(--fg-3);
-  cursor: pointer;
-}
-
-.access-chip__x:hover:not(:disabled) { background: var(--veil-2); color: var(--danger); }
-
-.access-assign__form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.access-assign__form > .k-select { flex: 1 1 160px; min-width: 0; }
-
-.settings-users__roles {
-  display: inline-flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
-  max-width: 40%;
-}
-
 @media (max-width: 640px) {
   .access-row__head { flex-wrap: wrap; }
   .access-row__meta { flex-basis: 100%; order: 3; }
   .access-sub { padding-left: 12px; }
-  .settings-users__roles { display: none; }
 }

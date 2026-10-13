@@ -10,7 +10,8 @@ import React from "react";
 import { EmptyState, PageHeader, useStore } from "@thekrystalship/krystal-ui";
 import { Frame } from "../chrome/Frame.jsx";
 import { placeOf } from "../chrome/nav.js";
-import { AccountsAdmin } from "./AccountsAdmin.jsx";
+import { AccountPage } from "./AccountPage.jsx";
+import { AccountsPage } from "./AccountsPage.jsx";
 import { ApplicationsAdmin } from "./ApplicationsAdmin.jsx";
 import { AssignmentsPage } from "./AssignmentsPage.jsx";
 import { CatalogAdmin } from "./CatalogAdmin.jsx";
@@ -25,7 +26,7 @@ import { accessStore, administers, authorityStore, callRefusal } from "./stores.
 
 const PAGES = {
   overview: () => <OverviewPage />,
-  accounts: () => <AccountsAdmin />,
+  accounts: (route) => (route.id ? <AccountPage key={route.id} id={route.id} /> : <AccountsPage params={route.params} />),
   roles: () => <RolesAdmin />,
   permissions: () => <PermissionsAdmin />,
   catalog: () => <CatalogAdmin />,
@@ -33,6 +34,9 @@ const PAGES = {
   services: () => <ServiceRequests />,
   applications: () => <ApplicationsAdmin />,
 };
+
+// The pages that draw their own `PageHeader`, because they carry actions or a title of their own.
+const OWN_HEADER = new Set(["accounts"]);
 
 // What is waiting on somebody, counted from the authority: accounts awaiting approval, services'
 // requirements awaiting a decision, and engine actions no permission holds.
@@ -69,7 +73,7 @@ function AdminApp() {
   else {
     body = (
       <>
-        <PageHeader title={place.label} />
+        {!OWN_HEADER.has(page) && <PageHeader title={place.label} />}
         {PAGES[page](route)}
       </>
     );

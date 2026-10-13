@@ -1,6 +1,5 @@
 /* ============================================================================
-   hosts.css — the dialog furniture: the button family, the scrim, the modal card and the
-   confirmation body a destructive dialog wears.
+   hosts.css — the dialog furniture: the button family, the scrim, and the modal card.
    ============================================================================ */
 
 .host-btn {
@@ -103,47 +102,6 @@
   width: 100%;
   max-width: 480px;
   animation: k-rise var(--d-base) var(--ease-out);
-}
-
-.host-remove {
-  max-width: 440px;
-  padding: 26px 26px 22px;
-  text-align: center;
-}
-
-.host-remove__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--r-pill);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 14px;
-}
-
-.host-remove__icon--danger {
-  background: var(--danger-bg);
-  color: var(--danger-fg);
-}
-
-.host-remove__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--fg-1);
-  margin: 0 0 8px;
-}
-
-.host-remove__text {
-  font-size: 13.5px;
-  color: var(--fg-3);
-  line-height: 1.55;
-  margin: 0 0 20px;
-}
-
-.host-remove__foot {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
 }
 
 @keyframes k-rise {

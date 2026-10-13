@@ -1783,6 +1783,25 @@ the correction reaches consumers on the next version bump.
   - `DiscordTierCache`: short-TTL per-user tier cache for surfaces that re-derive authority per
     request. Caches denials too.
 
+### Changed — the admin Accounts list and the account page are krystal-ui's (web)
+
+- `#/accounts` is a `PageHeader` with the create action, a `Toolbar` (search over display name and
+  username, a status filter held in the address as `#/accounts?status=pending`, a count) and a `List` of
+  `ListRow`s: `AccountAvatar`, name, username and providers, role `Pill`s, a status `Pill`, and an
+  Approve `Button` on accounts awaiting approval. Accounts awaiting approval lead. Service accounts are
+  `SettingsRow`s under it. Creating an account is a `Dialog`.
+- `#/accounts/<id>` is the account's page: `Breadcrumbs`, a `PageHeader` with Approve, Enable and
+  Disable, and `SettingsSection`s for the profile, sign-in methods (set or reset the password, the
+  connected providers), sessions (end one, sign out everywhere), the roles held (the assignments
+  editor, now `List`, `IconButton` and `Button`) and deleting the account behind a confirming
+  `Dialog`. An id the provider does not hold is "No such account". Every control is gated on the request
+  it makes.
+- The account dialog, `AccountsAdmin`, and the stylesheet rules they drew (`settings-users__*`,
+  `settings-link__btn`, `host-remove*`, the assignment chips and form) are deleted. The confirmation of
+  ending a session is a `Dialog`.
+
+## [1.0.0]
+
 ### Added
 
 - `TheKrystalShip.KGSM.Auth` — the shared authorization model, dependency-free and AOT-safe.

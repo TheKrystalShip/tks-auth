@@ -123,8 +123,8 @@ function roleName(view, id) {
 }
 
 // The pages' shared empty states.
-function Brief({ title, sub, icon, tone }) {
-  return <EmptyState icon={icon} tone={tone} title={title}>{sub}</EmptyState>;
+function Brief({ title, sub, icon, tone, actions }) {
+  return <EmptyState icon={icon} tone={tone} title={title} actions={actions}>{sub}</EmptyState>;
 }
 
 // A list on its way: rows' worth of placeholder.
