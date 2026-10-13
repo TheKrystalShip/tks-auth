@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — the admin pages are for administrators (daemon)
+
+- `GET /account/me` carries `administers`: true when the account holds any `auth:*` action anywhere,
+  cluster-wide or at the scope one of its roles is assigned at. A pending or disabled account, and an
+  anchor with no authority, answer false.
+- `GET /admin/` serves the admin document only to a live provider session whose account administers,
+  and that includes the callback `/admin/?code=...`. Everybody else, installed or not, is answered as an
+  unmatched route is: a bare 404 with no body.
+
 ### Added — renaming a device (daemon 4.8.0)
 
 - `POST /account/sessions/name` with `{sid, name}` renames a device signed in to the caller's account,

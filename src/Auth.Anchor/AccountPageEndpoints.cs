@@ -130,6 +130,7 @@ internal static class AccountPageEndpoints
             Username: user.Username,
             DisplayName: user.DisplayName,
             Status: UserStatuses.ToWire(user.Status),
+            Administers: await AuthorityEndpoints.AdministersAsync(ctx, user),
             HasPassword: credentials.Any(c => c.Kind == CredentialKind.Password),
             Identities: [.. credentials.Where(c => c.Kind == CredentialKind.Identity).Select(c => new AccountIdentity(
                 c.CredentialId, IdentityEndpoints.ProviderOf(c.Handle), c.Handle, c.Label, c.Created, c.LastUsed))],

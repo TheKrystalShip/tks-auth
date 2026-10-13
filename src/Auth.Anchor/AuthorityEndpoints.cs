@@ -232,6 +232,22 @@ internal static class AuthorityEndpoints
     // ── the parts ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Whether <paramref name="user"/> administers, by the anchor's own evaluator. A pending or disabled
+    /// account holds nothing, and an anchor with no authority store answers false.
+    /// </summary>
+    internal static async Task<bool> AdministersAsync(HttpContext ctx, KgsmUser user)
+    {
+        if (user.Status != UserStatus.Active)
+            return false;
+
+        if (ctx.RequestServices.GetRequiredService<AnchorAuthority>().Source is not { } source)
+            return false;
+
+        AccessEvaluator evaluator = new(await source.CurrentAsync(ctx.RequestAborted).ConfigureAwait(false));
+        return Administers(evaluator, user.UserId);
+    }
+
+    /// <summary>
     /// Whether the caller holds any <c>auth:*</c> action anywhere: cluster-wide, or at a scope one of
     /// their roles is assigned at — which is where <c>auth:roles.assign</c> can be held alone. A usable
     /// Owner holds every action whether or not the catalog lists it yet.

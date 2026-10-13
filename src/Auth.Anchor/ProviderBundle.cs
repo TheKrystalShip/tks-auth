@@ -3,6 +3,8 @@ using System.Text;
 
 using Microsoft.AspNetCore.StaticFiles;
 
+using TheKrystalShip.Auth.Users;
+
 namespace TheKrystalShip.Auth.Anchor;
 
 /// <summary>
@@ -39,12 +41,40 @@ internal sealed class ProviderBundle(AnchorOptions options)
     /// sign-outs return. Every route the pages call authenticates by the bearer they hold, never by this
     /// daemon's cookie.
     /// </summary>
+    /// <remarks>
+    /// The document is served to a live provider session whose account administers, and answered as an
+    /// unmatched route is to everybody else, installed or not, so the path says nothing about itself.
+    /// </remarks>
     internal static async Task ServeAdminAsync(HttpContext ctx)
     {
+        if (!await AdministratorHoldsASessionAsync(ctx))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
         var bundle = ctx.RequestServices.GetRequiredService<ProviderBundle>();
         if (!await bundle.TryServeAsync(ctx, Page.Admin, clientOrigin: null, providers: []))
             await ProviderPages.ProblemAsync(ctx, StatusCodes.Status404NotFound, "Not installed", "The admin pages are not installed.");
     }
+
+    private static async Task<bool> AdministratorHoldsASessionAsync(HttpContext ctx)
+    {
+        if (await ctx.RequestServices.GetRequiredService<ProviderSessions>().CurrentAsync(ctx) is not { } session)
+            return false;
+
+        try
+        {
+            return await ctx.RequestServices.GetRequiredService<IUserStore>()
+                    .FindByCredentialAsync(session.Handle, ctx.RequestAborted) is { } user
+                && await AuthorityEndpoints.AdministersAsync(ctx, user);
+        }
+        catch (KgsmAuthProviderException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Whether the bundle is installed at all.</summary>
     public bool Installed => File.Exists(PathOf(Page.SignIn));
 

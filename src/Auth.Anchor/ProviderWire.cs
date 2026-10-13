@@ -201,6 +201,8 @@ internal sealed record DeviceDecisionResult(string Decision, string Application)
 /// <param name="Username">What it signs in as.</param>
 /// <param name="DisplayName">What it is shown as.</param>
 /// <param name="Status">Active, pending or disabled.</param>
+/// <param name="Administers">Whether the account holds any <c>auth:*</c> action anywhere, which is what
+/// the administration pages and their sign-in are for.</param>
 /// <param name="Identities">The provider accounts attached to it.</param>
 /// <param name="HasPassword">Whether the account holds a password, which decides how it re-proves itself.</param>
 /// <param name="Providers">The providers an identity can be attached from here.</param>
@@ -215,6 +217,7 @@ internal sealed record AccountView(
     string Username,
     string DisplayName,
     string Status,
+    bool Administers,
     bool HasPassword,
     IReadOnlyList<AccountIdentity> Identities,
     IReadOnlyList<string> Providers,

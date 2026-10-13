@@ -227,15 +227,19 @@ public sealed class AdminPagesTests(AnchorFixture anchor)
     [Fact]
     public async Task The_admin_document_is_served_under_the_provider_s_policy_and_only_when_installed()
     {
-        using HttpClient browser = anchor.Following();
+        var (_, owner) = await anchor.SignedInAsync(owner: true, prefix: "admin-doc-owner");
+        HttpClient browser = anchor.Client;
 
-        Assert.Equal(HttpStatusCode.NotFound, (await browser.GetAsync(Application.ProviderPagesPath)).StatusCode);
+        HttpResponseMessage missing = await browser.SendAsync(owner.AtTheAccountPage(HttpMethod.Get, Application.ProviderPagesPath));
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Contains("Not installed", await missing.Content.ReadAsStringAsync(), StringComparison.Ordinal);
 
         Directory.CreateDirectory(UiRoot);
         File.WriteAllText(Path.Combine(UiRoot, "admin.html"), "<!doctype html><title>bundle admin</title>");
         try
         {
-            HttpResponseMessage page = await browser.GetAsync(Application.ProviderPagesPath + "?code=c&state=s");
+            HttpResponseMessage page = await browser.SendAsync(
+                owner.AtTheAccountPage(HttpMethod.Get, Application.ProviderPagesPath + "?code=c&state=s"));
             Assert.Equal(HttpStatusCode.OK, page.StatusCode);
             Assert.Contains("bundle admin", await page.Content.ReadAsStringAsync(), StringComparison.Ordinal);
 
@@ -244,7 +248,7 @@ public sealed class AdminPagesTests(AnchorFixture anchor)
             Assert.Contains("connect-src 'self'", policy, StringComparison.Ordinal);
             Assert.Contains("frame-ancestors 'none'", policy, StringComparison.Ordinal);
 
-            Assert.Equal(HttpStatusCode.OK, (await browser.GetAsync("/admin")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await browser.SendAsync(owner.AtTheAccountPage(HttpMethod.Get, "/admin"))).StatusCode);
         }
         finally
         {
