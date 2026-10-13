@@ -80,7 +80,7 @@ function Assignments({ view, accountId, scope }) {
       {held.length === 0
         ? <div className="admin-quiet">{scope ? "No roles held here." : "Holds only everyone."}</div>
         : (
-          <List label="Roles held">
+          <List label="Roles held" className="admin-assign__list">
             {held.map((a) => {
               const v = verdictForRevoke(a.id);
               const closed = v && !v.allowed;
@@ -88,7 +88,7 @@ function Assignments({ view, accountId, scope }) {
               return (
                 <ListRow key={a.id} data-assignment={name}
                   title={name}
-                  sub={accountId ? scopeText(a.scope) : nameOf(a.accountId)}
+                  sub={<>{accountId ? scopeText(a.scope) : nameOf(a.accountId)}{closed && v.message ? <> · {v.message}</> : null}</>}
                   meta={closed ? <Locked result={v} /> : null}
                   actions={!closed && !editRefusal("revoke", targetOf(a.scope)) ? (
                     <IconButton variant="ghost" tone="danger" icon="x" label={"Take " + name + " away"}

@@ -18,6 +18,7 @@ import {
   Breadcrumbs, Button, Dialog, Field, PageHeader, PasswordInput, providerLabel, SettingsRow,
   SettingsSection, useStore,
 } from "@thekrystalship/krystal-ui";
+import { deviceIcon, deviceKind, deviceName } from "../lib/devices.js";
 import { when } from "../lib/formatting.js";
 import { StatusPill, handleOf, nameOf, providersOf, useAccounts } from "./accountParts.jsx";
 import { Assignments } from "./Assignments.jsx";
@@ -176,9 +177,9 @@ function SessionsSection({ user, name }) {
       {rows === null && !error && <Loading />}
       {rows !== null && rows.length === 0 && !error && <div className="admin-quiet">No active sessions.</div>}
       {(rows || []).map((s) => (
-        <SettingsRow key={s.sid} icon="monitor" title={s.userAgent && String(s.userAgent).trim() ? s.userAgent : "Unknown device"}
-          sub={"last refreshed " + when(s.lastSeen)}>
-          <Button variant="outline" size="sm" data-session={s.sid} busy={busy === s.sid} disabled={busy != null}
+        <SettingsRow key={s.sid} icon={deviceIcon(s)} title={s.name || deviceName(s.userAgent)}
+          sub={deviceKind(s) + " · signed in " + when(s.created) + (s.lastSeen ? " · seen " + when(s.lastSeen) : "")}>
+          <Button variant="outline" size="sm" data-session={s.sid} title={s.userAgent || undefined} busy={busy === s.sid} disabled={busy != null}
             onClick={() => setConfirm({ mode: "other-one", sid: s.sid })}>
             {busy === s.sid ? "Ending…" : "End"}
           </Button>

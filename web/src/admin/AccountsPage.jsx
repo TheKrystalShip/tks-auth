@@ -124,7 +124,7 @@ function AccountsPage({ params }) {
       )}
 
       {services.length > 0 && (
-        <SettingsSection icon="bot" title="Service accounts" meta={String(services.length)}>
+        <SettingsSection icon="bot" title="Service accounts">
           {services.map((s) => (
             <SettingsRow key={s.id} icon="bot" title={s.username}
               sub={s.requirements.length + (s.requirements.length === 1 ? " requirement" : " requirements")}>

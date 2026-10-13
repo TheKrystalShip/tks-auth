@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { Button, EmptyState, Notice, Pill, Skeleton, useStore } from "@thekrystalship/krystal-ui";
+import { Button, EmptyState, Icon, Notice, Pill, Skeleton, useStore } from "@thekrystalship/krystal-ui";
 import { authorityStore, membersStore } from "./stores.js";
 
 // The authority, read when the first page wanting it mounts and kept for the rest.
@@ -51,10 +51,31 @@ function RefusalNote({ refusal, compact }) {
   );
 }
 
-// A lock and its reason, for a row the rules close.
+// A lock on a row the rules close, the provider's reason in its tooltip. The row's own `sub` carries
+// the reason in words, where a sentence has room.
 function Locked({ result }) {
   if (!result || result.allowed) return null;
-  return <Pill tone="muted" icon="lock" size="sm" className="admin-locked" title={result.message || ""}>{result.message}</Pill>;
+  return <Pill tone="muted" icon="lock" size="sm" title={result.message || undefined}>Locked</Pill>;
+}
+
+// Delete, asked twice.
+function DeleteButton({ label, busy, onDelete }) {
+  const [armed, setArmed] = React.useState(false);
+  if (!armed) {
+    return (
+      <button type="button" className="access-icon-btn access-icon-btn--danger" aria-label={"Delete " + label}
+        disabled={busy} onClick={() => setArmed(true)}>
+        <Icon name="trash-2" size={13} />
+      </button>
+    );
+  }
+  return (
+    <span className="access-confirm">
+      <button type="button" className="host-btn host-btn--danger" disabled={busy}
+        onClick={() => { setArmed(false); onDelete(); }}>Delete {label}</button>
+      <button type="button" className="host-btn host-btn--ghost" onClick={() => setArmed(false)}>Keep</button>
+    </span>
+  );
 }
 
 // `instance:<node>/<id>#<nonce>` → its parts, or null.
@@ -150,6 +171,6 @@ function authorityGate(state) {
 }
 
 export {
-  Brief, Loading, Locked, RefusalNote, authorityGate, componentOf, nameScope, parseInstance, roleName,
+  Brief, DeleteButton, Loading, Locked, RefusalNote, authorityGate, componentOf, nameScope, parseInstance, roleName,
   useAuthority, useChecks, useScopeOptions, useScopeText,
 };

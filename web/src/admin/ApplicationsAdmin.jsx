@@ -14,8 +14,7 @@ import React from "react";
 import { Icon, SettingsSection, useStore } from "@thekrystalship/krystal-ui";
 import { createStore } from "@thekrystalship/krystal-ui/lib/store";
 import { APPLICATIONS, api } from "./client.js";
-import { Brief, Loading, RefusalNote } from "./kit.jsx";
-import { DeleteButton } from "./RolesAdmin.jsx";
+import { Brief, DeleteButton, Loading, RefusalNote } from "./kit.jsx";
 import { accessStore, callRefusal, refusalOf } from "./stores.js";
 
 const applicationsStore = createStore({ status: "idle", list: null, error: null });

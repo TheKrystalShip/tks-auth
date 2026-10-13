@@ -1,22 +1,6 @@
 import { Button, PageHeader, SettingsRow, SettingsSection } from "@thekrystalship/krystal-ui";
-import { fmtRelative, parseTs } from "../../lib/formatting.js";
-
-function when(ts) {
-  if (!ts) return "—";
-  try { return fmtRelative(parseTs(ts)); } catch { return "—"; }
-}
-
-// A person reads a device, not a user-agent string. Browser and platform only, and the raw string as
-// the tooltip, because the heuristic is a label and not a claim.
-function deviceName(ua) {
-  if (!ua) return "Unknown device";
-  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox"
-    : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : null;
-  const os = /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows"
-    : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : null;
-  if (browser && os) return browser + " on " + os;
-  return browser || os || "Unknown device";
-}
+import { deviceIcon, deviceName } from "../../lib/devices.js";
+import { when } from "../../lib/formatting.js";
 
 // Where this account is signed in: browsers, applications and devices, each ended or renamed here.
 function DevicesPage({ me, busy, onRename, onEnd, onEndAll }) {
@@ -29,7 +13,7 @@ function DevicesPage({ me, busy, onRename, onEnd, onEndAll }) {
         ) : null}>
         {me.sessions.map((row) => (
           <SettingsRow key={row.sid}
-            icon={row.kind === "provider" ? "globe" : row.kind === "device" ? "tv" : /mobile|android|iphone|ipad/i.test(row.userAgent || "") ? "smartphone" : "monitor"}
+            icon={deviceIcon(row)}
             title={row.current ? "This browser" : row.name || deviceName(row.userAgent)}
             sub={(row.kind === "provider" ? "Signed in here" : row.kind === "device" ? "A device" : "An application") + " · " + when(row.created)}>
             {row.kind === "device" ? (

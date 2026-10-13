@@ -101,23 +101,11 @@
 .admin-refusal--compact { margin: 6px 0; }
 .admin-refusal__actions { font-family: var(--font-mono); font-size: 11.5px; }
 
-.admin-locked {
-  max-width: 45%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .admin-locked { max-width: 100%; order: 4; }
-}
-
 .admin-loading { display: flex; flex-direction: column; gap: 8px; }
 
 /* A sentence where a list has nothing to show, inside a section. */
 .admin-quiet {
-  padding: 8px 2px;
+  padding: 12px 14px;
   font-size: 12.5px;
   color: var(--fg-3);
 }
@@ -127,14 +115,27 @@
 
 .admin-dialog-text { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--fg-2); }
 
-/* ── The assignments editor ── */
-.admin-assign { display: flex; flex-direction: column; gap: 10px; }
+/* ── The assignments editor ──
+   It stands inside a section, whose frame holds it: the rows are flat in it and the form is its last
+   row, one line on a desktop and wrapping on a phone. */
+.admin-assign { display: flex; flex-direction: column; }
+
+.admin-assign .admin-refusal { margin: 10px 14px 0; }
+
+.admin-assign__list {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
 
 .admin-assign__form {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 12px 14px;
 }
+
+.admin-assign__list + .admin-assign__form { border-top: var(--edge); }
 
 .admin-assign__form > .k-select { flex: 1 1 160px; min-width: 0; }
 
@@ -163,5 +164,6 @@
   white-space: nowrap;
 }
 
-/* A lock's reason in a row's meta is read whole: the row's own wrapping makes room for it. */
-.k-listrow__meta .admin-locked { max-width: none; overflow: visible; white-space: normal; }
+/* A role that can be ranked by dragging. */
+.admin-row--draggable { cursor: grab; }
+.admin-row--dragging { opacity: 0.5; }

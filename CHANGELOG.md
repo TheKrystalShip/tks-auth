@@ -7,6 +7,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the Roles list and the role page (web)
+
+- `#/roles` is a ranked `List` of `ListRow`s: Owner first with a `Locked` pill, `everyone` last, the
+  rest draggable into rank (the up and down buttons rank without dragging), and `New role` opens a
+  `Dialog` form. A row opens `#/roles/<id>`.
+- `#/roles/<id>` is `Breadcrumbs` and a `PageHeader` whose actions rename the role (a `Dialog` form)
+  and delete it (a confirming `Dialog`); a section lists every permission as a checkable row, saved
+  together as one edit and gated through the provider's checks, and a section lists the accounts
+  holding the role. An unknown id is "No such role".
+- `Locked` is a short pill with the provider's reason as its tooltip; the row's own line carries the
+  reason in words.
+- The account page's sessions are named by the session's own name, or the device the user agent
+  names (`src/lib/devices.js`, shared with the account page's Devices & sessions), with the kind of
+  sign-in and when it began. The assignments editor stands inside its section's frame.
+- `RolesAdmin` and the stylesheet rules only it used are deleted.
+
 ### Changed — the sign-in and register page is krystal-ui's `CardScreen` (web)
 
 - `SignInApp` stands on `CardScreen`. The Sign in / Register switch is a segmented `OptionList`; one

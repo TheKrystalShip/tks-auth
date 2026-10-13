@@ -7,8 +7,7 @@
 import React from "react";
 
 import { Icon, SettingsSection } from "@thekrystalship/krystal-ui";
-import { Locked, RefusalNote, authorityGate, componentOf, roleName, useAuthority, useChecks } from "./kit.jsx";
-import { DeleteButton } from "./RolesAdmin.jsx";
+import { DeleteButton, Locked, RefusalNote, authorityGate, componentOf, roleName, useAuthority, useChecks } from "./kit.jsx";
 import { authorityStore, editRefusal } from "./stores.js";
 
 function PermissionsAdmin() {

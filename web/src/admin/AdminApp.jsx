@@ -18,7 +18,8 @@ import { CatalogAdmin } from "./CatalogAdmin.jsx";
 import { APPLICATIONS } from "./client.js";
 import { OverviewPage } from "./OverviewPage.jsx";
 import { PermissionsAdmin } from "./PermissionsAdmin.jsx";
-import { RolesAdmin } from "./RolesAdmin.jsx";
+import { RolePage } from "./RolePage.jsx";
+import { RolesPage } from "./RolesPage.jsx";
 import { go, useRoute } from "./route.js";
 import { ServiceRequests } from "./ServiceRequests.jsx";
 import { profile, signOut } from "./session.js";
@@ -27,7 +28,7 @@ import { accessStore, administers, authorityStore, callRefusal } from "./stores.
 const PAGES = {
   overview: () => <OverviewPage />,
   accounts: (route) => (route.id ? <AccountPage key={route.id} id={route.id} /> : <AccountsPage params={route.params} />),
-  roles: () => <RolesAdmin />,
+  roles: (route) => (route.id ? <RolePage key={route.id} id={route.id} /> : <RolesPage />),
   permissions: () => <PermissionsAdmin />,
   catalog: () => <CatalogAdmin />,
   assignments: (route) => <AssignmentsPage params={route.params} />,
@@ -36,7 +37,7 @@ const PAGES = {
 };
 
 // The pages that draw their own `PageHeader`, because they carry actions or a title of their own.
-const OWN_HEADER = new Set(["accounts"]);
+const OWN_HEADER = new Set(["accounts", "roles"]);
 
 // What is waiting on somebody, counted from the authority: accounts awaiting approval, services'
 // requirements awaiting a decision, and engine actions no permission holds.
