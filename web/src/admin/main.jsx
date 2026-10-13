@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 
 import "../styles/kit.css";
 import "./admin.css";
+import "@thekrystalship/krystal-ui/lib/theme";
 
 import { AdminApp } from "./AdminApp.jsx";
 import { signIn, start } from "./session.js";
@@ -11,13 +12,8 @@ import { refreshAccess, refreshMembers } from "./stores.js";
 // application replaces it once a session is in hand, or leaves for the provider's sign-in when there
 // is none.
 //
-// One appearance, following the reader's colour scheme, as on the provider's other pages.
-
-const light = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
-const applyTheme = () =>
-  document.documentElement.setAttribute("data-theme", light && light.matches ? "light" : "dark");
-applyTheme();
-if (light && light.addEventListener) light.addEventListener("change", applyTheme);
+// One appearance, shared with the provider's other pages: krystal-ui's stored theme preference,
+// applied by `theme-boot.js` before first paint and followed live by its theme store.
 
 start().then((session) => {
   if (!session) { signIn(); return; }

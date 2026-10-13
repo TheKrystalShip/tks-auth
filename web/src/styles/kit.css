@@ -1,21 +1,36 @@
 /* The kit every tks-auth page draws with: the design system's own sheets
    (@thekrystalship/krystal-ui) and the partials below, imported in CASCADE ORDER.
 
-   Order is load-bearing — later rules win on equal specificity, so each design-system sheet sits
-   just before the partial that restyles or places what it draws (a dialog's `.modal` width wins over
-   the form inside it, a page's `.pending__actions > *` over the button it holds). Add a rule to the
-   partial that owns its domain. */
+   The package's sheets keep the order of its own styles.css (only the sheets these pages draw with
+   are imported). Order is load-bearing — later rules win on equal specificity, so each partial sits
+   just after the design-system sheet it restyles or places what it draws (a dialog's `.modal` width
+   wins over the form inside it, a page's `.pending__actions > *` over the button it holds). Add a
+   rule to the partial that owns its domain. */
 @import "@thekrystalship/krystal-ui/styles/tokens.css";
 @import "@thekrystalship/krystal-ui/styles/motion.css";
-
+@import "@thekrystalship/krystal-ui/styles/scrollbar.css";
 @import "./base.css";
-@import "@thekrystalship/krystal-ui/styles/subtabs.css";
+@import "@thekrystalship/krystal-ui/styles/controls.css";
 @import "./controls.css";
+@import "@thekrystalship/krystal-ui/styles/providers.css";
+@import "@thekrystalship/krystal-ui/styles/cardscreen.css";
+@import "@thekrystalship/krystal-ui/styles/page.css";
+@import "@thekrystalship/krystal-ui/styles/pill.css";
+@import "@thekrystalship/krystal-ui/styles/list.css";
+@import "@thekrystalship/krystal-ui/styles/shell.css";
+@import "@thekrystalship/krystal-ui/styles/subtabs.css";
 @import "@thekrystalship/krystal-ui/styles/select.css";
-@import "./signin.css";
-@import "./responsive.css";
+@import "@thekrystalship/krystal-ui/styles/portal.css";
+@import "@thekrystalship/krystal-ui/styles/dialog.css";
+@import "@thekrystalship/krystal-ui/styles/toolbar.css";
+@import "@thekrystalship/krystal-ui/styles/breadcrumbs.css";
 @import "@thekrystalship/krystal-ui/styles/brief.css";
 @import "@thekrystalship/krystal-ui/styles/settings.css";
+@import "@thekrystalship/krystal-ui/styles/theme-picker.css";
+@import "@thekrystalship/krystal-ui/styles/toast.css";
+
+@import "./signin.css";
+@import "./responsive.css";
 @import "./settings.css";
 @import "./hosts.css";
 @import "./states.css";

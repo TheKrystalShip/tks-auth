@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 
 import "../styles/kit.css";
 import "./pages.css";
+import "@thekrystalship/krystal-ui/lib/theme";
 
 import { AccountApp } from "./AccountApp.jsx";
 import { DeviceApp } from "./DeviceApp.jsx";
@@ -14,17 +15,10 @@ import { WaitApp } from "./WaitApp.jsx";
 // form, or a wait that polls without script. This application replaces that floor when it mounts, so
 // a bundle that fails to load leaves the floor standing rather than an empty page.
 //
-// One appearance, following the reader's colour scheme. There is no theme picker and no stored
-// theme: a theme name carried to the provider would be a parameter a stranger sets, and a stored one
-// would be this origin's alone, disagreeing with the application the person came from. The document
-// is served under a policy with no inline script, so there is no pre-paint script either; the floor
-// renders in the default palette until this runs.
-
-const light = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
-const applyTheme = () =>
-  document.documentElement.setAttribute("data-theme", light && light.matches ? "light" : "dark");
-applyTheme();
-if (light && light.addEventListener) light.addEventListener("change", applyTheme);
+// One appearance, shared by every page on this origin: the preference stored under krystal-ui's
+// theme key, set on the Appearance page. `theme-boot.js` applies it before first paint (the document's
+// policy allows no inline script); krystal-ui's theme store applies it again when this loads and, for
+// `auto`, follows the system colour scheme as it changes. The provider is handed no theme name.
 
 const PAGES = { "sign-in": SignInApp, wait: WaitApp, account: AccountApp, device: DeviceApp };
 const Page = PAGES[document.body.dataset.page] || SignInApp;

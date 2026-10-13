@@ -4,13 +4,14 @@
 //   npm run build && npm run check
 //
 // The daemon serves these documents under a content security policy with no inline script and no
-// inline style, and fills the sign-in floor's provider links in at a marker. Three things can go wrong
+// inline style, and fills the sign-in floor's provider links in at a marker. Four things can go wrong
 // with that, and none of them shows up anywhere but here:
 //
 //   1. A document picks up something the policy refuses — an inline script, a `style` attribute — and
 //      the page renders broken in every browser with nothing but a console line to say why.
 //   2. The sign-in floor loses its marker or its form, and with scripting off nobody can sign in.
-//   3. The sign-in, wait or account page grows an import of the admin pages' session, and a page that
+//   3. A document stops loading theme-boot.js, and the stored theme shows only after the bundle runs.
+//   4. The sign-in, wait or account page grows an import of the admin pages' session, and a page that
 //      must hold no bearer ships one — tree-shaking does not remove a static import of a module with
 //      side effects.
 
@@ -70,6 +71,10 @@ if (!existsSync(DIST)) {
     const inline = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
       .filter(([, attrs, body]) => !/\bsrc=/.test(attrs) || body.trim().length > 0);
     if (inline.length) fail(`✗ ${page} carries an inline script, which the provider's policy refuses`);
+
+    // The stored theme is applied before first paint by a script file, since an inline one is refused.
+    if (!/<script\b[^>]*\bsrc="\/ui\/theme-boot\.js"/.test(html))
+      fail(`✗ ${page} does not load /ui/theme-boot.js — the page would paint in the default theme first`);
 
     // No style attribute or <style> element: the policy is style-src 'self'.
     if (/\sstyle\s*=/.test(html) || /<style\b/.test(html))

@@ -16,6 +16,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   returns. The file is a configuration file: `setup.sh` installs it only when absent and the package
   lists it in `backup=()`. The Control Panel's and the members' routes are not fenced.
 
+### Changed — every page follows the stored theme preference (web)
+
+- The sign-in, wait, account, device and admin pages apply the theme stored under krystal-ui's theme key
+  before first paint, through `/ui/theme-boot.js`, and follow the system scheme live for `auto`. The
+  pages are built on krystal-ui's current stylesheets.
+
 ### Added — the admin client is issued to administrators alone, and refusals are journaled (daemon)
 
 - The authorization request of the admin pages' client (`tks-auth`) completes only for an account that
