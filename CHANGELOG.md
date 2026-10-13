@@ -19,6 +19,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   password strength is a four-segment `Meter`, refusals are `Notice`s, and a provider proof is a
   `ProviderButton`. The account page's stylesheet rules are gone.
 
+### Added — the admin Overview and a shared admin kit (web)
+
+- `#/overview` is a page of cards: accounts waiting for approval, service requests waiting for a
+  decision, unmapped catalog actions and the applications, each opening its page, each drawn only when
+  the person may read what it summarises. With nothing waiting the page says so.
+- The admin pages' empty states, loading placeholders, refusals and locks are krystal-ui's `EmptyState`,
+  `Skeleton`, `Notice` and `Pill`; a refusal that needs a fresh proof offers "Prove it's you" as a link
+  button. The stylesheet rules these replace are gone.
+
 ### Changed — the admin pages stand in the sidebar frame (web)
 
 - `/admin/` is drawn in krystal-ui's sidebar frame: the places grouped as People, Access and

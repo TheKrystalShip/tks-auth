@@ -14,7 +14,7 @@ import React from "react";
 import { Icon, SettingsSection, useStore } from "@thekrystalship/krystal-ui";
 import { createStore } from "@thekrystalship/krystal-ui/lib/store";
 import { APPLICATIONS, api } from "./client.js";
-import { Brief, RefusalNote } from "./kit.jsx";
+import { Brief, Loading, RefusalNote } from "./kit.jsx";
 import { DeleteButton } from "./RolesAdmin.jsx";
 import { accessStore, callRefusal, refusalOf } from "./stores.js";
 
@@ -40,7 +40,7 @@ function ApplicationsAdmin() {
 
   if (!allowed) return <Brief title="You don’t have access to this" />;
   if (status === "error" && !list) return <Brief title="Couldn’t read the applications" sub={error && error.userMessage} />;
-  if (!list) return <Brief title="Loading…" />;
+  if (!list) return <Loading />;
 
   // Every answer that made a secret shows it here, once.
   const answered = (answer) => {

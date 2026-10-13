@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { Icon, useStore } from "@thekrystalship/krystal-ui";
+import { Button, EmptyState, Notice, Pill, Skeleton, useStore } from "@thekrystalship/krystal-ui";
 import { authorityStore, membersStore } from "./stores.js";
 
 // The authority, read when the first page wanting it mounts and kept for the rest.
@@ -39,30 +39,22 @@ function RefusalNote({ refusal, compact }) {
   if (!refusal) return null;
   const reauth = refusal.code === "reauth_required";
   return (
-    <div className={"access-refusal" + (compact ? " access-refusal--compact" : "")} role="alert">
-      <Icon name={reauth ? "key-round" : "lock"} size={13} />
-      <span>
-        {refusal.message}
-        {refusal.actions && refusal.actions.length > 0 && (
-          <> <span className="access-refusal__actions">{refusal.actions.join(", ")}</span></>
-        )}
-      </span>
-      {reauth && (
-        <a className="access-refusal__link" href="/account#confirm" target="_blank" rel="noreferrer">Prove it’s you</a>
+    <Notice tone="warn" icon="lock" className={"admin-refusal" + (compact ? " admin-refusal--compact" : "")}>
+      {refusal.message}
+      {refusal.actions && refusal.actions.length > 0 && (
+        <> <span className="admin-refusal__actions">{refusal.actions.join(", ")}</span></>
       )}
-    </div>
+      {reauth && (
+        <> <Button variant="link" size="sm" href="/account#confirm" target="_blank" rel="noreferrer">Prove it’s you</Button></>
+      )}
+    </Notice>
   );
 }
 
 // A lock and its reason, for a row the rules close.
 function Locked({ result }) {
   if (!result || result.allowed) return null;
-  return (
-    <span className="access-lock" title={result.message || ""}>
-      <Icon name="lock" size={12} />
-      <span className="access-lock__text">{result.message}</span>
-    </span>
-  );
+  return <Pill tone="muted" icon="lock" size="sm" className="admin-locked" title={result.message || ""}>{result.message}</Pill>;
 }
 
 // `instance:<node>/<id>#<nonce>` → its parts, or null.
@@ -131,13 +123,17 @@ function roleName(view, id) {
 }
 
 // The pages' shared empty states.
-function Brief({ title, sub }) {
+function Brief({ title, sub, icon, tone }) {
+  return <EmptyState icon={icon} tone={tone} title={title}>{sub}</EmptyState>;
+}
+
+// A list on its way: rows' worth of placeholder.
+function Loading() {
   return (
-    <div className="chat-brief">
-      <div className="chat-brief__empty chat-brief__empty--neutral">
-        <div className="chat-brief__empty-title">{title}</div>
-        {sub && <div className="chat-brief__empty-sub">{sub}</div>}
-      </div>
+    <div className="admin-loading" role="status" aria-label="Loading">
+      <Skeleton h={44} r={10} />
+      <Skeleton h={44} r={10} />
+      <Skeleton h={44} r={10} />
     </div>
   );
 }
@@ -147,13 +143,13 @@ function authorityGate(state) {
   if (state.view) return null;
   if (state.status === "error") {
     const e = state.error;
-    if (e && e.status === 403) return <Brief title="You don’t have access to this" sub={e.userMessage} />;
-    return <Brief title="Couldn’t read access" sub={(e && e.userMessage) || null} />;
+    if (e && e.status === 403) return <Brief icon="lock" title="You don’t have access to this" sub={e.userMessage} />;
+    return <Brief icon="wifi-off" tone="warn" title="Couldn’t read access" sub={(e && e.userMessage) || null} />;
   }
-  return <Brief title="Loading…" />;
+  return <Loading />;
 }
 
 export {
-  Brief, Locked, RefusalNote, authorityGate, componentOf, nameScope, parseInstance, roleName,
+  Brief, Loading, Locked, RefusalNote, authorityGate, componentOf, nameScope, parseInstance, roleName,
   useAuthority, useChecks, useScopeOptions, useScopeText,
 };

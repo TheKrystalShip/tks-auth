@@ -15,6 +15,7 @@ import { ApplicationsAdmin } from "./ApplicationsAdmin.jsx";
 import { AssignmentsPage } from "./AssignmentsPage.jsx";
 import { CatalogAdmin } from "./CatalogAdmin.jsx";
 import { APPLICATIONS } from "./client.js";
+import { OverviewPage } from "./OverviewPage.jsx";
 import { PermissionsAdmin } from "./PermissionsAdmin.jsx";
 import { RolesAdmin } from "./RolesAdmin.jsx";
 import { go, useRoute } from "./route.js";
@@ -23,7 +24,7 @@ import { profile, signOut } from "./session.js";
 import { accessStore, administers, authorityStore, callRefusal } from "./stores.js";
 
 const PAGES = {
-  overview: () => <EmptyState icon="layout-dashboard" title="Overview" />,
+  overview: () => <OverviewPage />,
   accounts: () => <AccountsAdmin />,
   roles: () => <RolesAdmin />,
   permissions: () => <PermissionsAdmin />,

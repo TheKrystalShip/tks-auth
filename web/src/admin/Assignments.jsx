@@ -12,7 +12,7 @@
 
 import React from "react";
 
-import { Icon, Select } from "@thekrystalship/krystal-ui";
+import { Icon, Notice, Select } from "@thekrystalship/krystal-ui";
 import { authorityStore, editRefusal } from "./stores.js";
 import { RefusalNote, parseInstance, roleName, useChecks, useScopeOptions, useScopeText } from "./kit.jsx";
 
@@ -134,9 +134,9 @@ function Assignments({ view, accountId, scope, compact }) {
         </form>
       )}
       {!canAssign && account && (
-        <div className="access-refusal access-refusal--compact">
-          <Icon name="lock" size={13} /><span>Assigning roles at {scopeText(at)} · {assignRefusal}</span>
-        </div>
+        <Notice tone="warn" icon="lock" className="admin-refusal admin-refusal--compact">
+          Assigning roles at {scopeText(at)} · {assignRefusal}
+        </Notice>
       )}
     </div>
   );
