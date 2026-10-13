@@ -182,13 +182,25 @@ internal sealed class AnchorJournal(IEventJournalWriter writer, ILogger<AnchorJo
             reason is null ? AuthEvents.TokenExchanged : AuthEvents.TokenExchangeRefused, actor, OriginDiscord,
             AuthEventPayloads.TokenExchange(client, application, identity, userId, username, actedBy, reason), ct);
 
+    /// <summary>Record refusals at an administrator-only surface.</summary>
+    /// <remarks>
+    /// The actor is the account that was refused, when one was identified: the row reads beside that
+    /// account's other rows, and says nothing about anybody when nobody was. <paramref name="count"/>
+    /// is how many refusals the line stands for.
+    /// </remarks>
+    internal Task AdminRefusedAsync(
+        string surface, string route, string? account, string? address, int count, CancellationToken ct = default) =>
+        WriteAsync(
+            AuthEvents.AdminRefused, account, OriginUi,
+            AuthEventPayloads.AdminRefused(surface, route, account, address, count), ct);
+
     /// <summary>Append one line, saying what was lost if it cannot.</summary>
     /// <remarks>
     /// The base logs the generic failure; this adds what the base cannot know — a line nobody will
     /// find later, for an action that did happen.
     /// </remarks>
     private async Task WriteAsync(
-        string type, string actor, string? origin, Action<Utf8JsonWriter> payload, CancellationToken ct)
+        string type, string? actor, string? origin, Action<Utf8JsonWriter> payload, CancellationToken ct)
     {
         // Parsed at this boundary because several of these names are chosen at run time from the
         // catalog — which of the user.* events an account patch turned out to be. A name that is not a

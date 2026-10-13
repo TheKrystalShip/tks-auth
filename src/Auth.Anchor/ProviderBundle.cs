@@ -3,6 +3,7 @@ using System.Text;
 
 using Microsoft.AspNetCore.StaticFiles;
 
+using TheKrystalShip.Auth.Journal;
 using TheKrystalShip.Auth.Users;
 
 namespace TheKrystalShip.Auth.Anchor;
@@ -47,8 +48,12 @@ internal sealed class ProviderBundle(AnchorOptions options)
     /// </remarks>
     internal static async Task ServeAdminAsync(HttpContext ctx)
     {
-        if (!await AdministratorHoldsASessionAsync(ctx))
+        (bool administers, string? account) = await AdministratorHoldsASessionAsync(ctx);
+        if (!administers)
         {
+            await ctx.RequestServices.GetRequiredService<AdminRefusals>().RecordAsync(
+                AdminRefusalSurfaces.Document, ctx.Request.Path.Value ?? "/admin/", account,
+                AdminRefusals.AddressOf(ctx), ctx.RequestAborted);
             ctx.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
@@ -58,20 +63,26 @@ internal sealed class ProviderBundle(AnchorOptions options)
             await ProviderPages.ProblemAsync(ctx, StatusCodes.Status404NotFound, "Not installed", "The admin pages are not installed.");
     }
 
-    private static async Task<bool> AdministratorHoldsASessionAsync(HttpContext ctx)
+    /// <summary>
+    /// Whether the request holds a provider session whose account administers, with the account's
+    /// username when the session names one that exists.
+    /// </summary>
+    private static async Task<(bool Administers, string? Account)> AdministratorHoldsASessionAsync(HttpContext ctx)
     {
         if (await ctx.RequestServices.GetRequiredService<ProviderSessions>().CurrentAsync(ctx) is not { } session)
-            return false;
+            return (false, null);
 
         try
         {
-            return await ctx.RequestServices.GetRequiredService<IUserStore>()
-                    .FindByCredentialAsync(session.Handle, ctx.RequestAborted) is { } user
-                && await AuthorityEndpoints.AdministersAsync(ctx, user);
+            if (await ctx.RequestServices.GetRequiredService<IUserStore>()
+                    .FindByCredentialAsync(session.Handle, ctx.RequestAborted) is not { } user)
+                return (false, null);
+
+            return (await AuthorityEndpoints.AdministersAsync(ctx, user), user.Username);
         }
         catch (KgsmAuthProviderException)
         {
-            return false;
+            return (false, null);
         }
     }
 

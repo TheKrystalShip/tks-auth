@@ -61,6 +61,7 @@ internal static class TksAuthCore
         // anchor running where no API does keeps a complete record that no panel renders.
         services.AddKgsmJournal(AnchorJournal.ProducerId, typeof(AnchorJournal).Assembly);
         services.AddSingleton<AnchorJournal>();
+        services.AddSingleton<AdminRefusals>();
 
         // The Owner account an empty store gets. Without it a fresh install is a door nobody can open —
         // registration is off unless configured on, and an account made through it waits for an

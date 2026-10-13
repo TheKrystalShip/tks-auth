@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — the admin client is issued to administrators alone, and refusals are journaled (daemon)
+
+- The authorization request of the admin pages' client (`tks-auth`) completes only for an account that
+  administers. Anybody else is returned to the redirect URI with `error=access_denied` and the request's
+  `state`, and no code is minted. The refresh grant for that client re-checks and answers
+  `invalid_grant` once the account no longer administers. Every other client is unaffected.
+- `auth.admin.refused` records a refusal at an administrator-only surface: the admin document, the admin
+  client's token (an authorization or a refresh), or a 403 at `/auth/cluster/applications*`. The payload
+  carries `Surface` (`document`, `token` or `route`), `Route`, `Account` (the username, or null when
+  nobody was identified), `Address` and `Count`. The first refusal per (surface, account, address) in a
+  minute is written at once with a count of 1; the refusals after it in the same minute are folded into
+  one follow-up line carrying their number.
+- **`Auth.Journal`** names `auth.admin.refused` and the surfaces it carries, and writes its payload.
+
 ### Added — the admin pages are for administrators (daemon)
 
 - `GET /account/me` carries `administers`: true when the account holds any `auth:*` action anywhere,

@@ -192,16 +192,6 @@ public sealed class AdminPagesTests(AnchorFixture anchor)
     }
 
     [Fact]
-    public async Task Somebody_holding_no_auth_action_is_refused_the_admin_routes_with_the_pages_session()
-    {
-        KgsmUser person = await AccountAsync(owner: false);
-        string access = (await SignInAsync(person, Application.ProviderClientId, Pages)).GetProperty("access_token").GetString()!;
-
-        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Get, "/auth/cluster/users", access)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await SendAsync(HttpMethod.Get, "/me/access", access)).StatusCode);
-    }
-
-    [Fact]
     public async Task Another_application_s_token_is_no_caller_at_the_admin_routes()
     {
         string owner = (await anchor.SignedInAsync(owner: true, prefix: "admin-pages-owner")).Session.Access;

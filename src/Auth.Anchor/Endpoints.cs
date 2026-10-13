@@ -381,6 +381,16 @@ internal static class Endpoints
             return new Rotation(RotationOutcome.Withdrawn, null, null);
         }
 
+        // The admin pages' client keeps its session only while the account administers: a demotion ends
+        // the credential at the next rotation rather than at the end of the session.
+        if (clientId == Application.ProviderClientId && !await AuthorityEndpoints.AdministersAsync(ctx, answer.User!))
+        {
+            await ctx.RequestServices.GetRequiredService<AdminRefusals>().RecordAsync(
+                AdminRefusalSurfaces.Token, ctx.Request.Path.Value ?? "/token", answer.User!.Username,
+                AdminRefusals.AddressOf(ctx), ctx.RequestAborted);
+            return new Rotation(RotationOutcome.Invalid, null, null);
+        }
+
         string? deviceName = ctx.RequestServices.GetRequiredService<SqliteSessionRegistry>().SessionName(claims.SessionId);
         if (await MintPairAsync(ctx, claims.Identity, answer.User!, claims.SessionId, clientId, application, deviceName)
             is not ({ } access, { } refresh))
@@ -742,6 +752,7 @@ internal static class Endpoints
 
             if (!result.Decision.Allowed)
             {
+                await AdminRefusals.RecordIfAdminOnlyAsync(ctx, access.AccountId!);
                 await Refuse(ctx, StatusCodes.Status403Forbidden, "not_permitted",
                     $"You do not hold '{action}'.");
                 return null;

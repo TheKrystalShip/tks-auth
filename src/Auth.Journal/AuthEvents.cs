@@ -38,6 +38,16 @@ public static class AuthEvents
     /// </remarks>
     public const string LockedOut = "auth.locked_out";
 
+    /// <summary>
+    /// Somebody who does not administer was refused at an administrator-only surface: the admin
+    /// document, the admin client's token, or an admin-only route.
+    /// </summary>
+    /// <remarks>
+    /// Recorded once per (surface, account, address) per minute, with a follow-up carrying the count
+    /// of the refusals the first one did not, so a scanner cannot flood the journal.
+    /// </remarks>
+    public const string AdminRefused = "auth.admin.refused";
+
     /// <summary>An account came into existence.</summary>
     public const string UserProvisioned = "user.provisioned";
 
@@ -169,4 +179,19 @@ public static class SessionRevokeScopes
     /// there.
     /// </remarks>
     public const string Withdrawn = "withdrawn";
+}
+
+/// <summary>
+/// The surfaces an <see cref="AuthEvents.AdminRefused"/> line names.
+/// </summary>
+public static class AdminRefusalSurfaces
+{
+    /// <summary>A load of the admin document.</summary>
+    public const string Document = "document";
+
+    /// <summary>A token request of the admin client: an authorization or a refresh.</summary>
+    public const string Token = "token";
+
+    /// <summary>A request to an administrator-only route.</summary>
+    public const string Route = "route";
 }

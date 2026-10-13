@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
 
 using TheKrystalShip.Auth.Minting;
+using TheKrystalShip.Auth.Journal;
 using TheKrystalShip.Auth.Users;
 
 namespace TheKrystalShip.Auth.Anchor;
@@ -518,6 +519,30 @@ internal static class OidcEndpoints
                     ctx.Response.Headers.Location = "/authorize/wait";
                     return;
             }
+        }
+
+        // The admin pages' client is for administrators alone: the code is the credential, so it is not
+        // minted for anybody else.
+        if (request.ClientId == Application.ProviderClientId && !await AuthorityEndpoints.AdministersAsync(ctx, user))
+        {
+            await ctx.RequestServices.GetRequiredService<AdminRefusals>().RecordAsync(
+                AdminRefusalSurfaces.Token, ctx.Request.Path.Value ?? "/authorize", user.Username,
+                AdminRefusals.AddressOf(ctx), ctx.RequestAborted);
+
+            await EndRequestAsync(ctx, request);
+            string refused = DeniedRedirect(ctx, request);
+            if (json)
+            {
+                await Endpoints.WriteJson(ctx, StatusCodes.Status200OK, new CredentialAnswer(refused, null),
+                    AnchorJsonContext.Default.CredentialAnswer);
+                return;
+            }
+
+            ctx.Response.StatusCode = HttpMethods.IsPost(ctx.Request.Method)
+                ? StatusCodes.Status303SeeOther
+                : StatusCodes.Status302Found;
+            ctx.Response.Headers.Location = refused;
+            return;
         }
 
         string destination = await IssueCodeAsync(ctx, request, user, session);
@@ -1144,13 +1169,20 @@ internal static class OidcEndpoints
             _ => ctx.RequestServices.GetRequiredService<ClientRegistry>().Find(request.ClientId)?.Name ?? request.ClientId,
         };
 
-    private static void RedirectError(HttpContext ctx, string redirectUri, string? state, string error, string description)
+    private static void RedirectError(HttpContext ctx, string redirectUri, string? state, string error, string description) =>
+        ctx.Response.Redirect(ErrorLocation(ctx, redirectUri, state, error, description));
+
+    /// <summary>Where the admin pages' client is sent when the account does not administer.</summary>
+    private static string DeniedRedirect(HttpContext ctx, AuthorizeRequest request) =>
+        ErrorLocation(ctx, request.RedirectUri, request.State, "access_denied", "This account does not administer.");
+
+    private static string ErrorLocation(HttpContext ctx, string redirectUri, string? state, string error, string description)
     {
         var answer = new Dictionary<string, string?> { ["error"] = error, ["error_description"] = description };
         if (state is not null)
             answer["state"] = state;
         answer["iss"] = ctx.RequestServices.GetRequiredService<AnchorOptions>().Issuer;
-        ctx.Response.Redirect(QueryHelpers.AddQueryString(redirectUri, answer));
+        return QueryHelpers.AddQueryString(redirectUri, answer);
     }
 
     private static async Task RedirectErrorAsync(HttpContext ctx, AuthorizeRequest request, string error, string description)

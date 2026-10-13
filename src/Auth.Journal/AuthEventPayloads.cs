@@ -101,6 +101,26 @@ public static class AuthEventPayloads
         };
 
     /// <summary>
+    /// A refusal at an administrator-only surface.
+    /// </summary>
+    /// <param name="surface">Where: one of <see cref="AdminRefusalSurfaces"/>.</param>
+    /// <param name="route">The path that was asked for, or the token endpoint for a token.</param>
+    /// <param name="account">The username it was refused to, or null when nobody was identified.</param>
+    /// <param name="address">Where the request came from, or null when that is not known.</param>
+    /// <param name="count">How many refusals this line stands for.</param>
+    /// <returns>The payload writer.</returns>
+    public static Action<Utf8JsonWriter> AdminRefused(
+        string surface, string route, string? account, string? address, int count) =>
+        w =>
+        {
+            w.WriteString("Surface", surface ?? string.Empty);
+            w.WriteString("Route", route ?? string.Empty);
+            Nullable(w, "Account", account);
+            Nullable(w, "Address", address);
+            w.WriteNumber("Count", count);
+        };
+
+    /// <summary>
     /// An account provisioned, approved, disabled, deleted, or having its password changed.
     /// </summary>
     /// <param name="userId">The account.</param>
