@@ -22,7 +22,7 @@ function AssignmentsPage({ params }) {
     <SettingsSection icon="user-check" title="Assignments"
       action={
         <Select className="admin-scope" value={scope} aria-label="Scope"
-          onChange={(e) => go("assignments", { scope: e.target.value, label: params.label })}>
+          onChange={(e) => go("assignments", null, { scope: e.target.value, label: params.label })}>
           {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </Select>
       }>

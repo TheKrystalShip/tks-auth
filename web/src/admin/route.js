@@ -1,23 +1,29 @@
-// route.js — where the admin pages are, in the address's fragment: `#/<page>?<name>=<value>&…`.
+// route.js — where the admin pages are, in the address's fragment: `#/<page>[/<id>][?<name>=<value>&…]`.
 //
 // The fragment is the source of truth, so a link from another surface opens a page with its
 // parameters filled in — `#/assignments?scope=instance:<node>/<id>%23<nonce>&label=<name>` opens the
-// roles held on one server — and Back and Forward move between pages.
+// roles held on one server — and Back and Forward move between pages. An empty or unknown address is
+// the overview. A page's `id` is URI-decoded.
 
 import React from "react";
 
-const PAGES = ["accounts", "roles", "permissions", "catalog", "assignments", "services", "applications"];
+const PAGES = ["overview", "accounts", "roles", "permissions", "catalog", "assignments", "services", "applications"];
 
 function parse(hash) {
   const raw = String(hash || "").replace(/^#\/?/, "");
   const [path, query] = raw.split("?");
-  const page = PAGES.includes(path) ? path : PAGES[0];
-  return { page, params: Object.fromEntries(new URLSearchParams(query || "")) };
+  const [name, ...rest] = path.split("/");
+  const page = PAGES.includes(name) ? name : "overview";
+  let id = null;
+  if (PAGES.includes(name) && rest.length) {
+    try { id = decodeURIComponent(rest.join("/")) || null; } catch { id = null; }
+  }
+  return { page, id, params: Object.fromEntries(new URLSearchParams(query || "")) };
 }
 
-function hashOf(page, params) {
+function hashOf(page, id, params) {
   const query = new URLSearchParams(Object.entries(params || {}).filter(([, v]) => v != null && v !== "")).toString();
-  return "#/" + page + (query ? "?" + query : "");
+  return "#/" + page + (id ? "/" + encodeURIComponent(id) : "") + (query ? "?" + query : "");
 }
 
 function useRoute() {
@@ -30,8 +36,8 @@ function useRoute() {
   return route;
 }
 
-function go(page, params) {
-  window.location.hash = hashOf(page, params);
+function go(page, id, params) {
+  window.location.hash = hashOf(page, id, params);
 }
 
-export { PAGES, go, useRoute };
+export { PAGES, go, hashOf, useRoute };

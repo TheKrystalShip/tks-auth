@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the admin pages stand in the sidebar frame (web)
+
+- `/admin/` is drawn in krystal-ui's sidebar frame: the places grouped as People, Access and
+  Applications after the account places, each admin page under a page header, the signed-in person and
+  Sign out at the foot, a collapsible rail remembered by the browser and a drawer on phones. The
+  sidebar counts accounts awaiting approval, service requests waiting for a decision and unmapped
+  actions. The addresses accept an id after a page name, and an empty or unknown address opens the
+  overview. `npm run check` also holds `theme-boot.js` to krystal-ui's list of themes.
+
 ### Added — the admin-only routes answer allowlisted networks alone (nginx)
 
 - `GET /admin/`, `/auth/cluster/applications` with everything under it, and
