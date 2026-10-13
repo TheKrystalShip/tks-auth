@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — the admin-only routes answer allowlisted networks alone (nginx)
+
+- `GET /admin/`, `/auth/cluster/applications` with everything under it, and
+  `POST /auth/cluster/authority/checks` are answered only to the networks listed in
+  `/etc/nginx/kgsm/tks-auth.admin-allow` (loopback, RFC 1918 and unique-local ranges by default).
+  Any other address gets the daemon's own unknown-path 404, byte for byte what an unmatched path
+  returns. The file is a configuration file: `setup.sh` installs it only when absent and the package
+  lists it in `backup=()`. The Control Panel's and the members' routes are not fenced.
+
 ### Added — the admin client is issued to administrators alone, and refusals are journaled (daemon)
 
 - The authorization request of the admin pages' client (`tks-auth`) completes only for an account that
