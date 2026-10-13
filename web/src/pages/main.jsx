@@ -4,7 +4,7 @@ import "../styles/kit.css";
 import "./pages.css";
 import "@thekrystalship/krystal-ui/lib/theme";
 
-import { AccountApp } from "./AccountApp.jsx";
+import { AccountApp } from "./account/AccountApp.jsx";
 import { DeviceApp } from "./DeviceApp.jsx";
 import { SignInApp } from "./SignInApp.jsx";
 import { WaitApp } from "./WaitApp.jsx";

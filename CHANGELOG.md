@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the account page is four pages in the sidebar frame (web)
+
+- `/account` is drawn in the same sidebar frame as `/admin/`, as Profile, Sign-in methods, Devices &
+  sessions and Appearance, at `#/profile` (also the empty address), `#/sign-in`, `#/devices` and
+  `#/appearance`. The administration groups appear when `/account/me` says the account administers.
+  A returning provider round trip lands on Sign-in methods with its outcome as a notice at the top of
+  the page; `#confirm` stays on the page the person is on and asks for the proof.
+- Appearance is krystal-ui's `ThemePicker`, the one appearance preference of every page on the origin.
+- The rename, proof, password and disconnect dialogs are krystal-ui `Dialog` forms: Enter submits, the
+  password strength is a four-segment `Meter`, refusals are `Notice`s, and a provider proof is a
+  `ProviderButton`. The account page's stylesheet rules are gone.
+
 ### Changed — the admin pages stand in the sidebar frame (web)
 
 - `/admin/` is drawn in krystal-ui's sidebar frame: the places grouped as People, Access and
