@@ -2,8 +2,7 @@
 // into a field, a change run against the provider, and the fields of a client and the dialogs that
 // take them.
 
-import { FormField, FormSubmit } from "@thekrystalship/krystal";
-import { FormDialog } from "../chrome/FormDialog.jsx";
+import { FormDialog, FormField } from "@thekrystalship/krystal";
 import { api } from "./client.js";
 import { useRefusingForm } from "./kit.jsx";
 import { refusalOf } from "./stores.js";
@@ -58,8 +57,8 @@ function ClientDialog({ applicationId, onDone, onClose }) {
     },
   });
   return (
-    <FormDialog form={form} name="client-add" title="Add a client" icon="plus" onClose={onClose} notice={notice}
-      submit={<FormSubmit>Add client</FormSubmit>}>
+    <FormDialog form={form} data-dialog="client-add" title="Add a client" icon="plus" onClose={onClose} notice={notice}
+      submit="Add client">
       <ClientFields prefix="new" />
     </FormDialog>
   );
@@ -93,8 +92,8 @@ function RegisterDialog({ onDone, onClose }) {
   });
   const id = form.values.id.trim();
   return (
-    <FormDialog form={form} name="application-register" title="Register an application" icon="app-window"
-      onClose={onClose} notice={notice} submit={<FormSubmit>Register</FormSubmit>}>
+    <FormDialog form={form} data-dialog="application-register" title="Register an application" icon="app-window"
+      onClose={onClose} notice={notice} submit="Register">
       <FormField name="id" label="Id" control="input" mono autoFocus spellCheck="false" autoCapitalize="off" id="app-id" />
       <FormField name="name" label="Name" control="input" id="app-name" />
       <FormField name="audience" label="Audience" aside="optional" control="input" mono spellCheck="false"

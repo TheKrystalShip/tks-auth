@@ -100,14 +100,14 @@ function SignInCard({
       ) : null}
       submitLabel={registering ? "Create account" : "Sign in"}
       busyLabel={registering ? "Creating your account…" : "Signing in…"}
+      usernameExtra={registering ? (
+        <FormField name="displayName" label="Display name" aside="optional" control="input"
+          autoComplete="nickname" placeholder={username.trim()} />
+      ) : null}
+      passwordHint={registering ? <PasswordStrength value={password} /> : null}
       extraFields={registering ? (
-        <>
-          <PasswordStrength value={password} />
-          <FormField name="confirm" label="Confirm password" control="password" autoComplete="new-password"
-            hint={confirm && confirm === password ? "Passwords match" : null} />
-          <FormField name="displayName" label="Display name" aside="optional" control="input"
-            autoComplete="nickname" placeholder={username.trim()} />
-        </>
+        <FormField name="confirm" label="Confirm password" control="password" autoComplete="new-password"
+          hint={confirm && confirm === password ? "Passwords match" : null} />
       ) : null} />
   );
 }

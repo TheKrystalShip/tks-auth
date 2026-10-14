@@ -15,9 +15,8 @@
 import React from "react";
 
 import {
-  Button, ConfirmDialog, DetailPage, FormField, FormSubmit, providerLabel, SettingsRow, SettingsSection, useStore,
+  Button, ConfirmDialog, DetailPage, FormDialog, FormField, providerLabel, SettingsRow, SettingsSection, useStore,
 } from "@thekrystalship/krystal";
-import { FormDialog } from "../chrome/FormDialog.jsx";
 import { deviceIcon, deviceKind, deviceName } from "../lib/devices.js";
 import { when } from "../lib/formatting.js";
 import { StatusPill, handleOf, nameOf, providersOf, useAccounts } from "./accountParts.jsx";
@@ -42,7 +41,7 @@ function AccountPage({ id }) {
     return (
       <>
         <RefusalNote refusal={refusal} />
-        <DetailPage isEmpty emptyTitle="No such account"
+        <DetailPage isEmpty emptyIcon="user-x" emptyTitle="No such account"
           emptyAction={<Button variant="outline" icon="arrow-left" onClick={() => go("accounts")}>Back to accounts</Button>} />
       </>
     );
@@ -211,8 +210,8 @@ function PasswordDialog({ user, name, onClose, onDone }) {
     },
   });
   return (
-    <FormDialog form={form} name="set-password" title={user.hasPassword ? "Reset password" : "Set a password"}
-      icon="lock" sub={name} onClose={onClose} notice={notice} submit={<FormSubmit busyLabel="Saving…">Save</FormSubmit>}>
+    <FormDialog form={form} data-dialog="set-password" title={user.hasPassword ? "Reset password" : "Set a password"}
+      icon="lock" sub={name} onClose={onClose} notice={notice} submit="Save" busyLabel="Saving…">
       <FormField name="password" label="New password" control="password" id="account-password"
         autoComplete="new-password" autoFocus />
     </FormDialog>
@@ -227,7 +226,7 @@ function DeleteDialog({ user, name, onClose, onDone }) {
         try {
           await api.users.remove(user.id);
         } catch (e) {
-          return { refusal: refusalOf(e).message };
+          return { refusal: <RefusalNote refusal={refusalOf(e)} compact /> };
         }
         onDone();
       }}>

@@ -16,10 +16,9 @@
 import React from "react";
 
 import {
-  AccountAvatar, Button, FormField, FormSubmit, ListPage, ListRow, Pill, SettingsRow, SettingsSection, Toolbar,
+  AccountAvatar, Button, FormDialog, FormField, ListPage, ListRow, Pill, SettingsRow, SettingsSection, Toolbar,
   ToolbarCount, ToolbarFilters, ToolbarSearch, useFilters, useStore,
 } from "@thekrystalship/krystal";
-import { FormDialog } from "../chrome/FormDialog.jsx";
 import { StatusPill, nameOf, providersOf, useAccounts } from "./accountParts.jsx";
 import { api } from "./client.js";
 import { RefusalNote, roleName, useRefusingForm } from "./kit.jsx";
@@ -153,8 +152,8 @@ function CreateDialog({ onClose, onCreated }) {
     },
   });
   return (
-    <FormDialog form={form} name="create-account" title="Add an account" icon="user-plus" onClose={onClose}
-      notice={notice} submit={<FormSubmit busyLabel="Creating…">Create</FormSubmit>}>
+    <FormDialog form={form} data-dialog="create-account" title="Add an account" icon="user-plus" onClose={onClose}
+      notice={notice} submit="Create" busyLabel="Creating…">
       <FormField name="username" label="Username" control="input" id="user-username" autoCapitalize="off"
         spellCheck="false" autoFocus />
       <FormField name="displayName" label="Display name" control="input" id="user-display" />

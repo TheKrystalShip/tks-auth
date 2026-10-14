@@ -1,8 +1,7 @@
 // roleParts — what the Roles list and the role page share: the roles a person may be given, the rules'
 // verdicts on editing them, and the dialog that names one. The permissions' pages use the dialog too.
 
-import { FormField, FormSubmit } from "@thekrystalship/krystal";
-import { FormDialog } from "../chrome/FormDialog.jsx";
+import { FormDialog, FormField } from "@thekrystalship/krystal";
 import { useRefusingForm } from "./kit.jsx";
 
 const PEOPLES = new Set(["owner", "custom", "everyone"]);
@@ -32,8 +31,8 @@ function NameDialog({ kind = "role", title, icon, initial, submit, onSubmit, onC
     },
   });
   return (
-    <FormDialog form={form} name={kind + "-name"} title={title} icon={icon} onClose={onClose} notice={notice}
-      submit={<FormSubmit>{submit}</FormSubmit>}>
+    <FormDialog form={form} data-dialog={kind + "-name"} title={title} icon={icon} onClose={onClose} notice={notice}
+      submit={submit}>
       <FormField name="name" label="Name" control="input" autoFocus />
     </FormDialog>
   );

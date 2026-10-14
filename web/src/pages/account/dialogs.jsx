@@ -2,9 +2,8 @@
 // provider's refusal stands in the dialog as a danger Notice.
 
 import {
-  ConfirmDialog, FormField, FormSubmit, ProviderButton, providerLabel, useForm,
+  ConfirmDialog, FormDialog, FormField, ProviderButton, providerLabel, useForm,
 } from "@thekrystalship/krystal";
-import { FormDialog } from "../../chrome/FormDialog.jsx";
 import { PASSWORD_MIN } from "../../lib/credentialRules.js";
 import { deleteJson, postJson } from "../api.js";
 import { PasswordStrength } from "../PasswordStrength.jsx";
@@ -22,8 +21,8 @@ function RenameDialog({ row, onClose, onDone }) {
     },
   });
   return (
-    <FormDialog form={form} name="rename" title="Rename device" icon="tv" onClose={onClose}
-      submit={<FormSubmit busyLabel="Saving…">Save</FormSubmit>}>
+    <FormDialog form={form} data-dialog="rename" title="Rename device" icon="tv" onClose={onClose}
+      submit="Save" busyLabel="Saving…">
       <FormField name="name" label="Name" control="input" autoComplete="off" autoFocus />
     </FormDialog>
   );
@@ -43,8 +42,8 @@ function ProveDialog({ me, onClose, onProved, onProvider }) {
     },
   });
   return (
-    <FormDialog form={form} name="prove" title="Confirm it’s you" icon="shield-check" onClose={onClose}
-      submit={me.hasPassword ? <FormSubmit busyLabel="Checking…">Confirm</FormSubmit> : null}>
+    <FormDialog form={form} data-dialog="prove" title="Confirm it’s you" icon="shield-check" onClose={onClose}
+      submit={me.hasPassword ? "Confirm" : null} busyLabel="Checking…">
       {me.hasPassword ? (
         <FormField name="password" label="Password" control="password" autoComplete="current-password" autoFocus />
       ) : (
@@ -77,8 +76,8 @@ function PasswordDialog({ hasPassword, onClose, onReauth, onDone }) {
     },
   });
   return (
-    <FormDialog form={form} name="password" title={hasPassword ? "Change your password" : "Set a password"} icon="lock" onClose={onClose}
-      submit={<FormSubmit busyLabel="Saving…">Save password</FormSubmit>}>
+    <FormDialog form={form} data-dialog="password" title={hasPassword ? "Change your password" : "Set a password"} icon="lock" onClose={onClose}
+      submit="Save password" busyLabel="Saving…">
       <FormField name="next" label="New password" control="password" autoComplete="new-password" autoFocus
         hint={form.values.next ? <PasswordStrength value={form.values.next} /> : null} />
       <FormField name="again" label="New password again" control="password" autoComplete="new-password" />

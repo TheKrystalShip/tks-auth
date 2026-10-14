@@ -71,8 +71,9 @@ function useRefusingForm(options) {
   return { form, notice: <RefusalNote refusal={refusal} compact /> };
 }
 
-// What a ConfirmDialog's `onConfirm` resolves from a change that answers `{ ok, refusal }`.
-const confirmed = (r) => (r.ok ? undefined : { refusal: r.refusal.message });
+// What a ConfirmDialog's `onConfirm` resolves from a change that answers `{ ok, refusal }`: the refusal
+// as a RefusalNote, so its reauth link and action list show in the confirm.
+const confirmed = (r) => (r.ok ? undefined : { refusal: <RefusalNote refusal={r.refusal} compact /> });
 
 // A lock on a row the rules close, the provider's reason in its tooltip. The row's own `sub` carries
 // the reason in words, where a sentence has room.

@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the pages draw the remaining shapes through Krystal 0.37.0 (web), 4.11.2
+
+- **The register tab's Display name** follows the username and the strength meter hangs under the password
+  field, through `SignInScreen`'s `usernameExtra` and `passwordHint`.
+- **The account page's "No such account"** is `DetailPage`'s `empty` state, with its `user-x` icon.
+- **Every dialog that is a form** (the account dialogs, the admin dialogs) is Krystal's `FormDialog`.
+- **A refusal in a confirm** is the provider's `RefusalNote` (warn tone, lock icon, action list and the
+  reauthentication link), drawn by `ConfirmDialog` as given.
+
 ### Fixed — every design-system sheet (web), 4.11.1
 
 - **The pages import Krystal's `styles.css` whole** (0.36.1), so the account list's and assignments'
