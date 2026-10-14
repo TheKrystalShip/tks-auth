@@ -110,6 +110,7 @@ public sealed class ProviderPagesTests(AnchorFixture anchor)
             Assert.Equal(HttpStatusCode.OK, page.StatusCode);
             Assert.Contains("bundle sign-in", html, StringComparison.Ordinal);
             Assert.Contains("href=\"/authorize/discord\"", html, StringComparison.Ordinal);
+            Assert.Contains("class=\"k-btn k-btn--secondary k-btn--lg k-btn--wide floor-provider\"", html, StringComparison.Ordinal);
             Assert.DoesNotContain(ProviderBundle.ProvidersMarker, html, StringComparison.Ordinal);
             Assert.Contains("form-action 'self' https://pages.test",
                 page.Headers.GetValues("Content-Security-Policy").Single(), StringComparison.Ordinal);

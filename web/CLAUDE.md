@@ -18,14 +18,26 @@ npm run lint              # 0 errors
   Every call is same-origin and authenticated by the provider's cookie; nothing these pages hold can call
   an application, so they may import nothing from `src/admin/` (`npm run check` walks the import graph).
   Each document carries its own **floor** — a sign-in form that posts without script, the providers'
-  marker the daemon fills, a wait that refreshes only under `<noscript>`, a code form the provider answers
-  with the device and its two buttons — and the application removes it on mount.
-- **`admin.html` → `src/admin/`.** Accounts and approval, roles, permissions, the catalog grouped by
-  application, assignments, service requests and applications. An OpenID Connect client of the provider
-  that served it — the built-in public client `tks-auth`, its redirect `/admin/` on the issuer's own
-  origin (`session.js`) — holding a bearer for tks-auth's own application, which the admin routes
-  accept. The bearer is attached in `client.js` alone, which renews it once when it is refused
-  (`eslint.config.js` enforces it).
+  marker the daemon fills with links carrying krystal-ui's button classes, a wait that refreshes only
+  under `<noscript>`, a code form the provider answers with the device and its two buttons — and the
+  application removes it on mount.
+  - The account document is four pages in the frame: Profile, Sign-in methods, Devices & sessions and
+    Appearance (`src/pages/account/`). `src/pages/route.js` maps `#/<page>` to them and reads, once, the
+    fragments a round trip through a provider or another surface leaves (`#linked=`, `#link_error=`,
+    `#proved`, `#confirm`, `#reauth_error=`).
+- **`admin.html` → `src/admin/`.** Overview, accounts, roles, permissions, the catalog grouped by
+  application, assignments, service requests and applications, in the frame. An OpenID Connect client of
+  the provider that served it — the built-in public client `tks-auth`, its redirect `/admin/` on the
+  issuer's own origin (`session.js`) — holding a bearer for tks-auth's own application, which the admin
+  routes accept. The bearer is attached in `client.js` alone, which renews it once when it is refused
+  (`eslint.config.js` enforces it). The daemon serves this document to administrators only and answers
+  everybody else as it answers an unknown path.
+  - Addresses are `#/<page>[/<id>][?<name>=<value>]` (`src/admin/route.js`); an account, a role, a
+    permission and an application each open on a page of their own at `#/<page>/<id>`.
+- **The frame** (`src/chrome/Frame.jsx`, places in `src/chrome/nav.js`) is krystal-ui's `AppShell` and
+  `Sidebar`, shared by the account and admin documents. It imports nothing from `src/admin/`; the
+  Administration groups appear when the caller says the account administers, and moving between the two
+  documents is a plain link.
 
 **These pages name no action.** A control is gated on the request it would make, against the
 provider's published operations and the caller's `/me/access` (`src/admin/stores.js`, over
@@ -45,7 +57,16 @@ React's `style={…}` props are set through the CSSOM and are not affected.
 
 ## The stylesheet
 
-`src/styles/kit.css` is a barrel: the design system's sheets and this app's partials, in cascade
-order, which is load-bearing (a dialog's `.modal` width wins over the form inside it). The sign-in,
-wait and account pages render pixel for pixel as the panel's sign-in family does, and the harness's
-`oidc-pages.mjs` compares them against reference shots — a rule changed here is checked there.
+`src/styles/kit.css` imports krystal-ui's sheets in cascade order, which is load-bearing, with
+`base.css` after the tokens. The other local CSS is `src/admin/admin.css` and `src/pages/pages.css`:
+only what is tks-auth's own, written with tokens and no literal colour. Every control, field, list,
+pill, dialog and card is krystal-ui's, and its class names are the package's public interface, so a
+rule here targets a package class only to place it.
+
+`public/theme-boot.js` applies the stored theme before first paint (the policy forbids inline script).
+Its theme lists mirror krystal-ui's `THEME_OPTS`; `npm run check` fails when they drift.
+
+## Harness
+
+`scripts/visual-harness/` covers these pages: `oidc-pages.mjs` (sign-in, wait, account, device),
+`oidc-provider.mjs`, `p5-access.mjs`, `p5-applications.mjs`, `auth-frame.mjs` and `auth-admin.mjs`.

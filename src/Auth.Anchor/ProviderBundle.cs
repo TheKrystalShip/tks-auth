@@ -172,7 +172,7 @@ internal sealed class ProviderBundle(AnchorOptions options)
         var links = new StringBuilder();
         foreach (string provider in providers)
         {
-            links.Append("<a class=\"floor-provider\" href=\"/authorize/").Append(WebUtility.HtmlEncode(provider))
+            links.Append("<a class=\"k-btn k-btn--secondary k-btn--lg k-btn--wide floor-provider\" href=\"/authorize/").Append(WebUtility.HtmlEncode(provider))
                 .Append("\">Continue with ").Append(WebUtility.HtmlEncode(ProviderPages.DisplayName(provider)))
                 .Append("</a>");
         }

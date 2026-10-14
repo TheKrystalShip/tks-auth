@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — The floor's provider links
+
+- The no-script sign-in floor's provider links carry krystal-ui's `k-btn k-btn--secondary k-btn--lg k-btn--wide`
+  classes beside `floor-provider`, so they draw as the application's provider buttons from the package's own
+  stylesheet; the local rule for them is deleted. The built-in floor (`/authorize/floor.css`) keeps its own markup.
+
 ### Changed — Applications (web)
 
 - `#/applications` is a `List` of `ListRow`s: the name, the id, audience and manifest reading as its sub, a

@@ -1,11 +1,11 @@
 /* The sign-in, wait, device and account pages — what they need beyond the kit.
 
-   What is here is what only these pages have: the floor's provider links (written by the daemon into
-   a static document, so they are plain anchors rather than the kit's buttons), the sign-in card's
-   arrangement, and the account document's column. */
+   What is here is what only these pages have: the column the daemon's floor provider links stand in
+   (the links themselves carry the kit's button classes), the sign-in card's arrangement, and the
+   account document's column. */
 
-/* The no-script floors' provider links, which the daemon writes at its marker as plain anchors: drawn
-   as the kit's secondary large wide button, with a rule under them in place of the app's divider. */
+/* The no-script floor's provider links, which the daemon writes at its marker as anchors carrying the
+   kit's secondary large wide button classes: stacked, with a rule under them in place of the app's divider. */
 .floor-providers {
   display: flex;
   flex-direction: column;
@@ -19,32 +19,6 @@
 .floor-providers:not(:empty) {
   padding-bottom: 18px;
   border-bottom: 1px solid var(--border-subtle);
-}
-
-.floor-provider {
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 38px;
-  padding: 0 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  color: var(--fg-2);
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: var(--w-semibold);
-  line-height: 1;
-  text-decoration: none;
-  transition: background var(--d-fast) var(--ease-out), color var(--d-fast) var(--ease-out),
-    border-color var(--d-fast) var(--ease-out);
-}
-
-.floor-provider:hover {
-  background: var(--surface-3);
-  border-color: var(--border-strong);
-  color: var(--fg-1);
 }
 
 /* The sign-in card's own arrangement: the neutral providers as a 2-up grid, the rule between the two
