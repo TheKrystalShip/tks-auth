@@ -12,7 +12,9 @@
 
 import React from "react";
 
-import { AccountAvatar, Button, Dialog, IconButton, List, ListRow, Notice, Pill, Select } from "@thekrystalship/krystal";
+import {
+  AccountAvatar, ConfirmDialog, Form, FormField, FormSubmit, IconButton, List, ListRow, Notice, Pill, useForm,
+} from "@thekrystalship/krystal";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
 import { Locked, RefusalNote, parseInstance, roleName, useChecks, useScopeOptions, useScopeText } from "./kit.jsx";
@@ -40,9 +42,15 @@ function Assignments({ view, accountId, scope }) {
   const roles = view.roles.filter((r) => r.kind === "custom" || r.kind === "owner")
     .sort((a, b) => a.rank - b.rank);
 
-  const [who, setWho] = React.useState(accountId || "");
-  const [where, setWhere] = React.useState(scope || "cluster");
-  const [role, setRole] = React.useState("");
+  const form = useForm({
+    defaultValues: { who: accountId || "", where: scope || "cluster", role: "" },
+    onSubmit: async ({ role }) => {
+      if (!account || !role) return;
+      const r = await run({ kind: "assign", accountId: account, roleId: role, scope: at });
+      if (r.ok) form.setValue("role", "");
+    },
+  });
+  const { who, where, role } = form.values;
   const account = accountId || who;
   const at = scope || where;
   const assignRefusal = editRefusal("assign", targetOf(at));
@@ -113,36 +121,30 @@ function Assignments({ view, accountId, scope }) {
         )}
 
       {(canAssign || !scope) && (
-        <form className="admin-assign__form" onSubmit={async (e) => {
-          e.preventDefault();
-          if (!account || !role) return;
-          const r = await run({ kind: "assign", accountId: account, roleId: role, scope: at });
-          if (r.ok) setRole("");
-        }}>
+        <Form form={form} className="admin-assign__form">
           {!accountId && (
-            <Select value={who} aria-label="Account" disabled={busy} onChange={(e) => setWho(e.target.value)}>
+            <FormField name="who" control="select" aria-label="Account" disabled={busy}>
               <option value="">Account…</option>
               {people.map((p) => <option key={p.id} value={p.id}>{p.displayName || p.username}</option>)}
-            </Select>
+            </FormField>
           )}
           {!scope && (
-            <Select value={where} aria-label="Scope" disabled={busy} onChange={(e) => setWhere(e.target.value)}>
+            <FormField name="where" control="select" aria-label="Scope" disabled={busy}>
               {scopeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </Select>
+            </FormField>
           )}
-          <Select value={role} aria-label="Role" disabled={busy || !canAssign || !account} onChange={(e) => setRole(e.target.value)}>
+          <FormField name="role" control="select" aria-label="Role" disabled={busy || !canAssign || !account}>
             <option value="">Role…</option>
             {roles.map((r) => {
               const v = verdictForRole(r.id);
               const closed = v && !v.allowed;
               return <option key={r.id} value={r.id} disabled={!!closed}>{r.name}{closed ? " — " + v.message : ""}</option>;
             })}
-          </Select>
-          <Button type="submit" variant="primary" busy={busy}
-            disabled={busy || !canAssign || !account || !role || (chosen && !chosen.allowed)}>
+          </FormField>
+          <FormSubmit disabled={busy || !canAssign || !account || !role || (chosen && !chosen.allowed)}>
             Assign
-          </Button>
-        </form>
+          </FormSubmit>
+        </Form>
       )}
       {!canAssign && account && (
         <Notice tone="warn" icon="lock" className="admin-refusal admin-refusal--compact">
@@ -151,21 +153,11 @@ function Assignments({ view, accountId, scope }) {
       )}
 
       {revoking && (
-        <Dialog title={"Take " + roleName(view, revoking.roleId) + " away?"} icon="user-minus" canClose={!busy}
-          onClose={() => setRevoking(null)}
-          foot={(
-            <>
-              <Button variant="outline" disabled={busy} onClick={() => setRevoking(null)}>Keep</Button>
-              <Button variant="danger" busy={busy} onClick={async () => {
-                await run({ kind: "revoke", assignmentId: revoking.id });
-                setRevoking(null);
-              }}>Take away</Button>
-            </>
-          )}>
-          <p className="admin-dialog-text" data-dialog="confirm-take-away">
-            {nameOf(revoking.accountId)} stops holding {roleName(view, revoking.roleId)} at {scopeText(revoking.scope)}.
-          </p>
-        </Dialog>
+        <ConfirmDialog data-dialog="confirm-take-away" title={"Take " + roleName(view, revoking.roleId) + " away?"}
+          icon="user-minus" tone="danger" confirm="Take away" cancel="Keep" onClose={() => setRevoking(null)}
+          onConfirm={async () => { await run({ kind: "revoke", assignmentId: revoking.id }); }}>
+          {nameOf(revoking.accountId)} stops holding {roleName(view, revoking.roleId)} at {scopeText(revoking.scope)}.
+        </ConfirmDialog>
       )}
     </div>
   );

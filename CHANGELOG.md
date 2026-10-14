@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the pages draw their forms, dialogs and lists through Krystal 0.35.0 (web)
+
+- Every form (sign-in and register, the device code and its decision, the account dialogs, the admin
+  dialogs and the application settings) is a `useForm` handle over `Form`, `FormField` and `FormSubmit`:
+  required, length and confirmation rules show under their fields on submit, and a refusal from the provider
+  stands beside the fields.
+- The sign-in page is Krystal's `SignInScreen`, with the register tab's fields, the strength meter and
+  "Forgot?" as its slots.
+- Disconnecting a provider, ending sessions, deleting an account, a role or a permission, taking a role away,
+  revoking a requirement, rotating a secret and removing a client or an application are `ConfirmDialog`s.
+- The accounts and roles lists are `ListPage`; the account and application pages are `DetailPage`.
+- `npm run lint` and `npm run lint:css` report the package's rules as errors.
+
 ### Changed — the pages run on Krystal 0.32.1 (web)
 
 - The sign-in, wait, account, device and admin pages build against `@thekrystalship/krystal` 0.32.1, the

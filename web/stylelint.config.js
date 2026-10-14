@@ -1,1 +1,1 @@
-export default { extends: ["@thekrystalship/krystal/stylelint"] };
+export default { extends: ["@thekrystalship/krystal/stylelint"], defaultSeverity: "error" };

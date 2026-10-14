@@ -22,11 +22,6 @@ function usernameProblem(username) {
   return null;
 }
 
-function usernameOk(username) {
-  const v = (username || "").trim();
-  return !!v && !usernameProblem(v);
-}
-
 // Four bands, because a five-point scale invites a number nothing measures. Length is what the
 // daemon enforces; the extra bands describe a password comfortably past the floor rather than
 // sitting on it.
@@ -42,4 +37,4 @@ function passwordStrength(password) {
 
 const passwordOk = (password) => (password || "").length >= PASSWORD_MIN;
 
-export { PASSWORD_MIN, USERNAME_MAX, USERNAME_MIN, passwordOk, passwordStrength, usernameOk, usernameProblem };
+export { PASSWORD_MIN, USERNAME_MAX, USERNAME_MIN, passwordOk, passwordStrength, usernameProblem };

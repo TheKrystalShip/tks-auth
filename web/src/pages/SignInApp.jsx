@@ -1,8 +1,8 @@
 import React from "react";
 import {
-  Button, CardScreen, Field, Input, Notice, OptionList, PasswordInput, ProviderButton, providerLabel,
+  Button, CardScreen, FormField, Notice, SignInScreen, providerLabel, useForm,
 } from "@thekrystalship/krystal";
-import { passwordOk, usernameOk, usernameProblem } from "../lib/credentialRules.js";
+import { PASSWORD_MIN, usernameProblem } from "../lib/credentialRules.js";
 import { getJson, postJson } from "./api.js";
 import { PasswordStrength } from "./PasswordStrength.jsx";
 
@@ -25,193 +25,90 @@ const TABS = [
   { value: "register", label: "Register" },
 ];
 
-// The providers wired here, in the order the provider reports them. One is a branded full-width
-// button; several are a neutral 2-up grid, because stacked brand fills imply a recommendation nobody
-// made.
-function ProviderButtons({ providers, registering, busy, disabled, onPick }) {
-  if (!providers.length) return null;
-
-  if (providers.length === 1) {
-    const p = providers[0];
-    return (
-      <ProviderButton
-        provider={p} brand wide size="lg"
-        busy={busy === p}
-        disabled={disabled}
-        onClick={() => onPick(p)}>
-        {busy === p
-          ? "Redirecting to " + providerLabel(p) + "…"
-          : (registering ? "Sign up" : "Continue") + " with " + providerLabel(p)}
-      </ProviderButton>
-    );
-  }
-
-  return (
-    <div className="signin-providers">
-      {providers.map((p) => (
-        <ProviderButton
-          key={p} provider={p} wide
-          busy={busy === p}
-          disabled={disabled}
-          onClick={() => onPick(p)}>
-          {providerLabel(p) + (busy === p ? "…" : "")}
-        </ProviderButton>
-      ))}
-    </div>
-  );
-}
-
 // `onSubmit({ username, password, displayName })` resolves `{ ok, error, unreachable }`. On `ok` the
-// card stays busy: the page is navigating, and a card that re-enabled itself would offer a second
-// submission of the same credential.
+// card stays inert: the page is navigating, and a card that re-enabled itself would offer a second
+// submission of the same credential. Switching tabs keeps what was typed: somebody who tried to sign
+// in and finds they have no account should not retype their username to make one.
 function SignInCard({
-  tab, onTab, providers, registrationOpen, available, anchorError, onAnchorError, onSubmit, onProvider,
+  tab, onTab, providers, registrationOpen, available, anchorError, onAnchorError, onSubmit, onProvider, foot,
 }) {
   const registering = tab === "register";
+  const [leaving, setLeaving] = React.useState(false);
+  const [busyProvider, setBusyProvider] = React.useState(null);
 
-  const [username, setUsername] = React.useState("");
-  const [displayName, setDisplayName] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [confirm, setConfirm] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
-  const [formError, setFormError] = React.useState(null);
-
-  // Switching tabs keeps what was typed: somebody who tried to sign in and finds they have no account
-  // should not retype their username to make one.
-  React.useEffect(() => { setFormError(null); }, [tab]);
-
-  const nameProblem = registering && username ? usernameProblem(username) : null;
-  const confirmMismatch = registering && confirm.length > 0 && confirm !== password;
-  const confirmMatch = registering && confirm.length > 0 && confirm === password;
-
-  const canSubmit = !busy && available && (registering
-    ? usernameOk(username) && passwordOk(password) && confirm === password
-    : !!username && !!password);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-    setBusy(true);
-    setFormError(null);
-    if (onAnchorError) onAnchorError(null);
-
-    const result = await onSubmit({
-      username: registering ? username.trim() : username,
-      password,
-      displayName: displayName.trim(),
-    });
-
-    if (!result.ok) {
-      setBusy(false);
+  const form = useForm({
+    defaultValues: { username: "", displayName: "", password: "", confirm: "" },
+    mode: "touched",
+    rules: registering
+      ? { username: { required: true }, password: { required: true, minLength: { value: PASSWORD_MIN, message: "At least " + PASSWORD_MIN + " characters." } }, confirm: { required: "Confirm the password" } }
+      : { username: { required: true }, password: { required: true } },
+    validate: registering
+      ? {
+        username: (v) => usernameProblem(v),
+        confirm: (v, all) => (v !== all.password ? "Passwords don’t match" : null),
+      }
+      : {},
+    onSubmit: async (values) => {
+      if (onAnchorError) onAnchorError(null);
+      const result = await onSubmit({
+        username: registering ? values.username.trim() : values.username,
+        password: values.password,
+        displayName: values.displayName.trim(),
+      });
+      if (result.ok) { setLeaving(true); return; }
       if (result.unreachable && onAnchorError) onAnchorError(result.error);
-      else setFormError(result.error);
-    }
-  };
+      else return { message: result.error };
+    },
+  });
+
+  // A refusal belongs to the tab it answered.
+  React.useEffect(() => { form.setFormError(null); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bounce = (provider) => {
-    if (busy || !available) return;
-    setBusy(provider);
+    setBusyProvider(provider);
     onProvider(provider);
   };
 
-  const unreachable = !!anchorError;
-  const locked = unreachable || !!busy;
+  const closed = registering && !registrationOpen;
+  const { username, password, confirm } = form.values;
 
   return (
-    <>
-      {anchorError ? <Notice tone="danger">{anchorError}</Notice> : null}
-
-      <OptionList variant="segmented" label="Sign in or register" value={tab} onChange={onTab}
-        disabled={!!busy} options={TABS} />
-
-      <ProviderButtons
-        providers={providers}
-        registering={registering}
-        busy={typeof busy === "string" ? busy : null}
-        disabled={unreachable || !!busy}
-        onPick={bounce} />
-
-      {registering && !registrationOpen ? (
-        <Notice tone="warn" icon="ban">This cluster isn’t taking new accounts.</Notice>
-      ) : (
+    <SignInScreen
+      mark={MARK}
+      wordmark="The Krystal Ship"
+      tagline={registering ? "Create an account." : "Sign in."}
+      foot={foot}
+      error={anchorError}
+      tabs={TABS} tab={tab} onTab={onTab}
+      providers={providers}
+      busyProvider={busyProvider}
+      onProvider={bounce}
+      providerText={(p) => (providers.length === 1
+        ? (registering ? "Sign up" : "Continue") + " with " + providerLabel(p)
+        : providerLabel(p))}
+      notice={closed ? <Notice tone="warn" icon="ban">This cluster isn’t taking new accounts.</Notice> : null}
+      password={!closed}
+      divider="or with a KGSM account"
+      form={form}
+      busy={!available || leaving || !!anchorError}
+      passwordAutoComplete={registering ? "new-password" : "current-password"}
+      passwordAside={!registering ? (
+        <Button variant="link" size="xs"
+          onClick={() => form.setFormError("Ask whoever manages accounts on this cluster to reset it.")}>
+          Forgot?
+        </Button>
+      ) : null}
+      submitLabel={registering ? "Create account" : "Sign in"}
+      busyLabel={registering ? "Creating your account…" : "Signing in…"}
+      extraFields={registering ? (
         <>
-          {providers.length ? (
-            <div className="signin-divider"><span>or with a KGSM account</span></div>
-          ) : null}
-
-          <form className="signin-form" onSubmit={submit}>
-            {formError ? <Notice tone="danger">{formError}</Notice> : null}
-
-            <Field label="Username" error={nameProblem}>
-              <Input
-                id="auth-username" wide
-                type="text"
-                autoComplete="username"
-                autoCapitalize="off"
-                spellCheck="false"
-                value={username}
-                invalid={!!nameProblem}
-                disabled={locked}
-                onChange={(e) => { setUsername(e.target.value); if (formError) setFormError(null); }} />
-            </Field>
-
-            {registering ? (
-              <Field label="Display name" aside="optional">
-                <Input
-                  id="auth-display" wide
-                  type="text"
-                  autoComplete="nickname"
-                  placeholder={username.trim()}
-                  value={displayName}
-                  disabled={locked}
-                  onChange={(e) => setDisplayName(e.target.value)} />
-              </Field>
-            ) : null}
-
-            <Field
-              label="Password"
-              aside={!registering ? (
-                <Button
-                  variant="link" size="xs"
-                  onClick={() => setFormError("Ask whoever manages accounts on this cluster to reset it.")}>
-                  Forgot?
-                </Button>
-              ) : null}>
-              <PasswordInput
-                id="auth-password" wide
-                aria-label="Password"
-                autoComplete={registering ? "new-password" : "current-password"}
-                value={password}
-                disabled={locked}
-                onChange={(e) => { setPassword(e.target.value); if (formError) setFormError(null); }} />
-              {registering ? <PasswordStrength value={password} /> : null}
-            </Field>
-
-            {registering ? (
-              <Field
-                label="Confirm password"
-                error={confirmMismatch ? "Passwords don’t match" : null}
-                hint={confirmMatch ? "Passwords match" : null}>
-                <PasswordInput
-                  id="auth-confirm" wide
-                  aria-label="Confirm password"
-                  autoComplete="new-password"
-                  value={confirm}
-                  invalid={confirmMismatch}
-                  disabled={locked}
-                  onChange={(e) => setConfirm(e.target.value)} />
-              </Field>
-            ) : null}
-
-            <Button type="submit" variant="primary" size="lg" wide busy={busy === true} disabled={!canSubmit}>
-              {busy === true
-                ? (registering ? "Creating your account…" : "Signing in…")
-                : (registering ? "Create account" : "Sign in")}
-            </Button>
-          </form>
+          <PasswordStrength value={password} />
+          <FormField name="confirm" label="Confirm password" control="password" autoComplete="new-password"
+            hint={confirm && confirm === password ? "Passwords match" : null} />
+          <FormField name="displayName" label="Display name" aside="optional" control="input"
+            autoComplete="nickname" placeholder={username.trim()} />
         </>
-      )}
-    </>
+      ) : null} />
   );
 }
 
@@ -255,22 +152,17 @@ function SignInApp() {
   const name = context && !context.client.own ? context.client.name : null;
 
   return (
-    <CardScreen
-      mark={MARK}
-      wordmark="The Krystal Ship"
-      tagline={registering ? "Create an account." : "Sign in."}
-      foot={name ? <span>{registering ? "Creating your account for" : "Signing in to"} <b>{name}</b></span> : null}>
-      <SignInCard
-        tab={tab}
-        onTab={setTab}
-        providers={context ? context.providers || [] : []}
-        registrationOpen={!!(context && context.registration)}
-        available={!!context}
-        anchorError={anchorError}
-        onAnchorError={setAnchorError}
-        onSubmit={submit}
-        onProvider={(provider) => window.location.assign("/authorize/" + encodeURIComponent(provider))} />
-    </CardScreen>
+    <SignInCard
+      tab={tab}
+      onTab={setTab}
+      providers={context ? context.providers || [] : []}
+      registrationOpen={!!(context && context.registration)}
+      available={!!context}
+      anchorError={anchorError}
+      onAnchorError={setAnchorError}
+      onSubmit={submit}
+      onProvider={(provider) => window.location.assign("/authorize/" + encodeURIComponent(provider))}
+      foot={name ? <span>{registering ? "Creating your account for" : "Signing in to"} <b>{name}</b></span> : null} />
   );
 }
 

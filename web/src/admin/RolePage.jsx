@@ -10,9 +10,9 @@
 import React from "react";
 
 import {
-  Breadcrumbs, Button, Checkbox, Dialog, PageHeader, SettingsRow, SettingsSection,
+  Breadcrumbs, Button, Checkbox, ConfirmDialog, PageHeader, SettingsRow, SettingsSection,
 } from "@thekrystalship/krystal";
-import { Brief, Locked, RefusalNote, authorityGate, useAuthority, useChecks, useScopeText } from "./kit.jsx";
+import { Brief, Locked, RefusalNote, authorityGate, confirmed, useAuthority, useChecks, useScopeText } from "./kit.jsx";
 import { NameDialog, OWNER_VERDICT, countOf, probeOf } from "./roleParts.jsx";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
@@ -124,31 +124,16 @@ function RolePage({ id }) {
 }
 
 function DeleteDialog({ role, onClose }) {
-  const [busy, setBusy] = React.useState(false);
-  const [refusal, setRefusal] = React.useState(null);
-
-  const remove = async () => {
-    setBusy(true);
-    setRefusal(null);
-    const r = await authorityStore.edit({ kind: "role.delete", roleId: role.id });
-    if (r.ok) { go("roles"); return; }
-    setBusy(false);
-    setRefusal(r.refusal);
-  };
-
   return (
-    <Dialog title={`Delete ${role.name}?`} icon="trash-2" onClose={onClose} canClose={!busy}
-      foot={(
-        <>
-          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="danger" icon="trash-2" busy={busy} onClick={remove}>{busy ? "Deleting…" : "Delete role"}</Button>
-        </>
-      )}>
-      <div data-dialog="delete-role" className="admin-form">
-        <RefusalNote refusal={refusal} compact />
-        <p className="admin-dialog-text">This removes the role. It cannot be undone.</p>
-      </div>
-    </Dialog>
+    <ConfirmDialog data-dialog="delete-role" title={`Delete ${role.name}?`} icon="trash-2" tone="danger"
+      confirm="Delete role" busyLabel="Deleting…" onClose={onClose}
+      onConfirm={async () => {
+        const r = await authorityStore.edit({ kind: "role.delete", roleId: role.id });
+        if (r.ok) go("roles");
+        return confirmed(r);
+      }}>
+      This removes the role. It cannot be undone.
+    </ConfirmDialog>
   );
 }
 

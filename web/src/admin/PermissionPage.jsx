@@ -9,11 +9,11 @@
 import React from "react";
 
 import {
-  Breadcrumbs, Button, Dialog, Icon, IconButton, List, ListRow, PageHeader, Pill, Select, SettingsRow,
+  Breadcrumbs, Button, ConfirmDialog, Icon, IconButton, List, ListRow, PageHeader, Pill, Select, SettingsRow,
   SettingsSection,
 } from "@thekrystalship/krystal";
 import { applicationOf, useApplicationNames } from "./catalogParts.jsx";
-import { Brief, Locked, RefusalNote, authorityGate, componentOf, roleName, useAuthority, useChecks } from "./kit.jsx";
+import { Brief, Locked, RefusalNote, authorityGate, confirmed, componentOf, roleName, useAuthority, useChecks } from "./kit.jsx";
 import { NameDialog, countOf } from "./roleParts.jsx";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
@@ -147,33 +147,16 @@ function PermissionPage({ id }) {
 }
 
 function DeleteDialog({ permission, onClose }) {
-  const [busy, setBusy] = React.useState(false);
-  const [refusal, setRefusal] = React.useState(null);
-
-  const remove = async () => {
-    setBusy(true);
-    setRefusal(null);
-    const r = await authorityStore.edit({ kind: "permission.delete", permissionId: permission.id });
-    if (r.ok) { go("permissions"); return; }
-    setBusy(false);
-    setRefusal(r.refusal);
-  };
-
   return (
-    <Dialog title={`Delete ${permission.name}?`} icon="trash-2" onClose={onClose} canClose={!busy}
-      foot={(
-        <>
-          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="danger" icon="trash-2" busy={busy} onClick={remove}>{busy ? "Deleting…" : "Delete permission"}</Button>
-        </>
-      )}>
-      <div data-dialog="delete-permission" className="admin-form">
-        <RefusalNote refusal={refusal} compact />
-        <p className="admin-dialog-text">
-          This removes the permission from every role holding it and leaves its actions unmapped. It cannot be undone.
-        </p>
-      </div>
-    </Dialog>
+    <ConfirmDialog data-dialog="delete-permission" title={`Delete ${permission.name}?`} icon="trash-2" tone="danger"
+      confirm="Delete permission" busyLabel="Deleting…" onClose={onClose}
+      onConfirm={async () => {
+        const r = await authorityStore.edit({ kind: "permission.delete", permissionId: permission.id });
+        if (r.ok) go("permissions");
+        return confirmed(r);
+      }}>
+      This removes the permission from every role holding it and leaves its actions unmapped. It cannot be undone.
+    </ConfirmDialog>
   );
 }
 

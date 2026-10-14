@@ -11,7 +11,7 @@
 
 import React from "react";
 
-import { Button, EmptyState, Icon, IconButton, List, ListRow, PageHeader } from "@thekrystalship/krystal";
+import { Button, Icon, IconButton, ListPage, ListRow } from "@thekrystalship/krystal";
 import { Locked, RefusalNote, authorityGate, useAuthority, useChecks } from "./kit.jsx";
 import { NameDialog, OWNER_VERDICT, countOf, peoplesRoles, probeOf } from "./roleParts.jsx";
 import { go } from "./route.js";
@@ -56,56 +56,49 @@ function RolesPage() {
   };
 
   return (
-    <>
-      <PageHeader title="Roles"
-        actions={canEdit ? <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>New role</Button> : null} />
-      <RefusalNote refusal={refusal} />
-
-      {roles.length === 0 ? <EmptyState icon="shield" title="No roles yet" /> : (
-        <List label="Roles">
-          {roles.map((role) => {
-            const verdict = verdictOf(role);
-            const closed = role.kind === "owner" || !canEdit || (verdict && !verdict.allowed);
-            const index = custom.findIndex((c) => c.id === role.id);
-            const draggable = role.kind === "custom" && !closed && !busy;
-            const reason = closed && verdict && !verdict.allowed ? verdict.message : null;
-            return (
-              <ListRow key={role.id} data-role={role.name}
-                className={dragging === role.id ? "admin-row--dragging" : draggable ? "admin-row--draggable" : undefined}
-                draggable={draggable}
-                onDragStart={() => setDragging(role.id)}
-                onDragEnd={() => setDragging(null)}
-                onDragOver={(e) => { if (dragging && role.kind === "custom") e.preventDefault(); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (dragging && dragging !== role.id && index >= 0) moveTo(dragging, index);
-                  setDragging(null);
-                }}
-                lead={<Icon name={draggable ? "grip-vertical" : role.kind === "owner" ? "crown" : "shield"} size={16} />}
-                title={role.name}
-                sub={<>
-                  {role.kind === "owner" ? "Every action" : countOf(role.permissions.length, "permission")}
-                  {reason && role.kind !== "owner" && <> · {reason}</>}
-                </>}
-                meta={role.kind === "owner" || (canEdit && verdict && !verdict.allowed) ? <Locked result={verdict} /> : null}
-                actions={role.kind === "custom" && !closed ? (
-                  <>
-                    <IconButton variant="ghost" size="sm" icon="chevron-up" label={"Move " + role.name + " up"}
-                      disabled={busy || index <= 0} onClick={() => moveTo(role.id, index - 1)} />
-                    <IconButton variant="ghost" size="sm" icon="chevron-down" label={"Move " + role.name + " down"}
-                      disabled={busy || index >= custom.length - 1} onClick={() => moveTo(role.id, index + 1)} />
-                  </>
-                ) : null}
-                onOpen={() => go("roles", role.id)} />
-            );
-          })}
-        </List>
-      )}
-
-      {creating && (
+    <ListPage title="Roles" label="Roles"
+      actions={canEdit ? <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>New role</Button> : null}
+      notice={<RefusalNote refusal={refusal} />}
+      items={roles} emptyIcon="shield" emptyTitle="No roles yet"
+      renderItem={(role) => {
+        const verdict = verdictOf(role);
+        const closed = role.kind === "owner" || !canEdit || (verdict && !verdict.allowed);
+        const index = custom.findIndex((c) => c.id === role.id);
+        const draggable = role.kind === "custom" && !closed && !busy;
+        const reason = closed && verdict && !verdict.allowed ? verdict.message : null;
+        return (
+          <ListRow key={role.id} data-role={role.name}
+            className={dragging === role.id ? "admin-row--dragging" : draggable ? "admin-row--draggable" : undefined}
+            draggable={draggable}
+            onDragStart={() => setDragging(role.id)}
+            onDragEnd={() => setDragging(null)}
+            onDragOver={(e) => { if (dragging && role.kind === "custom") e.preventDefault(); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragging && dragging !== role.id && index >= 0) moveTo(dragging, index);
+              setDragging(null);
+            }}
+            lead={<Icon name={draggable ? "grip-vertical" : role.kind === "owner" ? "crown" : "shield"} size={16} />}
+            title={role.name}
+            sub={<>
+              {role.kind === "owner" ? "Every action" : countOf(role.permissions.length, "permission")}
+              {reason && role.kind !== "owner" && <> · {reason}</>}
+            </>}
+            meta={role.kind === "owner" || (canEdit && verdict && !verdict.allowed) ? <Locked result={verdict} /> : null}
+            actions={role.kind === "custom" && !closed ? (
+              <>
+                <IconButton variant="ghost" size="sm" icon="chevron-up" label={"Move " + role.name + " up"}
+                  disabled={busy || index <= 0} onClick={() => moveTo(role.id, index - 1)} />
+                <IconButton variant="ghost" size="sm" icon="chevron-down" label={"Move " + role.name + " down"}
+                  disabled={busy || index >= custom.length - 1} onClick={() => moveTo(role.id, index + 1)} />
+              </>
+            ) : null}
+            onOpen={() => go("roles", role.id)} />
+        );
+      }}
+      foot={creating ? (
         <NameDialog title="New role" icon="shield-plus" submit="Create role" onSubmit={create} onClose={() => setCreating(false)} />
-      )}
-    </>
+      ) : null} />
   );
 }
 

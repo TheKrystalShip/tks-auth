@@ -70,6 +70,13 @@ package's public interface, so a rule here targets a package class only to place
 `@thekrystalship/krystal/eslint` and `npm run lint:css` runs Stylelint with
 `@thekrystalship/krystal/stylelint`.
 
+Every form is Krystal's form layer: `useForm` holds the values, rules and refusals, and `Form` or a
+`FormDialog` (`src/chrome/FormDialog.jsx`, a dialog that is itself the form) draws its `FormField`s. The
+admin pages' `useRefusingForm` (`src/admin/kit.jsx`) puts the provider's refusal beside the fields as a
+`RefusalNote`. Every question before a change is Krystal's `ConfirmDialog`; the sign-in page is its
+`SignInScreen`, and the admin lists and account page are `ListPage` and `DetailPage`. `eslint.config.js`
+merges the package's `restrictedSyntax` and `restrictedImports` into its own rules at error.
+
 `public/theme-boot.js` applies the stored theme before first paint (the policy forbids inline script).
 Its theme lists mirror Krystal's `THEME_OPTS`; `npm run check` fails when they drift.
 

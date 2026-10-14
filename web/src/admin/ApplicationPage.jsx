@@ -9,14 +9,14 @@
 import React from "react";
 
 import {
-  Breadcrumbs, Button, CopyField, Field, IconButton, Input, List, ListRow, Notice, PageHeader, Pill,
-  SettingsRow, SettingsSection, Toggle, toast, useStore,
+  Button, ConfirmDialog, CopyField, DetailPage, Form, FormField, IconButton, List, ListRow, Notice, Pill,
+  SettingsRow, SettingsSection, Toggle, toast, useForm, useStore,
 } from "@thekrystalship/krystal";
 import { identityText, manifestText } from "./ApplicationsPage.jsx";
-import { ClientDialog, ConfirmDialog, attempt, listOf } from "./applicationParts.jsx";
+import { ClientDialog, attempt, listOf } from "./applicationParts.jsx";
 import { issuedStore, keepSecrets, refreshApplications, useApplications } from "./applicationsStore.js";
 import { APPLICATIONS, api } from "./client.js";
-import { Brief, Loading, RefusalNote } from "./kit.jsx";
+import { Brief, RefusalNote, confirmed } from "./kit.jsx";
 import { go } from "./route.js";
 import { callRefusal } from "./stores.js";
 
@@ -37,9 +37,10 @@ function ApplicationPage({ id }) {
 
   if (!allowed) return <Brief icon="lock" title="You don’t have access to this" />;
   if (status === "error" && !list) return <Brief icon="wifi-off" tone="warn" title="Couldn’t read the applications" sub={error && error.userMessage} />;
-  if (!list) return <Loading />;
-  const app = list.find((a) => a.id === id);
-  if (!app) return <Brief icon="app-window" title="No such application" actions={backToList} />;
+  const app = list && list.find((a) => a.id === id);
+  if (list && !app) return <Brief icon="app-window" title="No such application" actions={backToList} />;
+
+  if (!app) return <DetailPage loading />;
 
   const builtin = app.source === "builtin";
   const path = APPLICATIONS + "/" + encodeURIComponent(app.id);
@@ -62,22 +63,22 @@ function ApplicationPage({ id }) {
     setBusy(false);
   };
 
-  const confirmed = (call) => async () => {
+  const confirming = (call) => async () => {
     const r = await attempt(call);
     if (r.ok) await answered(r.answer);
-    return r;
+    return confirmed(r);
   };
 
   const manifest = manifestText(app);
 
   return (
-    <>
-      <Breadcrumbs items={[{ label: "Applications", href: "#/applications" }, { label: app.name }]} onNavigate={() => go("applications")} />
-      <PageHeader title={app.name}
-        sub={identityText(app, manifest)}
-        actions={canRemove ? (
-          <Button variant="outline" tone="danger" icon="trash-2" disabled={busy} onClick={() => setRemoving(true)}>Remove</Button>
-        ) : builtin ? <Pill tone="muted" icon="lock">Built in</Pill> : null} />
+    <DetailPage
+      crumbs={[{ label: "Applications", href: "#/applications" }, { label: app.name }]} onNavigate={() => go("applications")}
+      title={app.name}
+      sub={identityText(app, manifest)}
+      actions={canRemove ? (
+        <Button variant="outline" tone="danger" icon="trash-2" disabled={busy} onClick={() => setRemoving(true)}>Remove</Button>
+      ) : builtin ? <Pill tone="muted" icon="lock">Built in</Pill> : null}>
       <RefusalNote refusal={refusal} />
 
       {secrets.length > 0 && (
@@ -134,28 +135,31 @@ function ApplicationPage({ id }) {
           onDone={async (answer) => { await answered(answer); setAdding(false); }} />
       )}
       {rotating && (
-        <ConfirmDialog kind="client-rotate" title={`New secret for ${rotating}?`} icon="refresh-cw" confirm="Make a new secret"
-          text="The current secret stops working at once, and the new one is shown once."
-          onClose={() => setRotating(null)}
-          onConfirm={confirmed(async () => { const a = await api.applications.rotateSecret(app.id, rotating); setRotating(null); return a; })} />
+        <ConfirmDialog data-dialog="client-rotate" title={`New secret for ${rotating}?`} icon="refresh-cw" tone="danger"
+          confirm="Make a new secret" onClose={() => setRotating(null)}
+          onConfirm={confirming(() => api.applications.rotateSecret(app.id, rotating))}>
+          The current secret stops working at once, and the new one is shown once.
+        </ConfirmDialog>
       )}
       {removingClient && (
-        <ConfirmDialog kind="client-remove" title={`Remove ${removingClient}?`} icon="trash-2" confirm="Remove client"
-          text="Sign-ins through this client stop working. This cannot be undone."
-          onClose={() => setRemovingClient(null)}
-          onConfirm={confirmed(async () => { const a = await api.applications.removeClient(app.id, removingClient); setRemovingClient(null); return a; })} />
+        <ConfirmDialog data-dialog="client-remove" title={`Remove ${removingClient}?`} icon="trash-2" tone="danger"
+          confirm="Remove client" onClose={() => setRemovingClient(null)}
+          onConfirm={confirming(() => api.applications.removeClient(app.id, removingClient))}>
+          Sign-ins through this client stop working. This cannot be undone.
+        </ConfirmDialog>
       )}
       {removing && (
-        <ConfirmDialog kind="application-remove" title={`Remove ${app.name}?`} icon="trash-2" confirm="Remove application"
-          text="This removes the application, its clients and its actions from the catalog. It cannot be undone."
-          onClose={() => setRemoving(false)}
+        <ConfirmDialog data-dialog="application-remove" title={`Remove ${app.name}?`} icon="trash-2" tone="danger"
+          confirm="Remove application" onClose={() => setRemoving(false)}
           onConfirm={async () => {
             const r = await attempt(() => api.applications.remove(app.id));
             if (r.ok) { await refreshApplications(); go("applications"); }
-            return r;
-          }} />
+            return confirmed(r);
+          }}>
+          This removes the application, its clients and its actions from the catalog. It cannot be undone.
+        </ConfirmDialog>
       )}
-    </>
+    </DetailPage>
   );
 }
 
@@ -169,48 +173,40 @@ function Settings({ app, editable, busy, onSave }) {
     discord: (app.discordApplications || []).join(", "),
     actForDiscord: !!app.actForDiscord,
   }), [app]);
-  const [form, setForm] = React.useState(initial);
-  React.useEffect(() => { setForm(initial); }, [initial]);
-  const text = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const change = {};
-  if (form.name.trim() !== initial.name) change.name = form.name.trim();
-  if (form.audience.trim() !== initial.audience) change.audience = form.audience.trim();
-  if (form.manifestUrl.trim() !== initial.manifestUrl) change.manifestUrl = form.manifestUrl.trim();
-  if (form.lifetime !== initial.lifetime) change.accessLifetimeMinutes = Number(form.lifetime);
-  if (listOf(form.discord).join(",") !== listOf(initial.discord).join(",")) change.discordApplications = listOf(form.discord);
-  if (form.actForDiscord !== initial.actForDiscord) change.actForDiscord = form.actForDiscord;
-  const dirty = Object.keys(change).length > 0;
+  const form = useForm({
+    values: initial,
+    onSubmit: async (v) => {
+      const change = {};
+      if (v.name.trim() !== initial.name) change.name = v.name.trim();
+      if (v.audience.trim() !== initial.audience) change.audience = v.audience.trim();
+      if (v.manifestUrl.trim() !== initial.manifestUrl) change.manifestUrl = v.manifestUrl.trim();
+      if (v.lifetime !== initial.lifetime) change.accessLifetimeMinutes = Number(v.lifetime);
+      if (listOf(v.discord).join(",") !== listOf(initial.discord).join(",")) change.discordApplications = listOf(v.discord);
+      if (v.actForDiscord !== initial.actForDiscord) change.actForDiscord = v.actForDiscord;
+      if (Object.keys(change).length) await onSave(change);
+    },
+  });
   const off = !editable || busy;
 
   return (
     <SettingsSection icon="settings" title="Settings"
-      action={editable && dirty ? (
-        <Button variant="primary" size="sm" busy={busy} disabled={busy} onClick={() => onSave(change)}>Save</Button>
+      action={editable && form.isDirty ? (
+        <Button variant="primary" size="sm" busy={busy} disabled={busy} onClick={form.submit}>Save</Button>
       ) : null}>
-      <form className="admin-form admin-section-fields" onSubmit={(e) => { e.preventDefault(); if (dirty && !off) onSave(change); }}>
-        <Field label="Name">
-          <Input id={"name-" + app.id} value={form.name} disabled={off} onChange={text("name")} />
-        </Field>
-        <Field label="Audience">
-          <Input id={"audience-" + app.id} mono spellCheck="false" autoCapitalize="off" value={form.audience}
-            disabled={off} onChange={text("audience")} />
-        </Field>
-        <Field label="Manifest" hint={manifestText(app) || undefined}>
-          <Input id={"manifest-" + app.id} wide mono spellCheck="false" autoCapitalize="off" value={form.manifestUrl}
-            disabled={off} onChange={text("manifestUrl")} />
-        </Field>
-        <Field label="Access lifetime (minutes)">
-          <Input id={"lifetime-" + app.id} className="admin-input--short" type="number" value={form.lifetime} disabled={off} onChange={text("lifetime")} />
-        </Field>
-        <Field label="Discord applications" hint="Whose tokens this application’s clients may present.">
-          <Input id={"discord-" + app.id} wide mono spellCheck="false" autoCapitalize="off" value={form.discord}
-            disabled={off} onChange={text("discord")} />
-        </Field>
-      </form>
+      <Form form={form} className="admin-section-fields">
+        <FormField name="name" label="Name" control="input" wide={false} disabled={off} />
+        <FormField name="audience" label="Audience" control="input" wide={false} mono spellCheck="false"
+          autoCapitalize="off" disabled={off} />
+        <FormField name="manifestUrl" label="Manifest" hint={manifestText(app) || undefined} control="input" mono
+          spellCheck="false" autoCapitalize="off" disabled={off} />
+        <FormField name="lifetime" label="Access lifetime (minutes)" control="input" wide={false} type="number"
+          className="admin-field--short" disabled={off} />
+        <FormField name="discord" label="Discord applications" hint="Whose tokens this application’s clients may present."
+          control="input" mono spellCheck="false" autoCapitalize="off" disabled={off} />
+      </Form>
       <SettingsRow icon="link" title="Acts for linked Discord users">
-        <Toggle on={form.actForDiscord} disabled={off} label="Acts for linked Discord users"
-          onChange={(on) => setForm((f) => ({ ...f, actForDiscord: on }))} />
+        <Toggle on={form.values.actForDiscord} disabled={off} label="Acts for linked Discord users"
+          onChange={(on) => form.setValue("actForDiscord", on)} />
       </SettingsRow>
     </SettingsSection>
   );

@@ -20,33 +20,7 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-/* The sign-in card's own arrangement: the neutral providers as a 2-up grid, the rule between the two
-   doors, the form's column, and the client named under the card. */
-.signin-providers {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-}
-
-.signin-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--fg-4);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-
-.signin-divider::before,
-.signin-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border-subtle);
-}
-
+/* The no-script floor's form column. */
 .signin-form {
   display: flex;
   flex-direction: column;
@@ -63,12 +37,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-[data-dialog] {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
 
 /* The device page: what a code names, laid out as label and value. */

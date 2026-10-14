@@ -7,8 +7,8 @@
 
 import React from "react";
 
-import { Button, EmptyState, Notice, Pill, Skeleton, useStore } from "@thekrystalship/krystal";
-import { authorityStore, membersStore } from "./stores.js";
+import { Button, EmptyState, Notice, Pill, Skeleton, useForm, useStore } from "@thekrystalship/krystal";
+import { authorityStore, membersStore, refusalOf } from "./stores.js";
 
 // The authority, read when the first page wanting it mounts and kept for the rest.
 function useAuthority() {
@@ -50,6 +50,29 @@ function RefusalNote({ refusal, compact }) {
     </Notice>
   );
 }
+
+// A form whose submission is a change against the provider. `onSubmit(values)` makes it and resolves
+// nothing, or `{ refusal }`, or throws; the provider's refusal stands beside the fields as a
+// RefusalNote, with the form still open for another try.
+function useRefusingForm(options) {
+  const [refusal, setRefusal] = React.useState(null);
+  const form = useForm({
+    ...options,
+    onSubmit: async (values) => {
+      setRefusal(null);
+      try {
+        const r = await options.onSubmit(values);
+        if (r && r.refusal) setRefusal(r.refusal);
+      } catch (e) {
+        setRefusal(refusalOf(e));
+      }
+    },
+  });
+  return { form, notice: <RefusalNote refusal={refusal} compact /> };
+}
+
+// What a ConfirmDialog's `onConfirm` resolves from a change that answers `{ ok, refusal }`.
+const confirmed = (r) => (r.ok ? undefined : { refusal: r.refusal.message });
 
 // A lock on a row the rules close, the provider's reason in its tooltip. The row's own `sub` carries
 // the reason in words, where a sentence has room.
@@ -151,6 +174,6 @@ function authorityGate(state) {
 }
 
 export {
-  Brief, Loading, Locked, RefusalNote, authorityGate, componentOf, nameScope, parseInstance, roleName,
-  useAuthority, useChecks, useScopeOptions, useScopeText,
+  Brief, Loading, Locked, RefusalNote, authorityGate, componentOf, confirmed, nameScope, parseInstance, roleName,
+  useAuthority, useChecks, useRefusingForm, useScopeOptions, useScopeText,
 };

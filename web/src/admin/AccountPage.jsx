@@ -15,16 +15,15 @@
 import React from "react";
 
 import {
-  Breadcrumbs, Button, Dialog, Field, PageHeader, PasswordInput, providerLabel, SettingsRow,
-  SettingsSection, useStore,
+  Button, ConfirmDialog, DetailPage, FormField, FormSubmit, providerLabel, SettingsRow, SettingsSection, useStore,
 } from "@thekrystalship/krystal";
+import { FormDialog } from "../chrome/FormDialog.jsx";
 import { deviceIcon, deviceKind, deviceName } from "../lib/devices.js";
 import { when } from "../lib/formatting.js";
 import { StatusPill, handleOf, nameOf, providersOf, useAccounts } from "./accountParts.jsx";
 import { Assignments } from "./Assignments.jsx";
-import { ConfirmRevokeDialog } from "./ConfirmRevokeDialog.jsx";
 import { api } from "./client.js";
-import { Brief, Loading, RefusalNote, authorityGate } from "./kit.jsx";
+import { Loading, RefusalNote, authorityGate, useRefusingForm } from "./kit.jsx";
 import { go } from "./route.js";
 import { accessStore, authorityStore, refusalOf, userRefusal } from "./stores.js";
 
@@ -38,13 +37,13 @@ function AccountPage({ id }) {
 
   const user = (rows || []).find((u) => u.id === id);
 
-  if (rows === null) return <Loading />;
+  if (rows === null) return <DetailPage loading skeleton={<Loading />} />;
   if (!user) {
     return (
       <>
         <RefusalNote refusal={refusal} />
-        <Brief icon="user-x" title="No such account"
-          actions={<Button variant="outline" icon="arrow-left" onClick={() => go("accounts")}>Back to accounts</Button>} />
+        <DetailPage isEmpty emptyTitle="No such account"
+          emptyAction={<Button variant="outline" icon="arrow-left" onClick={() => go("accounts")}>Back to accounts</Button>} />
       </>
     );
   }
@@ -68,23 +67,22 @@ function AccountPage({ id }) {
   const providers = providersOf(user);
 
   return (
-    <>
-      <Breadcrumbs items={[{ label: "Accounts", href: "#/accounts" }, { label: name }]}
-        onNavigate={() => go("accounts")} />
-      <PageHeader title={name} sub={user.username !== name ? user.username : undefined}
-        actions={(
-          <>
-            {user.status === "pending" && canApprove && (
-              <Button variant="primary" icon="user-check" busy={acting} onClick={() => setStatus("active")}>Approve</Button>
-            )}
-            {user.status === "disabled" && canDisable && (
-              <Button variant="primary" icon="user-check" busy={acting} onClick={() => setStatus("active")}>Enable</Button>
-            )}
-            {user.status !== "disabled" && canDisable && (
-              <Button variant="outline" icon="user-x" busy={acting} onClick={() => setStatus("disabled")}>Disable</Button>
-            )}
-          </>
-        )} />
+    <DetailPage
+      crumbs={[{ label: "Accounts", href: "#/accounts" }, { label: name }]} onNavigate={() => go("accounts")}
+      title={name} sub={user.username !== name ? user.username : undefined}
+      actions={(
+        <>
+          {user.status === "pending" && canApprove && (
+            <Button variant="primary" icon="user-check" busy={acting} onClick={() => setStatus("active")}>Approve</Button>
+          )}
+          {user.status === "disabled" && canDisable && (
+            <Button variant="primary" icon="user-check" busy={acting} onClick={() => setStatus("active")}>Enable</Button>
+          )}
+          {user.status !== "disabled" && canDisable && (
+            <Button variant="outline" icon="user-x" busy={acting} onClick={() => setStatus("disabled")}>Disable</Button>
+          )}
+        </>
+      )}>
       <RefusalNote refusal={refusal} />
 
       <SettingsSection icon="user" title="Profile">
@@ -136,7 +134,7 @@ function AccountPage({ id }) {
       {deleting && (
         <DeleteDialog user={user} name={name} onClose={() => setDeleting(false)} onDone={() => go("accounts")} />
       )}
-    </>
+    </DetailPage>
   );
 }
 
@@ -156,16 +154,19 @@ function SessionsSection({ user, name }) {
 
   React.useEffect(() => { reload(); }, [reload]);
 
-  const run = () => {
-    if (!confirm) return;
+  const revoke = async () => {
     const all = confirm.mode === "other-all";
     setBusy(all ? "all" : confirm.sid);
-    const call = all ? api.sessions.revokeAll(user.id) : api.sessions.revokeOne(user.id, confirm.sid);
-    call.then(
-      () => { setConfirm(null); setBusy(null); reload(); },
-      (e) => { setConfirm(null); setBusy(null); setError(refusalOf(e)); });
+    try {
+      await (all ? api.sessions.revokeAll(user.id) : api.sessions.revokeOne(user.id, confirm.sid));
+      reload();
+    } catch (e) {
+      setError(refusalOf(e));
+    }
+    setBusy(null);
   };
 
+  // A destructive action against another person is never anonymous: the copy names who is affected.
   return (
     <SettingsSection icon="monitor-smartphone" title="Sessions"
       action={rows && rows.length > 0 ? (
@@ -186,8 +187,14 @@ function SessionsSection({ user, name }) {
         </SettingsRow>
       ))}
       {confirm && (
-        <ConfirmRevokeDialog mode={confirm.mode} targetName={name} busy={busy != null}
-          onClose={() => setConfirm(null)} onConfirm={run} />
+        <ConfirmDialog data-dialog="confirm-revoke" icon="log-out" tone="danger" onClose={() => setConfirm(null)}
+          onConfirm={revoke} busyLabel="Working…"
+          title={confirm.mode === "other-all" ? `Sign ${name} out everywhere?` : `End this session for ${name}?`}
+          confirm={confirm.mode === "other-all" ? "Sign out" : "End session"}>
+          {confirm.mode === "other-all"
+            ? `This ends every active session for ${name}, on every device. They can sign in again straight away — this ends the sessions, it does not disable the account.`
+            : `This ends that one session. ${name}'s other devices stay signed in.`}
+        </ConfirmDialog>
       )}
     </SettingsSection>
   );
@@ -195,73 +202,37 @@ function SessionsSection({ user, name }) {
 
 // A new password for somebody who has lost theirs. It knows no current one.
 function PasswordDialog({ user, name, onClose, onDone }) {
-  const [value, setValue] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
-  const [refusal, setRefusal] = React.useState(null);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!value || busy) return;
-    setBusy(true);
-    setRefusal(null);
-    try {
-      await api.users.setPassword(user.id, value);
+  const { form, notice } = useRefusingForm({
+    defaultValues: { password: "" },
+    rules: { password: { required: true } },
+    onSubmit: async ({ password }) => {
+      await api.users.setPassword(user.id, password);
       onDone();
-    } catch (err) {
-      setBusy(false);
-      setRefusal(refusalOf(err));
-    }
-  };
-
+    },
+  });
   return (
-    <Dialog title={user.hasPassword ? "Reset password" : "Set a password"} icon="lock" sub={name} as="form" onSubmit={submit}
-      onClose={onClose} canClose={!busy}
-      foot={(
-        <>
-          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="primary" type="submit" busy={busy} disabled={!value}>{busy ? "Saving…" : "Save"}</Button>
-        </>
-      )}>
-      <div data-dialog="set-password" className="admin-form">
-        <RefusalNote refusal={refusal} compact />
-        <Field label="New password">
-          <PasswordInput id="account-password" wide value={value} autoComplete="new-password" autoFocus
-            disabled={busy} onChange={(e) => setValue(e.target.value)} />
-        </Field>
-      </div>
-    </Dialog>
+    <FormDialog form={form} name="set-password" title={user.hasPassword ? "Reset password" : "Set a password"}
+      icon="lock" sub={name} onClose={onClose} notice={notice} submit={<FormSubmit busyLabel="Saving…">Save</FormSubmit>}>
+      <FormField name="password" label="New password" control="password" id="account-password"
+        autoComplete="new-password" autoFocus />
+    </FormDialog>
   );
 }
 
 function DeleteDialog({ user, name, onClose, onDone }) {
-  const [busy, setBusy] = React.useState(false);
-  const [refusal, setRefusal] = React.useState(null);
-
-  const remove = async () => {
-    setBusy(true);
-    setRefusal(null);
-    try {
-      await api.users.remove(user.id);
-      onDone();
-    } catch (err) {
-      setBusy(false);
-      setRefusal(refusalOf(err));
-    }
-  };
-
   return (
-    <Dialog title={`Delete ${name}?`} icon="trash-2" onClose={onClose} canClose={!busy}
-      foot={(
-        <>
-          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="danger" icon="trash-2" busy={busy} onClick={remove}>{busy ? "Deleting…" : "Delete account"}</Button>
-        </>
-      )}>
-      <div data-dialog="delete-account" className="admin-form">
-        <RefusalNote refusal={refusal} compact />
-        <p className="admin-dialog-text">This removes {name} ({user.username}) from this provider. It cannot be undone.</p>
-      </div>
-    </Dialog>
+    <ConfirmDialog data-dialog="delete-account" title={`Delete ${name}?`} icon="trash-2" tone="danger"
+      confirm="Delete account" busyLabel="Deleting…" onClose={onClose}
+      onConfirm={async () => {
+        try {
+          await api.users.remove(user.id);
+        } catch (e) {
+          return { refusal: refusalOf(e).message };
+        }
+        onDone();
+      }}>
+      This removes {name} ({user.username}) from this provider. It cannot be undone.
+    </ConfirmDialog>
   );
 }
 

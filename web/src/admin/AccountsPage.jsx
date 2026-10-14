@@ -16,12 +16,13 @@
 import React from "react";
 
 import {
-  AccountAvatar, Button, Dialog, EmptyState, Field, Input, List, ListRow, PageHeader, PasswordInput, Pill,
-  Select, SettingsRow, SettingsSection, Toolbar, ToolbarCount, ToolbarFilters, ToolbarSearch, useFilters, useStore,
+  AccountAvatar, Button, FormField, FormSubmit, ListPage, ListRow, Pill, SettingsRow, SettingsSection, Toolbar,
+  ToolbarCount, ToolbarFilters, ToolbarSearch, useFilters, useStore,
 } from "@thekrystalship/krystal";
+import { FormDialog } from "../chrome/FormDialog.jsx";
 import { StatusPill, nameOf, providersOf, useAccounts } from "./accountParts.jsx";
 import { api } from "./client.js";
-import { Loading, RefusalNote, roleName } from "./kit.jsx";
+import { RefusalNote, roleName, useRefusingForm } from "./kit.jsx";
 import { go } from "./route.js";
 import { accessStore, authorityStore, refusalOf, userRefusal } from "./stores.js";
 
@@ -66,135 +67,104 @@ function AccountsPage({ params }) {
   };
 
   return (
-    <>
-      <PageHeader title="Accounts"
-        actions={canCreate ? <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>Add an account</Button> : null} />
-      <RefusalNote refusal={refusal} />
-
-      <Toolbar>
-        <ToolbarSearch value={query} onChange={setQuery} placeholder="Search accounts" />
-        <ToolbarFilters fields={[{
-          id: "status", label: "Status", value: status, default: "all",
-          options: [
-            { value: "all", label: "All", count: all.length },
-            { value: "pending", label: "Awaiting approval", count: countOf("pending") },
-            { value: "active", label: "Active", count: countOf("active") },
-            { value: "disabled", label: "Disabled", count: countOf("disabled") },
-          ],
-          onChange: (v) => go("accounts", null, { status: v === "all" ? null : v }),
-        }]} />
-        <ToolbarCount shown={shown.length} total={all.length} unit={all.length === 1 ? "account" : "accounts"} />
-      </Toolbar>
-
-      {rows === null ? <Loading /> : shown.length === 0 ? (
-        !refusal && (
-          <EmptyState icon="users" title={all.length === 0 ? "No accounts yet" : "No account matches"} />
-        )
-      ) : (
-        <List label="Accounts">
-          {shown.map((u) => {
-            const held = rolesOf(u.id);
-            const providers = providersOf(u);
-            return (
-              <ListRow key={u.id} data-account={u.username}
-                lead={<AccountAvatar user={{ display: nameOf(u), name: u.username }} size={32} />}
-                title={nameOf(u)}
-                sub={[
-                  u.username !== nameOf(u) ? u.username : null,
-                  providers.length > 0 ? providers.join(", ") : null,
-                  !u.hasPassword && providers.length === 0 ? "no way to sign in" : null,
-                ].filter(Boolean).join(" · ") || undefined}
-                meta={<>
-                  {held && (held.length === 0
-                    ? <Pill size="sm">everyone</Pill>
-                    : held.slice(0, ROLES_SHOWN).map((r) => <Pill key={r} size="sm">{r}</Pill>))}
-                  {held && held.length > ROLES_SHOWN && <Pill size="sm">+{held.length - ROLES_SHOWN}</Pill>}
-                  <StatusPill status={u.status} />
-                </>}
-                actions={u.status === "pending" && canApprove ? (
-                  <Button size="sm" variant="primary" busy={approving === u.id} disabled={approving === u.id}
-                    onClick={() => approve(u)}>
-                    {approving === u.id ? "Approving…" : "Approve"}
-                  </Button>
-                ) : null}
-                onOpen={() => go("accounts", u.id)} />
-            );
-          })}
-        </List>
+    <ListPage title="Accounts" label="Accounts"
+      actions={canCreate ? <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>Add an account</Button> : null}
+      notice={<RefusalNote refusal={refusal} />}
+      toolbar={(
+        <Toolbar>
+          <ToolbarSearch value={query} onChange={setQuery} placeholder="Search accounts" />
+          <ToolbarFilters fields={[{
+            id: "status", label: "Status", value: status, default: "all",
+            options: [
+              { value: "all", label: "All", count: all.length },
+              { value: "pending", label: "Awaiting approval", count: countOf("pending") },
+              { value: "active", label: "Active", count: countOf("active") },
+              { value: "disabled", label: "Disabled", count: countOf("disabled") },
+            ],
+            onChange: (v) => go("accounts", null, { status: v === "all" ? null : v }),
+          }]} />
+          <ToolbarCount shown={shown.length} total={all.length} unit={all.length === 1 ? "account" : "accounts"} />
+        </Toolbar>
       )}
-
-      {services.length > 0 && (
-        <SettingsSection icon="bot" title="Service accounts">
-          {services.map((s) => (
-            <SettingsRow key={s.id} icon="bot" title={s.username}
-              sub={s.requirements.length + (s.requirements.length === 1 ? " requirement" : " requirements")}>
-              <StatusPill status={s.status} />
-            </SettingsRow>
-          ))}
-        </SettingsSection>
-      )}
-
-      {creating && <CreateDialog onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />}
-    </>
+      loading={rows === null}
+      items={shown}
+      isEmpty={shown.length === 0 && !refusal}
+      emptyIcon="users" emptyTitle={all.length === 0 ? "No accounts yet" : "No account matches"}
+      renderItem={(u) => {
+        const held = rolesOf(u.id);
+        const providers = providersOf(u);
+        return (
+          <ListRow key={u.id} data-account={u.username}
+            lead={<AccountAvatar user={{ display: nameOf(u), name: u.username }} size={32} />}
+            title={nameOf(u)}
+            sub={[
+              u.username !== nameOf(u) ? u.username : null,
+              providers.length > 0 ? providers.join(", ") : null,
+              !u.hasPassword && providers.length === 0 ? "no way to sign in" : null,
+            ].filter(Boolean).join(" · ") || undefined}
+            meta={<>
+              {held && (held.length === 0
+                ? <Pill size="sm">everyone</Pill>
+                : held.slice(0, ROLES_SHOWN).map((r) => <Pill key={r} size="sm">{r}</Pill>))}
+              {held && held.length > ROLES_SHOWN && <Pill size="sm">+{held.length - ROLES_SHOWN}</Pill>}
+              <StatusPill status={u.status} />
+            </>}
+            actions={u.status === "pending" && canApprove ? (
+              <Button size="sm" variant="primary" busy={approving === u.id} disabled={approving === u.id}
+                onClick={() => approve(u)}>
+                {approving === u.id ? "Approving…" : "Approve"}
+              </Button>
+            ) : null}
+            onOpen={() => go("accounts", u.id)} />
+        );
+      }}
+      foot={(
+        <>
+          {services.length > 0 && (
+            <SettingsSection icon="bot" title="Service accounts">
+              {services.map((s) => (
+                <SettingsRow key={s.id} icon="bot" title={s.username}
+                  sub={s.requirements.length + (s.requirements.length === 1 ? " requirement" : " requirements")}>
+                  <StatusPill status={s.status} />
+                </SettingsRow>
+              ))}
+            </SettingsSection>
+          )}
+          {creating && <CreateDialog onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />}
+        </>
+      )} />
   );
 }
 
 // Naming a new account, optionally with a first password. It is created active, or waiting for approval.
 function CreateDialog({ onClose, onCreated }) {
-  const [form, setForm] = React.useState({ username: "", displayName: "", status: "active", password: "" });
-  const [busy, setBusy] = React.useState(false);
-  const [refusal, setRefusal] = React.useState(null);
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const username = form.username.trim();
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!username || busy) return;
-    setBusy(true);
-    setRefusal(null);
-    try {
+  const { form, notice } = useRefusingForm({
+    defaultValues: { username: "", displayName: "", status: "active", password: "" },
+    validate: { username: (v) => (v.trim() ? null : "Required") },
+    onSubmit: async (v) => {
+      const username = v.username.trim();
       await api.users.create({
         username,
-        displayName: form.displayName.trim() || username,
-        status: form.status,
-        password: form.password || undefined,
+        displayName: v.displayName.trim() || username,
+        status: v.status,
+        password: v.password || undefined,
       });
       onCreated();
-    } catch (err) {
-      setBusy(false);
-      setRefusal(refusalOf(err));
-    }
-  };
-
+    },
+  });
   return (
-    <Dialog title="Add an account" icon="user-plus" as="form" onSubmit={submit} onClose={onClose} canClose={!busy}
-      foot={(
-        <>
-          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="primary" type="submit" busy={busy} disabled={!username}>{busy ? "Creating…" : "Create"}</Button>
-        </>
-      )}>
-      <div data-dialog="create-account" className="admin-form">
-        <RefusalNote refusal={refusal} compact />
-        <Field label="Username">
-          <Input id="user-username" wide value={form.username} autoCapitalize="off" spellCheck="false" autoFocus
-            disabled={busy} onChange={set("username")} />
-        </Field>
-        <Field label="Display name">
-          <Input id="user-display" wide value={form.displayName} disabled={busy} onChange={set("displayName")} />
-        </Field>
-        <Field label="Status">
-          <Select id="user-status" value={form.status} disabled={busy} onChange={set("status")}>
-            <option value="active">Active</option>
-            <option value="pending">Awaiting approval</option>
-          </Select>
-        </Field>
-        <Field label="Password" aside="optional">
-          <PasswordInput id="user-password" wide value={form.password} autoComplete="new-password"
-            disabled={busy} onChange={set("password")} />
-        </Field>
-      </div>
-    </Dialog>
+    <FormDialog form={form} name="create-account" title="Add an account" icon="user-plus" onClose={onClose}
+      notice={notice} submit={<FormSubmit busyLabel="Creating…">Create</FormSubmit>}>
+      <FormField name="username" label="Username" control="input" id="user-username" autoCapitalize="off"
+        spellCheck="false" autoFocus />
+      <FormField name="displayName" label="Display name" control="input" id="user-display" />
+      <FormField name="status" label="Status" control="select" id="user-status">
+        <option value="active">Active</option>
+        <option value="pending">Awaiting approval</option>
+      </FormField>
+      <FormField name="password" label="Password" aside="optional" control="password" id="user-password"
+        autoComplete="new-password" />
+    </FormDialog>
   );
 }
 

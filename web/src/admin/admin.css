@@ -23,12 +23,12 @@
 
 /* ── Applications ── */
 /* The fields of a settings section, inside its frame. */
-.admin-section-fields { padding: 12px 14px; }
+.admin-section-fields { padding: 12px 14px; gap: 12px; }
 
 /* A field holds its control at the control's own width, so a short value sits in a short input and a
    control that asks to be `wide` still fills the column. */
 .admin-section-fields .k-field { align-items: flex-start; }
-.admin-input--short { width: 110px; }
+.admin-field--short input { width: 110px; }
 
 .admin-form__title {
   margin: 6px 0 0;
@@ -66,11 +66,6 @@
   color: var(--fg-3);
 }
 
-/* The form of a dialog: fields one under another. */
-.admin-form { display: flex; flex-direction: column; gap: 12px; }
-
-.admin-dialog-text { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--fg-2); }
-
 /* ── The assignments editor ──
    It stands inside a section, whose frame holds it: the rows are flat in it and the form is its last
    row, one line on a desktop and wrapping on a phone. */
@@ -88,6 +83,7 @@
 .admin-assign__form,
 .admin-section-form {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 8px;
   padding: 12px 14px;
@@ -96,6 +92,7 @@
 .admin-assign__list + .admin-assign__form,
 .admin-flat-list + .admin-section-form { border-top: var(--edge); }
 
+.admin-assign__form > .k-field,
 .admin-assign__form > .k-select,
 .admin-section-form > .k-select { flex: 1 1 160px; min-width: 0; }
 

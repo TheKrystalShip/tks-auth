@@ -8,7 +8,7 @@
 
 import React from "react";
 
-import { Button, Dialog, EmptyState, List, ListRow, PageHeader, Pill, Select, SettingsSection } from "@thekrystalship/krystal";
+import { Button, ConfirmDialog, EmptyState, List, ListRow, PageHeader, Pill, Select, SettingsSection } from "@thekrystalship/krystal";
 import { RefusalNote, authorityGate, useAuthority, useScopeOptions, useScopeText } from "./kit.jsx";
 import { authorityStore, editRefusal } from "./stores.js";
 
@@ -74,21 +74,11 @@ function ServicesPage() {
       )}
 
       {revoking && (
-        <Dialog title={"Revoke " + revoking.q.action + "?"} icon="ban" canClose={!busy}
-          onClose={() => setRevoking(null)}
-          foot={(
-            <>
-              <Button variant="outline" disabled={busy} onClick={() => setRevoking(null)}>Keep</Button>
-              <Button variant="danger" busy={busy} onClick={async () => {
-                await run({ kind: "requirement.revoke", accountId: revoking.svc.id, action: revoking.q.action });
-                setRevoking(null);
-              }}>Revoke</Button>
-            </>
-          )}>
-          <p className="admin-dialog-text" data-dialog="confirm-revoke-requirement">
-            {revoking.svc.username} stops being able to do this as itself, and a revoked requirement stays revoked for the account’s life.
-          </p>
-        </Dialog>
+        <ConfirmDialog data-dialog="confirm-revoke-requirement" title={"Revoke " + revoking.q.action + "?"} icon="ban"
+          tone="danger" confirm="Revoke" cancel="Keep" onClose={() => setRevoking(null)}
+          onConfirm={async () => { await run({ kind: "requirement.revoke", accountId: revoking.svc.id, action: revoking.q.action }); }}>
+          {revoking.svc.username} stops being able to do this as itself, and a revoked requirement stays revoked for the account’s life.
+        </ConfirmDialog>
       )}
     </>
   );

@@ -26,5 +26,9 @@
 @import "@thekrystalship/krystal/styles/breadcrumbs.css";
 @import "@thekrystalship/krystal/styles/brief.css";
 @import "@thekrystalship/krystal/styles/settings.css";
+@import "@thekrystalship/krystal/styles/form.css";
+@import "@thekrystalship/krystal/styles/signin.css";
+@import "@thekrystalship/krystal/styles/list-page.css";
+@import "@thekrystalship/krystal/styles/detail-page.css";
 @import "@thekrystalship/krystal/styles/theme-picker.css";
 @import "@thekrystalship/krystal/styles/toast.css";
