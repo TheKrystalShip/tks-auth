@@ -94,7 +94,9 @@ function PermissionPage({ id }) {
                 meta={a.undeclared ? null : (
                   <>
                     <Pill size="sm">{applicationName(applicationOf(a))}</Pill>
-                    <Pill size="sm">{componentOf(a.action)}</Pill>
+                    {componentOf(a.action).toLowerCase() !== applicationName(applicationOf(a)).toLowerCase() && (
+                      <Pill size="sm">{componentOf(a.action)}</Pill>
+                    )}
                   </>
                 )}
                 actions={!closed ? (

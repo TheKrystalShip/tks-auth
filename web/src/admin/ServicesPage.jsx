@@ -102,10 +102,8 @@ function Requirement({ svc, q, canManage, busy, scopeText, scopes, run, onRevoke
     <ListRow data-requirement={q.action}
       title={q.action}
       sub={q.why || null}
-      meta={<>
-        <Pill size="sm" tone={s ? s.tone : "neutral"} data-state={q.state}>{s ? s.label : q.state}</Pill>
-        {!q.declared && <Pill size="sm" tone="muted">no longer declared</Pill>}
-      </>}
+      lead={<span className="admin-state"><Pill size="sm" tone={s ? s.tone : "neutral"} data-state={q.state}>{s ? s.label : q.state}</Pill></span>}
+      meta={!q.declared ? <Pill size="sm" tone="muted">no longer declared</Pill> : null}
       aside={q.state === "approved" ? scopeText(q.grant) + " · " + decided : q.scopeKind}
       actions={canManage && q.state !== "revoked" ? (
         <>

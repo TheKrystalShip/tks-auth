@@ -14,6 +14,7 @@ import {
   AppShell, NavItem, Sidebar, SidebarAccount, SidebarGroup, useEdgeSwipe, useStoredFlag,
 } from "@thekrystalship/krystal-ui";
 import { GROUPS, PLACES, hrefOf } from "./nav.js";
+import "./frame.css";
 
 const MARK = import.meta.env.BASE_URL + "assets/tks-mark.png";
 
@@ -47,7 +48,7 @@ function Frame({ doc, active, showAdmin, offered, badges, user, onSignOut, onNav
       foot={user && (
         <SidebarAccount
           user={user}
-          sub={user.name ? "@" + user.name : undefined}
+          sub={user.name && user.name !== user.display ? "@" + user.name : undefined}
           collapsed={collapsed}
           items={[{ icon: "log-out", label: "Sign out", onClick: onSignOut }]} />
       )}>

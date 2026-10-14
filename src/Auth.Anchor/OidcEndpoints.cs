@@ -322,7 +322,7 @@ internal static class OidcEndpoints
         }
 
         await Endpoints.WriteJson(ctx, StatusCodes.Status200OK, new AuthorizeContext(
-            new AuthorizeContextClient(request.ClientId, ClientName(ctx, request)),
+            new AuthorizeContextClient(request.ClientId, ClientName(ctx, request), IsOwnClient(request.ClientId)),
             ctx.RequestServices.GetRequiredService<ProviderCatalog>().Configured,
             options.AllowSelfRegistration,
             account),
@@ -1161,6 +1161,9 @@ internal static class OidcEndpoints
     private static string ClientOrigin(AuthorizeRequest request) => ClientRegistry.OriginOf(request.RedirectUri);
 
     /// <summary>Whose sign-in a request is, as a person reads it.</summary>
+    private static bool IsOwnClient(string clientId) =>
+        clientId is AccountPageEndpoints.AccountClientId or DevicePageEndpoints.DeviceClientId or Application.ProviderClientId;
+
     private static string ClientName(HttpContext ctx, AuthorizeRequest request) =>
         request.ClientId switch
         {

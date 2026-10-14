@@ -1,0 +1,21 @@
+/* The column a document's page stands in, inside the frame. Both documents use it, so content keeps
+   one width and one left edge as a person moves between them. */
+.frame-body {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 16px 16px 64px;
+}
+
+/* The drawer's edge handle is fixed to the left edge of a phone; the column starts clear of it. */
+@media (max-width: 768px) {
+  .frame-body { padding-left: 32px; }
+}
+
+/* A heading is as tall as a button, so pages whose heading carries an action and pages whose heading
+   does not start their content at the same height. */
+.frame-body .k-pagehead { min-height: 34px; }

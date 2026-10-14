@@ -99,11 +99,11 @@ function AccountsPage({ params }) {
               <ListRow key={u.id} data-account={u.username}
                 lead={<AccountAvatar user={{ display: nameOf(u), name: u.username }} size={32} />}
                 title={nameOf(u)}
-                sub={<>
-                  {u.username}
-                  {providers.length > 0 && <> · {providers.join(", ")}</>}
-                  {!u.hasPassword && providers.length === 0 && <> · no way to sign in</>}
-                </>}
+                sub={[
+                  u.username !== nameOf(u) ? u.username : null,
+                  providers.length > 0 ? providers.join(", ") : null,
+                  !u.hasPassword && providers.length === 0 ? "no way to sign in" : null,
+                ].filter(Boolean).join(" · ") || undefined}
                 meta={<>
                   {held && (held.length === 0
                     ? <Pill size="sm">everyone</Pill>

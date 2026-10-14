@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { EmptyState, PageHeader, useStore } from "@thekrystalship/krystal-ui";
+import { EmptyState, PageHeader, Toasts, useStore } from "@thekrystalship/krystal-ui";
 import { Frame } from "../chrome/Frame.jsx";
 import { placeOf } from "../chrome/nav.js";
 import { AccountPage } from "./AccountPage.jsx";
@@ -94,7 +94,8 @@ function AdminApp() {
       user={user}
       onSignOut={() => signOut()}
       onNavigate={(p) => go(p.id)}>
-      <div className="admin-body">{body}</div>
+      <div className="frame-body">{body}</div>
+      <Toasts />
     </Frame>
   );
 }

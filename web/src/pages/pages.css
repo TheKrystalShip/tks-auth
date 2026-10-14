@@ -1,8 +1,7 @@
 /* The sign-in, wait, device and account pages — what they need beyond the kit.
 
    What is here is what only these pages have: the column the daemon's floor provider links stand in
-   (the links themselves carry the kit's button classes), the sign-in card's arrangement, and the
-   account document's column. */
+   (the links themselves carry the kit's button classes), and the sign-in card's arrangement. */
 
 /* The no-script floor's provider links, which the daemon writes at its marker as anchors carrying the
    kit's secondary large wide button classes: stacked, with a rule under them in place of the app's divider. */
@@ -59,18 +58,7 @@
   font-weight: 600;
 }
 
-/* The account document's body: the column the four pages stand in, and a stack of buttons in a dialog. */
-.account-body {
-  box-sizing: border-box;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 16px 16px 64px;
-}
-
+/* A stack of buttons in a dialog. */
 .account-body__stack {
   display: flex;
   flex-direction: column;
@@ -88,6 +76,7 @@
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 10px 16px;
+  align-items: baseline;
   margin: 0;
   font-family: var(--font-ui);
   font-size: 13.5px;

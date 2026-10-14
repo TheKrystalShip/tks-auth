@@ -193,9 +193,20 @@ public sealed class ProviderPagesTests(AnchorFixture anchor)
 
         JsonElement context = await Read(await browser.SendAsync(Json(HttpMethod.Get, "/authorize/context")));
         Assert.Equal("Pages client", context.GetProperty("client").GetProperty("name").GetString());
+        Assert.False(context.GetProperty("client").GetProperty("own").GetBoolean());
         Assert.Contains("discord", context.GetProperty("providers").EnumerateArray().Select(p => p.GetString()));
         Assert.True(context.GetProperty("registration").GetBoolean());
         Assert.False(context.TryGetProperty("account", out _));
+    }
+
+    [Fact]
+    public async Task The_providers_own_account_page_is_marked_as_its_own_client_in_the_context()
+    {
+        using HttpClient browser = anchor.Following();
+        await browser.GetAsync("/account/sign-in");
+
+        JsonElement context = await Read(await browser.SendAsync(Json(HttpMethod.Get, "/authorize/context")));
+        Assert.True(context.GetProperty("client").GetProperty("own").GetBoolean());
     }
 
     [Fact]

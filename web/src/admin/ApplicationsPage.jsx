@@ -20,6 +20,9 @@ import { callRefusal } from "./stores.js";
 const manifestText = (app) => (!app.manifest ? null
   : app.manifest.taken ? countOf(app.manifest.actions, "action") : app.manifest.problem);
 
+// An application's id, its audience when that is another word, and what its manifest said.
+const identityText = (app, manifest) => [app.id, app.audience !== app.id ? app.audience : null, manifest].filter(Boolean).join(" · ");
+
 function ApplicationsPage() {
   const { allowed, status, list, error } = useApplications();
   const [registering, setRegistering] = React.useState(false);
@@ -50,7 +53,7 @@ function ApplicationsPage() {
               <ListRow key={app.id} data-application={app.id}
                 lead={<Icon name={builtin ? "lock" : "app-window"} size={16} />}
                 title={app.name}
-                sub={app.id + " · " + app.audience + (manifest ? " · " + manifest : "")}
+                sub={identityText(app, manifest)}
                 meta={builtin ? <Pill size="sm" tone="muted">Built in</Pill> : null}
                 aside={countOf(app.clients.length, "client")}
                 onOpen={() => go("applications", app.id)} />
@@ -64,4 +67,4 @@ function ApplicationsPage() {
   );
 }
 
-export { ApplicationsPage, manifestText };
+export { ApplicationsPage, identityText, manifestText };

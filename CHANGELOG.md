@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — Polish of the provider's pages (web)
+
+- `/authorize/context` names whether the client is one of the provider's own pages (`client.own`); the
+  sign-in page draws its "Signing in to ..." line for every other client. The Register form's display name
+  placeholder is the typed username.
+- The account and admin documents share one page column, owned by the frame (`frame-body`), clear of the
+  phone drawer's edge handle, and every page heading is as tall as a button so list pages start their
+  content at the same height.
+- A name that equals the username is shown once (Accounts rows, the account page, the sidebar foot), as is an
+  application whose id equals its audience.
+- Application settings size each field to its value; saving says "Saved" in a toast.
+- A service requirement's state leads its row, in a fixed column. A filed action shows its component only
+  when it differs from its application. The device page's values sit on their labels' baseline.
+
 ### Changed — The floor's provider links
 
 - The no-script sign-in floor's provider links carry krystal-ui's `k-btn k-btn--secondary k-btn--lg k-btn--wide`

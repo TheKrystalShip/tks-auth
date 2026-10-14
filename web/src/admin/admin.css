@@ -1,19 +1,14 @@
-/* The admin pages: their column in the frame, and what only they have: the catalog's component headings and a secret shown once. */
-
-.admin-body {
-  box-sizing: border-box;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 16px 16px 64px;
-}
+/* The admin pages: what only they have: the catalog's component headings and a secret shown once. */
 
 /* The scope an Assignments page is about, chosen in its header. */
 .admin-scope {
   width: min(360px, 100%);
+}
+
+/* The state of a service requirement, in a column of its own at the start of the row so the states line up. */
+.admin-state {
+  display: inline-flex;
+  min-width: 84px;
 }
 
 /* A component's heading above its actions inside an application's section. */
@@ -29,6 +24,11 @@
 /* ── Applications ── */
 /* The fields of a settings section, inside its frame. */
 .admin-section-fields { padding: 12px 14px; }
+
+/* A field holds its control at the control's own width, so a short value sits in a short input and a
+   control that asks to be `wide` still fills the column. */
+.admin-section-fields .k-field { align-items: flex-start; }
+.admin-input--short { width: 110px; }
 
 .admin-form__title {
   margin: 6px 0 0;

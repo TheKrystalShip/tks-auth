@@ -161,7 +161,7 @@ function SignInCard({
                   id="auth-display" wide
                   type="text"
                   autoComplete="nickname"
-                  placeholder={username.trim() || "Heisen"}
+                  placeholder={username.trim()}
                   value={displayName}
                   disabled={locked}
                   onChange={(e) => setDisplayName(e.target.value)} />
@@ -250,7 +250,9 @@ function SignInApp() {
     );
   }
 
-  const name = context ? context.client.name : null;
+  // The provider's own pages are not announced: "Signing in to your account" says nothing the page
+  // does not.
+  const name = context && !context.client.own ? context.client.name : null;
 
   return (
     <CardScreen

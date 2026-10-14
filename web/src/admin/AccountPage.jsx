@@ -71,7 +71,7 @@ function AccountPage({ id }) {
     <>
       <Breadcrumbs items={[{ label: "Accounts", href: "#/accounts" }, { label: name }]}
         onNavigate={() => go("accounts")} />
-      <PageHeader title={name} sub={user.username}
+      <PageHeader title={name} sub={user.username !== name ? user.username : undefined}
         actions={(
           <>
             {user.status === "pending" && canApprove && (

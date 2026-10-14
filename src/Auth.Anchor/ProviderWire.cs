@@ -165,7 +165,10 @@ internal sealed record AuthorizeContext(
     AuthorizeContextAccount? Account);
 
 /// <summary>The client a request in flight belongs to.</summary>
-internal sealed record AuthorizeContextClient(string Id, string Name);
+/// <param name="Id">The client's id.</param>
+/// <param name="Name">What the sign-in page calls it.</param>
+/// <param name="Own">Whether the client is one of the provider's own pages, which the sign-in page does not announce.</param>
+internal sealed record AuthorizeContextClient(string Id, string Name, bool Own);
 
 /// <summary>The account a browser's provider session proves.</summary>
 internal sealed record AuthorizeContextAccount(string Username, string DisplayName, string Status);

@@ -160,7 +160,7 @@ function AccountApp() {
       user={user}
       onSignOut={signOut}
       onNavigate={navigate}>
-      <div className="account-body" aria-busy={!me && !loadError ? "true" : undefined}>{body}</div>
+      <div className="frame-body" aria-busy={!me && !loadError ? "true" : undefined}>{body}</div>
 
       {me && renaming ? (
         <RenameDialog row={renaming} onClose={() => setRenaming(null)} onDone={() => { setRenaming(null); reload(); }} />

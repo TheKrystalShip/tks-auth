@@ -10,9 +10,9 @@ import React from "react";
 
 import {
   Breadcrumbs, Button, CopyField, Field, IconButton, Input, List, ListRow, Notice, PageHeader, Pill,
-  SettingsRow, SettingsSection, Toggle, useStore,
+  SettingsRow, SettingsSection, Toggle, toast, useStore,
 } from "@thekrystalship/krystal-ui";
-import { manifestText } from "./ApplicationsPage.jsx";
+import { identityText, manifestText } from "./ApplicationsPage.jsx";
 import { ClientDialog, ConfirmDialog, attempt, listOf } from "./applicationParts.jsx";
 import { issuedStore, keepSecrets, refreshApplications, useApplications } from "./applicationsStore.js";
 import { APPLICATIONS, api } from "./client.js";
@@ -58,7 +58,7 @@ function ApplicationPage({ id }) {
     setBusy(true);
     setRefusal(null);
     const r = await attempt(() => api.applications.set(app.id, change));
-    if (r.ok) await answered(r.answer); else setRefusal(r.refusal);
+    if (r.ok) { await answered(r.answer); toast.success("Saved"); } else setRefusal(r.refusal);
     setBusy(false);
   };
 
@@ -74,7 +74,7 @@ function ApplicationPage({ id }) {
     <>
       <Breadcrumbs items={[{ label: "Applications", href: "#/applications" }, { label: app.name }]} onNavigate={() => go("applications")} />
       <PageHeader title={app.name}
-        sub={<>{app.id} · {app.audience}{manifest ? " · " + manifest : ""}</>}
+        sub={identityText(app, manifest)}
         actions={canRemove ? (
           <Button variant="outline" tone="danger" icon="trash-2" disabled={busy} onClick={() => setRemoving(true)}>Remove</Button>
         ) : builtin ? <Pill tone="muted" icon="lock">Built in</Pill> : null} />
@@ -190,10 +190,10 @@ function Settings({ app, editable, busy, onSave }) {
       ) : null}>
       <form className="admin-form admin-section-fields" onSubmit={(e) => { e.preventDefault(); if (dirty && !off) onSave(change); }}>
         <Field label="Name">
-          <Input id={"name-" + app.id} wide value={form.name} disabled={off} onChange={text("name")} />
+          <Input id={"name-" + app.id} value={form.name} disabled={off} onChange={text("name")} />
         </Field>
         <Field label="Audience">
-          <Input id={"audience-" + app.id} wide mono spellCheck="false" autoCapitalize="off" value={form.audience}
+          <Input id={"audience-" + app.id} mono spellCheck="false" autoCapitalize="off" value={form.audience}
             disabled={off} onChange={text("audience")} />
         </Field>
         <Field label="Manifest" hint={manifestText(app) || undefined}>
@@ -201,7 +201,7 @@ function Settings({ app, editable, busy, onSave }) {
             disabled={off} onChange={text("manifestUrl")} />
         </Field>
         <Field label="Access lifetime (minutes)">
-          <Input id={"lifetime-" + app.id} wide type="number" value={form.lifetime} disabled={off} onChange={text("lifetime")} />
+          <Input id={"lifetime-" + app.id} className="admin-input--short" type="number" value={form.lifetime} disabled={off} onChange={text("lifetime")} />
         </Field>
         <Field label="Discord applications" hint="Whose tokens this application’s clients may present.">
           <Input id={"discord-" + app.id} wide mono spellCheck="false" autoCapitalize="off" value={form.discord}
