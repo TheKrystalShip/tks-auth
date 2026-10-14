@@ -1,13 +1,14 @@
 // OverviewPage — what waits on somebody: accounts awaiting approval, services' requirements awaiting a
 // decision, engine actions no permission holds, and the applications this provider signs people in to.
 //
-// A card is drawn when the person may read what it summarises (`callRefusal`, the provider's own
-// answer), and the first three only while something is waiting; with nothing waiting the page says so.
+// The authority read carries the accounts, the service requirements and the catalog, so the first three
+// cards are drawn from it whenever something is waiting; the applications card is drawn when the provider
+// offers the person the applications read (`callRefusal`). With nothing waiting the page says so.
 
 import React from "react";
 
 import { BriefCard, EmptyState } from "@thekrystalship/krystal-ui";
-import { ACCOUNTS, APPLICATIONS, api } from "./client.js";
+import { APPLICATIONS, api } from "./client.js";
 import { authorityGate, useAuthority } from "./kit.jsx";
 import { go } from "./route.js";
 import { callRefusal } from "./stores.js";
@@ -31,7 +32,6 @@ function Card({ id, icon, title, count, tone, page, items }) {
 function OverviewPage() {
   const state = useAuthority();
   const readApplications = !callRefusal("GET", APPLICATIONS);
-  const readAccounts = !callRefusal("GET", ACCOUNTS);
   const [applications, setApplications] = React.useState(null);
 
   React.useEffect(() => {
@@ -51,7 +51,7 @@ function OverviewPage() {
   const unmapped = view.catalog.filter((a) => a.unmapped);
 
   const attention = [
-    readAccounts && pending.length > 0 && (
+    pending.length > 0 && (
       <Card key="accounts" id="accounts" icon="user-check" title="Waiting for approval" count={pending.length} tone="warn"
         page="accounts" items={pending.map((a) => a.displayName || a.username)} />
     ),

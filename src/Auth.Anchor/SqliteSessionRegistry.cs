@@ -106,6 +106,7 @@ internal sealed partial class SqliteSessionRegistry : ISessionRegistry
     /// <see cref="DeviceKind"/> for a device signed in with the device grant; null for a session a surface
     /// holds under a browser's sign-in.
     /// </param>
+    /// <param name="Name">The name the person gave a device at sign-in, or null.</param>
     internal sealed record LiveSession(
         string SessionId,
         string UserId,

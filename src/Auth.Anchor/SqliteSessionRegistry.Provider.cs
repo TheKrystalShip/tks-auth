@@ -243,6 +243,7 @@ internal sealed partial class SqliteSessionRegistry
     /// <param name="providerSession">The provider session it was minted under, or null for a device's.</param>
     /// <param name="clientId">The client it was minted for, or null for KGSM's.</param>
     /// <param name="kind"><see cref="DeviceKind"/> for a device's session, otherwise null.</param>
+    /// <param name="name">The name the person gave a device at sign-in, or null.</param>
     /// <param name="ct">Cancellation token.</param>
     internal Task CreateAsync(
         SessionRegistration session, string? providerSession, string? clientId = null, string? kind = null,

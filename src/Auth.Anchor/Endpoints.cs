@@ -188,6 +188,7 @@ internal static class Endpoints
     /// <see cref="SqliteSessionRegistry.DeviceKind"/> for a device signed in with the device grant: a
     /// sign-in of its own, approved from a browser but not ended with it. Null for every other session.
     /// </param>
+    /// <param name="name">The name the person gave a device at sign-in, or null.</param>
     /// <returns>False, with nothing minted, when the account store could not be read.</returns>
     internal static async Task<bool> MintSessionFor(
         HttpContext ctx, KgsmIdentity identity, KgsmUser user, DateTimeOffset now,

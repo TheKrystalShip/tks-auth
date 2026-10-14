@@ -9,6 +9,12 @@ body,
    margin: 0;
 }
 
+/* A card taller than the window scrolls the document; the frame fills the window and scrolls inside. */
 body {
-   overflow: hidden;
+   overflow-x: hidden;
+}
+
+/* The no-script floor stands alone; the application's empty mount point beneath it adds no screen. */
+#floor ~ #root {
+   display: none;
 }

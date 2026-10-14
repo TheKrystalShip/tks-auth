@@ -108,6 +108,7 @@ internal static class ProviderPages
     /// <param name="code">The code, formatted as the device shows it.</param>
     /// <param name="application">The application the device asks to be signed in to.</param>
     /// <param name="userAgent">What the device said it is, or null.</param>
+    /// <param name="name">The name the device gave itself, or null.</param>
     /// <param name="who">Who is signed in on this browser, whose account the device would be signed in to.</param>
     public static Task DeviceConfirmAsync(HttpContext ctx, string code, string application, string? userAgent, string? name, string who)
     {
