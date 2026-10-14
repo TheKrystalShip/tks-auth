@@ -179,8 +179,6 @@
   text-overflow: ellipsis;
 }
 
-.access-action__file { width: 190px; max-width: 100%; }
-
 .access-pill {
   flex: 0 0 auto;
   padding: 2px 8px;
@@ -191,9 +189,6 @@
   color: var(--fg-3);
 }
 
-.access-pill--waiting, .access-pill--warn { background: var(--warning-bg); color: var(--warning-fg); }
-.access-pill--revoked { background: var(--danger-bg); color: var(--danger-fg); }
-.access-pill--approved { background: var(--success-bg); color: var(--success-fg); }
 
 
 @media (max-width: 640px) {

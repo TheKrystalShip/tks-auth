@@ -12,7 +12,8 @@
 
 import React from "react";
 
-import { Button, IconButton, List, ListRow, Notice, Select } from "@thekrystalship/krystal-ui";
+import { AccountAvatar, Button, Dialog, IconButton, List, ListRow, Notice, Pill, Select } from "@thekrystalship/krystal-ui";
+import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
 import { Locked, RefusalNote, parseInstance, roleName, useChecks, useScopeOptions, useScopeText } from "./kit.jsx";
 
@@ -29,6 +30,7 @@ function Assignments({ view, accountId, scope }) {
   const scopeOptions = useScopeOptions(view);
   const [refusal, setRefusal] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
+  const [revoking, setRevoking] = React.useState(null);
 
   const held = view.assignments.filter((a) =>
     (!accountId || a.accountId === accountId) && (!scope || a.scope === scope));
@@ -85,14 +87,25 @@ function Assignments({ view, accountId, scope }) {
               const v = verdictForRevoke(a.id);
               const closed = v && !v.allowed;
               const name = roleName(view, a.roleId);
+              const holder = view.accounts.find((x) => x.id === a.accountId);
+              const reason = closed && v.message ? <> · {v.message}</> : null;
               return (
                 <ListRow key={a.id} data-assignment={name}
-                  title={name}
-                  sub={<>{accountId ? scopeText(a.scope) : nameOf(a.accountId)}{closed && v.message ? <> · {v.message}</> : null}</>}
-                  meta={closed ? <Locked result={v} /> : null}
+                  lead={accountId ? undefined : (
+                    <AccountAvatar user={{ display: nameOf(a.accountId), name: holder ? holder.username : a.accountId }} size={32} />
+                  )}
+                  title={accountId ? name : nameOf(a.accountId)}
+                  sub={accountId
+                    ? <>{scopeText(a.scope)}{reason}</>
+                    : <>{holder ? holder.username : a.accountId}{reason}</>}
+                  meta={<>
+                    {!accountId && <Pill size="sm">{name}</Pill>}
+                    {closed ? <Locked result={v} /> : null}
+                  </>}
+                  onOpen={accountId ? undefined : () => go("accounts", a.accountId)}
                   actions={!closed && !editRefusal("revoke", targetOf(a.scope)) ? (
                     <IconButton variant="ghost" tone="danger" icon="x" label={"Take " + name + " away"}
-                      disabled={busy} onClick={() => run({ kind: "revoke", assignmentId: a.id })} />
+                      disabled={busy} onClick={() => setRevoking(a)} />
                   ) : null} />
               );
             })}
@@ -135,6 +148,24 @@ function Assignments({ view, accountId, scope }) {
         <Notice tone="warn" icon="lock" className="admin-refusal admin-refusal--compact">
           Assigning roles at {scopeText(at)} · {assignRefusal}
         </Notice>
+      )}
+
+      {revoking && (
+        <Dialog title={"Take " + roleName(view, revoking.roleId) + " away?"} icon="user-minus" canClose={!busy}
+          onClose={() => setRevoking(null)}
+          foot={(
+            <>
+              <Button variant="outline" disabled={busy} onClick={() => setRevoking(null)}>Keep</Button>
+              <Button variant="danger" busy={busy} onClick={async () => {
+                await run({ kind: "revoke", assignmentId: revoking.id });
+                setRevoking(null);
+              }}>Take away</Button>
+            </>
+          )}>
+          <p className="admin-dialog-text" data-dialog="confirm-take-away">
+            {nameOf(revoking.accountId)} stops holding {roleName(view, revoking.roleId)} at {scopeText(revoking.scope)}.
+          </p>
+        </Dialog>
       )}
     </div>
   );

@@ -14,7 +14,7 @@
 
 /* The scope an Assignments page is about, chosen in its header. */
 .admin-scope {
-  width: min(360px, 60vw);
+  width: min(360px, 100%);
 }
 
 /* A component's heading above its actions inside an application's section. */

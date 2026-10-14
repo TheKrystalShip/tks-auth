@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — Assignments and Service requests (web)
+
+- `#/assignments?scope=…&label=…` is a `PageHeader` naming the scope, a `Select` over the scopes in its
+  actions, and one section of the roles held there: each holder is a `ListRow` (avatar, name opening
+  `#/accounts/<id>`, the role as a pill, a `Locked` pill with the provider's reason where the rules close
+  the revoke) and the add row is an account `Select`, a role `Select` and `Assign`. Taking a role away
+  asks in a `Dialog` first, on the account page's list too.
+- `#/services` is a section per service account with a `ListRow` per requirement: the action id and why
+  it is asked, a state pill (waiting, approved, revoked), the granted scope, and `Approve`, `Narrow`
+  (a scope `Select`) and `Revoke`. Revoking asks in a `Dialog` that says a revoked requirement stays
+  revoked for the account's life. No service accounts is an empty state.
+- The stylesheet rules only the old Service requests page used are deleted.
+
 ### Changed — the Permissions list, the permission page and the Catalog (web)
 
 - `#/permissions` is a `List` of `ListRow`s: the permission's name, how many actions it holds, the roles
