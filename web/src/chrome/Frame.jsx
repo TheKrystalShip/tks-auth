@@ -12,7 +12,7 @@ import React from "react";
 
 import {
   AppShell, NavItem, Sidebar, SidebarAccount, SidebarGroup, useEdgeSwipe, useStoredFlag,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { GROUPS, PLACES, hrefOf } from "./nav.js";
 import "./frame.css";
 

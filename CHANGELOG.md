@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the pages run on Krystal 0.32.1 (web)
+
+- The sign-in, wait, account, device and admin pages build against `@thekrystalship/krystal` 0.32.1, the
+  renamed design system. The document resets sit in the cascade layer `tks.reset`, ordered before the
+  package's `krystal.*` layers; `npm run lint` extends `@thekrystalship/krystal/eslint` and
+  `npm run lint:css` runs Stylelint with `@thekrystalship/krystal/stylelint`, both as warnings.
+
 ### Changed — the pages run on krystal-ui 0.31.0 (web)
 
 - The sign-in, wait, account, device and admin pages build against krystal-ui 0.31.0: WOFF2 fonts, Floating UI

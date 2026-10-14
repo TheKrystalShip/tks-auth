@@ -11,7 +11,7 @@ import React from "react";
 
 import {
   Breadcrumbs, Button, Checkbox, Dialog, PageHeader, SettingsRow, SettingsSection,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { Brief, Locked, RefusalNote, authorityGate, useAuthority, useChecks, useScopeText } from "./kit.jsx";
 import { NameDialog, OWNER_VERDICT, countOf, probeOf } from "./roleParts.jsx";
 import { go } from "./route.js";

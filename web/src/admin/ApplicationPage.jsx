@@ -11,7 +11,7 @@ import React from "react";
 import {
   Breadcrumbs, Button, CopyField, Field, IconButton, Input, List, ListRow, Notice, PageHeader, Pill,
   SettingsRow, SettingsSection, Toggle, toast, useStore,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { identityText, manifestText } from "./ApplicationsPage.jsx";
 import { ClientDialog, ConfirmDialog, attempt, listOf } from "./applicationParts.jsx";
 import { issuedStore, keepSecrets, refreshApplications, useApplications } from "./applicationsStore.js";

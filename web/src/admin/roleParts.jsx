@@ -3,7 +3,7 @@
 
 import React from "react";
 
-import { Button, Dialog, Field, Input } from "@thekrystalship/krystal-ui";
+import { Button, Dialog, Field, Input } from "@thekrystalship/krystal";
 import { RefusalNote } from "./kit.jsx";
 
 const PEOPLES = new Set(["owner", "custom", "everyone"]);

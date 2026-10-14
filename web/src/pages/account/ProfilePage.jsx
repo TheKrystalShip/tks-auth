@@ -1,4 +1,4 @@
-import { PageHeader, SettingsRow, SettingsSection } from "@thekrystalship/krystal-ui";
+import { PageHeader, SettingsRow, SettingsSection } from "@thekrystalship/krystal";
 
 const capitalise = (word) => (word ? word[0].toUpperCase() + word.slice(1) : "—");
 

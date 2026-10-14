@@ -18,7 +18,7 @@ import React from "react";
 import {
   AccountAvatar, Button, Dialog, EmptyState, Field, Input, List, ListRow, PageHeader, PasswordInput, Pill,
   Select, SettingsRow, SettingsSection, Toolbar, ToolbarCount, ToolbarFilters, ToolbarSearch, useFilters, useStore,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { StatusPill, nameOf, providersOf, useAccounts } from "./accountParts.jsx";
 import { api } from "./client.js";
 import { Loading, RefusalNote, roleName } from "./kit.jsx";

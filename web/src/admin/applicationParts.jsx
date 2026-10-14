@@ -4,7 +4,7 @@
 
 import React from "react";
 
-import { Button, Checkbox, Dialog, Field, Input, Textarea } from "@thekrystalship/krystal-ui";
+import { Button, Checkbox, Dialog, Field, Input, Textarea } from "@thekrystalship/krystal";
 import { api } from "./client.js";
 import { RefusalNote } from "./kit.jsx";
 import { refusalOf } from "./stores.js";

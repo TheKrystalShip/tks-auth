@@ -12,7 +12,7 @@
 
 import React from "react";
 
-import { AccountAvatar, Button, Dialog, IconButton, List, ListRow, Notice, Pill, Select } from "@thekrystalship/krystal-ui";
+import { AccountAvatar, Button, Dialog, IconButton, List, ListRow, Notice, Pill, Select } from "@thekrystalship/krystal";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
 import { Locked, RefusalNote, parseInstance, roleName, useChecks, useScopeOptions, useScopeText } from "./kit.jsx";

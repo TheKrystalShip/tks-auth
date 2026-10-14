@@ -6,7 +6,7 @@
 // `takeOutcome`, which clears them from the address.
 
 import React from "react";
-import { providerLabel } from "@thekrystalship/krystal-ui";
+import { providerLabel } from "@thekrystalship/krystal";
 
 const PAGES = ["profile", "sign-in", "devices", "appearance"];
 

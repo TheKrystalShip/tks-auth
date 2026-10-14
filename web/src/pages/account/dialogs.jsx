@@ -2,7 +2,7 @@
 // provider's refusal stands in the dialog as a danger Notice.
 
 import React from "react";
-import { Button, Dialog, Field, Input, Notice, PasswordInput, ProviderButton, providerLabel } from "@thekrystalship/krystal-ui";
+import { Button, Dialog, Field, Input, Notice, PasswordInput, ProviderButton, providerLabel } from "@thekrystalship/krystal";
 import { passwordOk } from "../../lib/credentialRules.js";
 import { deleteJson, postJson } from "../api.js";
 import { PasswordStrength } from "../PasswordStrength.jsx";

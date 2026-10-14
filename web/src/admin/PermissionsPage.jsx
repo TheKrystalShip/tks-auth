@@ -6,7 +6,7 @@
 
 import React from "react";
 
-import { Button, EmptyState, Icon, List, ListRow, PageHeader, Pill } from "@thekrystalship/krystal-ui";
+import { Button, EmptyState, Icon, List, ListRow, PageHeader, Pill } from "@thekrystalship/krystal";
 import { Locked, authorityGate, roleName, useAuthority, useChecks } from "./kit.jsx";
 import { NameDialog, countOf } from "./roleParts.jsx";
 import { go } from "./route.js";

@@ -11,7 +11,7 @@
 //      the page renders broken in every browser with nothing but a console line to say why.
 //   2. The sign-in floor loses its marker or its form, and with scripting off nobody can sign in.
 //   3. A document stops loading theme-boot.js, and the stored theme shows only after the bundle runs.
-//   4. theme-boot.js's lists of dark and light themes drift from krystal-ui's THEME_OPTS when the pin
+//   4. theme-boot.js's lists of dark and light themes drift from Krystal's THEME_OPTS when the pin
 //      moves, and a stored theme the script does not know paints in the wrong mode first.
 //   5. The sign-in, wait or account page grows an import of the admin pages' session, and a page that
 //      must hold no bearer ships one — tree-shaking does not remove a static import of a module with
@@ -27,7 +27,7 @@ const ENTRY = resolve(SRC, "pages/main.jsx");
 const DIST = resolve(ROOT, "dist");
 const DOCUMENTS = ["auth-sign-in.html", "auth-wait.html", "auth-account.html", "auth-device.html", "admin.html"];
 
-const THEME_LIB = resolve(ROOT, "node_modules/@thekrystalship/krystal-ui/dist/lib/theme.js");
+const THEME_LIB = resolve(ROOT, "node_modules/@thekrystalship/krystal/dist/lib/theme.js");
 const THEME_BOOT = resolve(ROOT, "public/theme-boot.js");
 
 const IMPORT_RE = /(?:from|import)\s*\(?\s*["']([^"']+)["']/g;
@@ -105,7 +105,7 @@ if (!existsSync(DIST)) {
   if (!failed) console.log("✓ every document within the provider's policy, the floor intact");
 }
 
-// theme-boot.js mirrors krystal-ui's themes by mode.
+// theme-boot.js mirrors Krystal's themes by mode.
 {
   const { THEME_OPTS } = await import(THEME_LIB);
   const boot = readFileSync(THEME_BOOT, "utf8");
@@ -119,10 +119,10 @@ if (!existsSync(DIST)) {
     const have = listed(name);
     if (!have || have.join() !== wanted(mode).join()) {
       drift = true;
-      fail(`✗ theme-boot.js ${name} differs from krystal-ui's ${mode} themes — update the mirror to the pinned THEME_OPTS`);
+      fail(`✗ theme-boot.js ${name} differs from Krystal's ${mode} themes — update the mirror to the pinned THEME_OPTS`);
     }
   }
-  if (!drift) console.log("✓ theme-boot.js lists exactly krystal-ui's dark and light themes");
+  if (!drift) console.log("✓ theme-boot.js lists exactly Krystal's dark and light themes");
 }
 
 process.exit(failed ? 1 : 0);

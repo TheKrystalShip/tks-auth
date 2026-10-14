@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { EmptyState, PageHeader, Toasts, useStore } from "@thekrystalship/krystal-ui";
+import { EmptyState, PageHeader, Toasts, useStore } from "@thekrystalship/krystal";
 import { Frame } from "../chrome/Frame.jsx";
 import { placeOf } from "../chrome/nav.js";
 import { AccountPage } from "./AccountPage.jsx";

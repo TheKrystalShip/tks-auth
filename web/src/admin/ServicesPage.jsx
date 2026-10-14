@@ -8,7 +8,7 @@
 
 import React from "react";
 
-import { Button, Dialog, EmptyState, List, ListRow, PageHeader, Pill, Select, SettingsSection } from "@thekrystalship/krystal-ui";
+import { Button, Dialog, EmptyState, List, ListRow, PageHeader, Pill, Select, SettingsSection } from "@thekrystalship/krystal";
 import { RefusalNote, authorityGate, useAuthority, useScopeOptions, useScopeText } from "./kit.jsx";
 import { authorityStore, editRefusal } from "./stores.js";
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, CardScreen, EmptyState, Field, Input, Notice } from "@thekrystalship/krystal-ui";
+import { Button, CardScreen, EmptyState, Field, Input, Notice } from "@thekrystalship/krystal";
 import { getJson, postJson } from "./api.js";
 
 // DeviceApp — signing a device in with the code it shows.

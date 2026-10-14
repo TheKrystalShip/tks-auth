@@ -11,7 +11,7 @@ import React from "react";
 import {
   Breadcrumbs, Button, Dialog, Icon, IconButton, List, ListRow, PageHeader, Pill, Select, SettingsRow,
   SettingsSection,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { applicationOf, useApplicationNames } from "./catalogParts.jsx";
 import { Brief, Locked, RefusalNote, authorityGate, componentOf, roleName, useAuthority, useChecks } from "./kit.jsx";
 import { NameDialog, countOf } from "./roleParts.jsx";

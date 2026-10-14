@@ -3,7 +3,7 @@
 
 import React from "react";
 
-import { useStore } from "@thekrystalship/krystal-ui";
+import { useStore } from "@thekrystalship/krystal";
 import { applicationsStore, refreshApplications } from "./applicationsStore.js";
 import { APPLICATIONS } from "./client.js";
 import { componentOf } from "./kit.jsx";

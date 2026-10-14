@@ -7,8 +7,8 @@
 
 import React from "react";
 
-import { useStore } from "@thekrystalship/krystal-ui";
-import { createStore } from "@thekrystalship/krystal-ui/lib/store";
+import { useStore } from "@thekrystalship/krystal";
+import { createStore } from "@thekrystalship/krystal/lib/store";
 import { APPLICATIONS, api } from "./client.js";
 import { accessStore, callRefusal } from "./stores.js";
 

@@ -11,7 +11,7 @@ import React from "react";
 import {
   EmptyState, List, ListRow, PageHeader, Pill, Select, SettingsSection, Toolbar, ToolbarCount, ToolbarFilters,
   ToolbarSearch, useFilters,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { applicationOf, applicationRank, useApplicationNames } from "./catalogParts.jsx";
 import { RefusalNote, authorityGate, componentOf, useAuthority } from "./kit.jsx";
 import { go } from "./route.js";

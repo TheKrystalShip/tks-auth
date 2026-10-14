@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, CardScreen, EmptyState } from "@thekrystalship/krystal-ui";
+import { Button, CardScreen, EmptyState } from "@thekrystalship/krystal";
 
 // PendingPage — an account the provider knows, waiting to be let in.
 //

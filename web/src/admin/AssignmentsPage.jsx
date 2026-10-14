@@ -4,7 +4,7 @@
 // "manage access" opens the roles held on that install — and the name that surface knows it by rides
 // along as `label`, since this provider holds no record of servers.
 
-import { PageHeader, Select, SettingsSection } from "@thekrystalship/krystal-ui";
+import { PageHeader, Select, SettingsSection } from "@thekrystalship/krystal";
 import { Assignments } from "./Assignments.jsx";
 import { authorityGate, nameScope, useAuthority, useScopeOptions, useScopeText } from "./kit.jsx";
 import { go } from "./route.js";

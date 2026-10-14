@@ -17,7 +17,7 @@ import React from "react";
 import {
   Breadcrumbs, Button, Dialog, Field, PageHeader, PasswordInput, providerLabel, SettingsRow,
   SettingsSection, useStore,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { deviceIcon, deviceKind, deviceName } from "../lib/devices.js";
 import { when } from "../lib/formatting.js";
 import { StatusPill, handleOf, nameOf, providersOf, useAccounts } from "./accountParts.jsx";

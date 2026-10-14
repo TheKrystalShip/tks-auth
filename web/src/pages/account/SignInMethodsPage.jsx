@@ -1,4 +1,4 @@
-import { Button, PageHeader, ProviderButton, SettingsRow, SettingsSection, providerLabel } from "@thekrystalship/krystal-ui";
+import { Button, PageHeader, ProviderButton, SettingsRow, SettingsSection, providerLabel } from "@thekrystalship/krystal";
 
 // The password and the provider accounts attached to this one. Each change goes through `guarded`,
 // which asks for a recent proof first when the last one has aged.

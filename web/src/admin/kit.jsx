@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { Button, EmptyState, Notice, Pill, Skeleton, useStore } from "@thekrystalship/krystal-ui";
+import { Button, EmptyState, Notice, Pill, Skeleton, useStore } from "@thekrystalship/krystal";
 import { authorityStore, membersStore } from "./stores.js";
 
 // The authority, read when the first page wanting it mounts and kept for the rest.

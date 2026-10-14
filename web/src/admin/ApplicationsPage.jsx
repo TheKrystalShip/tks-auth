@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { Button, EmptyState, Icon, List, ListRow, PageHeader, Pill } from "@thekrystalship/krystal-ui";
+import { Button, EmptyState, Icon, List, ListRow, PageHeader, Pill } from "@thekrystalship/krystal";
 import { APPLICATIONS } from "./client.js";
 import { RegisterDialog } from "./applicationParts.jsx";
 import { keepSecrets, refreshApplications, useApplications } from "./applicationsStore.js";

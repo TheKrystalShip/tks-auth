@@ -1,5 +1,5 @@
 import React from "react";
-import { EmptyState, Notice, Skeleton } from "@thekrystalship/krystal-ui";
+import { EmptyState, Notice, Skeleton } from "@thekrystalship/krystal";
 import { Frame } from "../../chrome/Frame.jsx";
 import { parseTs } from "../../lib/formatting.js";
 import { getJson, postJson } from "../api.js";

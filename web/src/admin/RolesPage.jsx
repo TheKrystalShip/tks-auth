@@ -11,7 +11,7 @@
 
 import React from "react";
 
-import { Button, EmptyState, Icon, IconButton, List, ListRow, PageHeader } from "@thekrystalship/krystal-ui";
+import { Button, EmptyState, Icon, IconButton, List, ListRow, PageHeader } from "@thekrystalship/krystal";
 import { Locked, RefusalNote, authorityGate, useAuthority, useChecks } from "./kit.jsx";
 import { NameDialog, OWNER_VERDICT, countOf, peoplesRoles, probeOf } from "./roleParts.jsx";
 import { go } from "./route.js";

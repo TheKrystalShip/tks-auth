@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 
 import "../styles/kit.css";
 import "./admin.css";
-import "@thekrystalship/krystal-ui/lib/theme";
+import "@thekrystalship/krystal/lib/theme";
 
 import { AdminApp } from "./AdminApp.jsx";
 import { signIn, start } from "./session.js";

@@ -1,4 +1,4 @@
-import { Button, PageHeader, SettingsRow, SettingsSection } from "@thekrystalship/krystal-ui";
+import { Button, PageHeader, SettingsRow, SettingsSection } from "@thekrystalship/krystal";
 import { deviceIcon, deviceName } from "../../lib/devices.js";
 import { when } from "../../lib/formatting.js";
 

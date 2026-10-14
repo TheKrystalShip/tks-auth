@@ -2,16 +2,18 @@
    base.css — global glue
    ============================================================================ */
 
-html,
-body,
-#root {
-   height: 100%;
-   margin: 0;
-}
+@layer tks.reset {
+   html,
+   body,
+   #root {
+      height: 100%;
+      margin: 0;
+   }
 
-/* A card taller than the window scrolls the document; the frame fills the window and scrolls inside. */
-body {
-   overflow-x: hidden;
+   /* A card taller than the window scrolls the document; the frame fills the window and scrolls inside. */
+   body {
+      overflow-x: hidden;
+   }
 }
 
 /* The no-script floor stands alone; the application's empty mount point beneath it adds no screen. */

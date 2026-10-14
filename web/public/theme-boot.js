@@ -1,12 +1,12 @@
 // theme-boot.js — applies the stored theme preference before first paint.
 //
 // The documents are served under a policy with no inline script, so the boot script is a file of its
-// own, loaded from <head> ahead of the stylesheet. It reads the preference krystal-ui's theme store
+// own, loaded from <head> ahead of the stylesheet. It reads the preference Krystal's theme store
 // keeps (localStorage "krystal:theme"), resolves "auto" through the system colour scheme and a missing
-// value to krystal-ui's default "dark", and sets <html data-theme>. krystal-ui's themeStore takes over
+// value to Krystal's default "dark", and sets <html data-theme>. Krystal's themeStore takes over
 // when the application mounts.
 //
-// DARK and LIGHT mirror krystal-ui's THEME_OPTS (id and mode) and change when the krystal-ui pin moves.
+// DARK and LIGHT mirror Krystal's THEME_OPTS (id and mode) and change when the Krystal pin moves.
 (function () {
   var DARK = [
   "dark", "amoled", "nord", "catppuccin-mocha", "dracula", "tokyo-night", "synthwave", "gruvbox",
@@ -21,7 +21,7 @@
   "cvd-redgreen-light", "cvd-deuteran-light", "cvd-protan-light", "cvd-tritan-light",
   "cvd-universal-light", "cvd-mono-light"
   ];
-  // No stored preference is krystal-ui's default, "dark"; "auto" follows the system scheme.
+  // No stored preference is Krystal's default, "dark"; "auto" follows the system scheme.
   var theme = "dark";
   try {
     var pref = localStorage.getItem("krystal:theme");

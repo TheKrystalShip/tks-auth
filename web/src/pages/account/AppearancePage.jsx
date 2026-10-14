@@ -1,4 +1,4 @@
-import { PageHeader, SettingsSection, ThemePicker } from "@thekrystalship/krystal-ui";
+import { PageHeader, SettingsSection, ThemePicker } from "@thekrystalship/krystal";
 
 // The one appearance preference of this browser, shared by every page on this origin.
 function AppearancePage() {

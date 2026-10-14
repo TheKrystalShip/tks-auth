@@ -1,4 +1,4 @@
-import { Meter } from "@thekrystalship/krystal-ui";
+import { Meter } from "@thekrystalship/krystal";
 import { passwordStrength } from "../lib/credentialRules.js";
 
 // PasswordStrength — a typed password's strength as four segments and a word, beneath its field.

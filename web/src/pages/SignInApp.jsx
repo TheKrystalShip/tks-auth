@@ -1,7 +1,7 @@
 import React from "react";
 import {
   Button, CardScreen, Field, Input, Notice, OptionList, PasswordInput, ProviderButton, providerLabel,
-} from "@thekrystalship/krystal-ui";
+} from "@thekrystalship/krystal";
 import { passwordOk, usernameOk, usernameProblem } from "../lib/credentialRules.js";
 import { getJson, postJson } from "./api.js";
 import { PasswordStrength } from "./PasswordStrength.jsx";

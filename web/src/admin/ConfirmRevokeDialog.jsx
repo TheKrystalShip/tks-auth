@@ -1,4 +1,4 @@
-import { Button, Dialog } from "@thekrystalship/krystal-ui";
+import { Button, Dialog } from "@thekrystalship/krystal";
 
 // ConfirmRevokeDialog — the confirmation in front of ending somebody else's session, for whoever
 // holds auth:accounts.disable, on the account's page. A person's own sessions are ended on their

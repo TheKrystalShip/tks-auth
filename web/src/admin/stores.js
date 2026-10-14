@@ -13,7 +13,7 @@
 // the page redraws on what is now true. Every other refusal is the rules' own — `code`, the provider's
 // sentence, and for a subset refusal the actions not held — handed back to the page that asked.
 
-import { createStore } from "@thekrystalship/krystal-ui/lib/store";
+import { createStore } from "@thekrystalship/krystal/lib/store";
 import { reportAllows, targetOf } from "../lib/access.js";
 import { requirementOf } from "../lib/operations.js";
 import { ACCOUNTS, EDITS, api } from "./client.js";

@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { Pill } from "@thekrystalship/krystal-ui";
+import { Pill } from "@thekrystalship/krystal";
 import { api } from "./client.js";
 import { authorityStore, refusalOf } from "./stores.js";
 

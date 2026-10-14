@@ -7,7 +7,7 @@
 
 import React from "react";
 
-import { BriefCard, EmptyState } from "@thekrystalship/krystal-ui";
+import { BriefCard, EmptyState } from "@thekrystalship/krystal";
 import { APPLICATIONS, api } from "./client.js";
 import { authorityGate, useAuthority } from "./kit.jsx";
 import { go } from "./route.js";

@@ -1,6 +1,6 @@
 # `web/` — tks-auth's pages
 
-A Vite + React 18 app on `@thekrystalship/krystal-ui`, built under `base: "/ui/"` into `dist/`, which
+A Vite + React 18 app on `@thekrystalship/krystal`, built under `base: "/ui/"` into `dist/`, which
 the release and `deploy/deploy.sh` place in `ui/` beside the binary — where the settings file's
 `UiPath` points. The daemon reads each document from disk per request (`ProviderBundle`), so new pages
 are live the moment the files land.
@@ -18,7 +18,7 @@ npm run lint              # 0 errors
   Every call is same-origin and authenticated by the provider's cookie; nothing these pages hold can call
   an application, so they may import nothing from `src/admin/` (`npm run check` walks the import graph).
   Each document carries its own **floor** — a sign-in form that posts without script, the providers'
-  marker the daemon fills with links carrying krystal-ui's button classes, a wait that refreshes only
+  marker the daemon fills with links carrying Krystal's button classes, a wait that refreshes only
   under `<noscript>`, a code form the provider answers with the device and its two buttons — and the
   application removes it on mount.
   - The account document is four pages in the frame: Profile, Sign-in methods, Devices & sessions and
@@ -37,7 +37,7 @@ npm run lint              # 0 errors
   - It installs as the web app "Auth" from `public/admin.webmanifest` (scope: the whole origin, so
     sign-in and the account pages stay in the app) and the iOS tags in its head, with no service worker:
     nothing behind an administrator's bearer is kept offline.
-- **The frame** (`src/chrome/Frame.jsx`, places in `src/chrome/nav.js`) is krystal-ui's `AppShell` and
+- **The frame** (`src/chrome/Frame.jsx`, places in `src/chrome/nav.js`) is Krystal's `AppShell` and
   `Sidebar`, shared by the account and admin documents. It imports nothing from `src/admin/`; the
   Administration groups appear when the caller says the account administers, and moving between the two
   documents is a plain link.
@@ -60,14 +60,18 @@ React's `style={…}` props are set through the CSSOM and are not affected.
 
 ## The stylesheet
 
-`src/styles/kit.css` imports krystal-ui's sheets in cascade order, which is load-bearing, with
-`base.css` after the tokens. The other local CSS is `src/admin/admin.css` and `src/pages/pages.css`:
-only what is tks-auth's own, written with tokens and no literal colour. Every control, field, list,
-pill, dialog and card is krystal-ui's, and its class names are the package's public interface, so a
-rule here targets a package class only to place it.
+`src/styles/kit.css` imports the sheets of `@thekrystalship/krystal` that these pages draw with. The package's
+sheets sit in the cascade layers `krystal.tokens`, `krystal.base` and `krystal.components`; the document
+resets of `src/styles/base.css` sit in `tks.reset`, ordered before them, and every other rule is
+unlayered, so it wins over the package without raised specificity. The other local CSS is
+`src/admin/admin.css` and `src/pages/pages.css`: only what is tks-auth's own, written with tokens and no
+literal colour. Every control, field, list, pill, dialog and card is Krystal's, and its class names are the
+package's public interface, so a rule here targets a package class only to place it. `npm run lint` extends
+`@thekrystalship/krystal/eslint` and `npm run lint:css` runs Stylelint with
+`@thekrystalship/krystal/stylelint`.
 
 `public/theme-boot.js` applies the stored theme before first paint (the policy forbids inline script).
-Its theme lists mirror krystal-ui's `THEME_OPTS`; `npm run check` fails when they drift.
+Its theme lists mirror Krystal's `THEME_OPTS`; `npm run check` fails when they drift.
 
 ## Harness
 

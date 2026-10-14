@@ -5,11 +5,21 @@ import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import react from "eslint-plugin-react";
+import krystal from "@thekrystalship/krystal/eslint";
+
+// Krystal's restricted-syntax selectors (raw controls, literal colours) join the bearer rule below,
+// which replaces the rule's options rather than extending them, so they report at its severity.
+const krystalSyntax = krystal
+  .map((entry) => entry.rules?.["no-restricted-syntax"])
+  .find(Boolean)
+  ?.slice(1) ?? [];
 
 export default [
   { ignores: ["dist/**", "node_modules/**"] },
 
   js.configs.recommended,
+
+  ...krystal,
 
   {
     files: ["**/*.{js,jsx,mjs}"],
@@ -39,6 +49,7 @@ export default [
           selector: "Property[key.name='Authorization'], MemberExpression[property.name='Authorization']",
           message: "Attach a bearer only in src/admin/client.js, which renews it when it is refused.",
         },
+        ...krystalSyntax,
       ],
 
       "no-empty": ["warn", { allowEmptyCatch: true }],
