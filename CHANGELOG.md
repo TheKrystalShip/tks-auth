@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — the Auth app's home-screen icon has no dark border (web)
+
+- The manifest's icons are the Control Panel's exactly: `icon-512.png` serves both the plain and the
+  maskable icon, so Android draws the mark on its own background rather than inside a dark padded square.
+
 ### Added — the admin pages install as the web app "Auth" (web, daemon)
 
 - `admin.html` links `/ui/admin.webmanifest` ("Auth", starting at `/admin/` with the provider's whole
