@@ -4,7 +4,7 @@
 import React from "react";
 
 import { useStore } from "@thekrystalship/krystal-ui";
-import { applicationsStore, refreshApplications } from "./ApplicationsAdmin.jsx";
+import { applicationsStore, refreshApplications } from "./applicationsStore.js";
 import { APPLICATIONS } from "./client.js";
 import { componentOf } from "./kit.jsx";
 import { accessStore, callRefusal } from "./stores.js";

@@ -7,6 +7,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — Applications (web)
+
+- `#/applications` is a `List` of `ListRow`s: the name, the id, audience and manifest reading as its sub, a
+  `Built in` pill for KGSM and tks-auth, and the client count. `Register an application` opens a `Dialog`
+  form with the application's fields and its first client; registering opens the application's page.
+- `#/applications/<id>` is `Breadcrumbs` and a `PageHeader` whose `Remove` asks in a `Dialog`. Settings are
+  `Field`s on the page, saved together with only what changed (name, audience, manifest address, access
+  lifetime, the Discord applications, and a `Toggle` for acting for linked Discord users); clients are a
+  `ListRow` each with a public or confidential pill, its redirect addresses, `New secret` and remove,
+  each asking first, and `Add a client` opens a `Dialog` form. A secret the provider has just made stands
+  in a warning `Notice` with a `CopyField` until it is dismissed or the page is left, and is held nowhere
+  else. KGSM and tks-auth open read-only. An unknown id is "No such application".
+- The applications read and the secrets just made live in `applicationsStore.js`. The stylesheet rules and
+  the button, field and list classes only the old Applications page and the old sign-in forms used are
+  deleted, with the partials that held them.
+
 ### Changed — Assignments and Service requests (web)
 
 - `#/assignments?scope=…&label=…` is a `PageHeader` naming the scope, a `Select` over the scopes in its

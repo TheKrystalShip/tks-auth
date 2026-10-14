@@ -1,5 +1,4 @@
-/* The admin pages — their column in the frame, and what only they have: the catalog's component headings, the
-   application and client forms, and a secret shown once. */
+/* The admin pages: their column in the frame, and what only they have: the catalog's component headings and a secret shown once. */
 
 .admin-body {
   box-sizing: border-box;
@@ -28,69 +27,30 @@
 }
 
 /* ── Applications ── */
-.app-form {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+/* The fields of a settings section, inside its frame. */
+.admin-section-fields { padding: 12px 14px; }
+
+.admin-form__title {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-3);
 }
 
-.app-form .login-form__input {
-  height: 36px;
-}
-
-.app-form .login-form__label {
-  margin-top: 6px;
-}
-
-.app-form--register {
-  padding: 12px;
-  margin-bottom: 14px;
+/* A client secret shown once: the client, and the value to copy. */
+.admin-secrets {
+  padding: 14px;
   border: var(--edge);
   border-radius: var(--r-md);
-  background: var(--surface-2);
+  background: var(--surface-1);
 }
 
-.app-form__mono {
-  font-family: var(--font-mono);
-  font-size: 13px;
-}
-
-.app-form .app-form__area {
-  height: auto;
-  min-height: 64px;
-  padding: 8px 12px;
-  resize: vertical;
-}
-
-.app-form__check {
-  margin-top: 6px;
-}
-
-.app-secret {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 12px;
-  border: var(--edge);
-  border-radius: var(--r-md);
-  background: var(--surface-2);
-}
-
-.app-secret__client {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.app-secret__value {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  color: var(--fg-1);
-  overflow-wrap: anywhere;
-}
+.admin-secrets .k-notice__text { flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.admin-secrets__title { font-weight: 600; }
+.admin-secret { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.admin-secret__client { font-family: var(--font-mono); font-size: 12.5px; }
 
 /* ── Refusals and locks ── */
 .admin-refusal { margin-bottom: 10px; }

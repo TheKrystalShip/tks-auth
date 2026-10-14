@@ -12,7 +12,8 @@ import { Frame } from "../chrome/Frame.jsx";
 import { placeOf } from "../chrome/nav.js";
 import { AccountPage } from "./AccountPage.jsx";
 import { AccountsPage } from "./AccountsPage.jsx";
-import { ApplicationsAdmin } from "./ApplicationsAdmin.jsx";
+import { ApplicationPage } from "./ApplicationPage.jsx";
+import { ApplicationsPage } from "./ApplicationsPage.jsx";
 import { AssignmentsPage } from "./AssignmentsPage.jsx";
 import { CatalogPage } from "./CatalogPage.jsx";
 import { APPLICATIONS } from "./client.js";
@@ -34,11 +35,11 @@ const PAGES = {
   catalog: (route) => <CatalogPage params={route.params} />,
   assignments: (route) => <AssignmentsPage params={route.params} />,
   services: () => <ServicesPage />,
-  applications: () => <ApplicationsAdmin />,
+  applications: (route) => (route.id ? <ApplicationPage key={route.id} id={route.id} /> : <ApplicationsPage />),
 };
 
 // The pages that draw their own `PageHeader`, because they carry actions or a title of their own.
-const OWN_HEADER = new Set(["accounts", "roles", "permissions", "catalog", "assignments", "services"]);
+const OWN_HEADER = new Set(["accounts", "roles", "permissions", "catalog", "assignments", "services", "applications"]);
 
 // What is waiting on somebody, counted from the authority: accounts awaiting approval, services'
 // requirements awaiting a decision, and engine actions no permission holds.
