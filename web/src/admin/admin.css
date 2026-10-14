@@ -1,4 +1,4 @@
-/* The admin pages — their column in the frame, and what only they have: the catalog's application groups, the
+/* The admin pages — their column in the frame, and what only they have: the catalog's component headings, the
    application and client forms, and a secret shown once. */
 
 .admin-body {
@@ -17,18 +17,14 @@
   width: min(360px, 60vw);
 }
 
-/* ── The catalog, one group per application ── */
-.access-app + .access-app {
-  margin-top: 18px;
-}
-
-.access-app__title {
-  margin: 0 0 8px;
-  font-size: 12px;
+/* A component's heading above its actions inside an application's section. */
+.admin-group-title {
+  padding: 10px 14px 4px;
+  font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--fg-2);
+  color: var(--fg-3);
 }
 
 /* ── Applications ── */
@@ -122,22 +118,26 @@
 
 .admin-assign .admin-refusal { margin: 10px 14px 0; }
 
-.admin-assign__list {
+.admin-assign__list,
+.admin-flat-list {
   border: 0;
   border-radius: 0;
   background: none;
 }
 
-.admin-assign__form {
+.admin-assign__form,
+.admin-section-form {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 12px 14px;
 }
 
-.admin-assign__list + .admin-assign__form { border-top: var(--edge); }
+.admin-assign__list + .admin-assign__form,
+.admin-flat-list + .admin-section-form { border-top: var(--edge); }
 
-.admin-assign__form > .k-select { flex: 1 1 160px; min-width: 0; }
+.admin-assign__form > .k-select,
+.admin-section-form > .k-select { flex: 1 1 160px; min-width: 0; }
 
 /* ── Overview ── */
 .overview-grid {
@@ -167,3 +167,14 @@
 /* A role that can be ranked by dragging. */
 .admin-row--draggable { cursor: grab; }
 .admin-row--dragging { opacity: 0.5; }
+
+/* A row whose action is a Select takes the Select's width under its text on a phone. */
+@media (max-width: 768px) {
+  .admin-flat-list .k-listrow__actions:has(.k-select) {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin: 8px 0 0;
+  }
+
+  .admin-flat-list .k-listrow__actions .k-select { flex: 1; }
+}

@@ -1,5 +1,5 @@
 // roleParts — what the Roles list and the role page share: the roles a person may be given, the rules'
-// verdicts on editing them, and the dialog that names one.
+// verdicts on editing them, and the dialog that names one. The permissions' pages use the dialog too.
 
 import React from "react";
 
@@ -20,9 +20,10 @@ const countOf = (n, unit) => n + " " + unit + (n === 1 ? "" : "s");
 // The probe that asks whether a role's permissions may be set to what they are.
 const probeOf = (role) => ({ kind: "role.permissions", roleId: role.id, permissionIds: role.permissions });
 
-// A role's name, asked for in a dialog: to make one, or to rename one. `onSubmit(name)` resolves to
-// `{ ok, refusal }`; the dialog closes on success and shows the refusal otherwise.
-function NameDialog({ title, icon, initial, submit, onSubmit, onClose }) {
+// A role's or permission's name (`kind`), asked for in a dialog: to make one, or to rename one.
+// `onSubmit(name)` resolves to `{ ok, refusal }`; the dialog closes on success and shows the refusal
+// otherwise.
+function NameDialog({ kind = "role", title, icon, initial, submit, onSubmit, onClose }) {
   const [name, setName] = React.useState(initial || "");
   const [busy, setBusy] = React.useState(false);
   const [refusal, setRefusal] = React.useState(null);
@@ -47,10 +48,10 @@ function NameDialog({ title, icon, initial, submit, onSubmit, onClose }) {
           <Button variant="primary" type="submit" busy={busy} disabled={!value}>{submit}</Button>
         </>
       )}>
-      <div data-dialog="role-name" className="admin-form">
+      <div data-dialog={kind + "-name"} className="admin-form">
         <RefusalNote refusal={refusal} compact />
         <Field label="Name">
-          <Input id="role-name" wide value={name} autoFocus disabled={busy} onChange={(e) => setName(e.target.value)} />
+          <Input id={kind + "-name"} wide value={name} autoFocus disabled={busy} onChange={(e) => setName(e.target.value)} />
         </Field>
       </div>
     </Dialog>

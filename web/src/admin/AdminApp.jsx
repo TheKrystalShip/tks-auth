@@ -14,10 +14,11 @@ import { AccountPage } from "./AccountPage.jsx";
 import { AccountsPage } from "./AccountsPage.jsx";
 import { ApplicationsAdmin } from "./ApplicationsAdmin.jsx";
 import { AssignmentsPage } from "./AssignmentsPage.jsx";
-import { CatalogAdmin } from "./CatalogAdmin.jsx";
+import { CatalogPage } from "./CatalogPage.jsx";
 import { APPLICATIONS } from "./client.js";
 import { OverviewPage } from "./OverviewPage.jsx";
-import { PermissionsAdmin } from "./PermissionsAdmin.jsx";
+import { PermissionPage } from "./PermissionPage.jsx";
+import { PermissionsPage } from "./PermissionsPage.jsx";
 import { RolePage } from "./RolePage.jsx";
 import { RolesPage } from "./RolesPage.jsx";
 import { go, useRoute } from "./route.js";
@@ -29,15 +30,15 @@ const PAGES = {
   overview: () => <OverviewPage />,
   accounts: (route) => (route.id ? <AccountPage key={route.id} id={route.id} /> : <AccountsPage params={route.params} />),
   roles: (route) => (route.id ? <RolePage key={route.id} id={route.id} /> : <RolesPage />),
-  permissions: () => <PermissionsAdmin />,
-  catalog: () => <CatalogAdmin />,
+  permissions: (route) => (route.id ? <PermissionPage key={route.id} id={route.id} /> : <PermissionsPage />),
+  catalog: (route) => <CatalogPage params={route.params} />,
   assignments: (route) => <AssignmentsPage params={route.params} />,
   services: () => <ServiceRequests />,
   applications: () => <ApplicationsAdmin />,
 };
 
 // The pages that draw their own `PageHeader`, because they carry actions or a title of their own.
-const OWN_HEADER = new Set(["accounts", "roles"]);
+const OWN_HEADER = new Set(["accounts", "roles", "permissions", "catalog"]);
 
 // What is waiting on somebody, counted from the authority: accounts awaiting approval, services'
 // requirements awaiting a decision, and engine actions no permission holds.

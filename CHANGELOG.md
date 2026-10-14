@@ -7,6 +7,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the Permissions list, the permission page and the Catalog (web)
+
+- `#/permissions` is a `List` of `ListRow`s: the permission's name, how many actions it holds, the roles
+  holding it as pills and a `Locked` pill where the provider's checks close it. `New permission` opens a
+  `Dialog` form.
+- `#/permissions/<id>` is `Breadcrumbs` and a `PageHeader` whose actions rename the permission (a
+  `Dialog` form) and delete it (a confirming `Dialog`); one section lists the actions filed into it,
+  each with its application and component as pills and a button taking it out, with a `Select` over
+  the declared actions not yet in it and a link to the Catalog's unmapped actions; another lists the
+  roles holding it. A permission the rules close shows the provider's reason. An unknown id is "No such
+  permission".
+- `#/catalog` has a toolbar: search over an action's id and title, and filters for the application
+  and for unmapped actions, both kept in the address (`#/catalog?application=…&unmapped=1`). Actions are
+  `ListRow`s grouped by application, then component; the effect and the scope kind are pills, who
+  declares the action at which version is the row's aside, and an unmapped action is filed into a
+  permission through a `Select` on its row. The registered applications' names are read when the
+  provider offers them, so an application is named on the Catalog without visiting Applications first.
+- `PermissionsAdmin`, `CatalogAdmin` and the stylesheet rules only they used are deleted.
+
 ### Changed — the Roles list and the role page (web)
 
 - `#/roles` is a ranked `List` of `ListRow`s: Owner first with a `Locked` pill, `everyone` last, the
