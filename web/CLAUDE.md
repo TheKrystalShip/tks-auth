@@ -34,6 +34,9 @@ npm run lint              # 0 errors
   everybody else as it answers an unknown path.
   - Addresses are `#/<page>[/<id>][?<name>=<value>]` (`src/admin/route.js`); an account, a role, a
     permission and an application each open on a page of their own at `#/<page>/<id>`.
+  - It installs as the web app "Auth" from `public/admin.webmanifest` (scope: the whole origin, so
+    sign-in and the account pages stay in the app) and the iOS tags in its head, with no service worker:
+    nothing behind an administrator's bearer is kept offline.
 - **The frame** (`src/chrome/Frame.jsx`, places in `src/chrome/nav.js`) is krystal-ui's `AppShell` and
   `Sidebar`, shared by the account and admin documents. It imports nothing from `src/admin/`; the
   Administration groups appear when the caller says the account administers, and moving between the two

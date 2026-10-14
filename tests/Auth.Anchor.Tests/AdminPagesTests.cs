@@ -237,6 +237,8 @@ public sealed class AdminPagesTests(AnchorFixture anchor)
             Assert.Contains("script-src 'self'", policy, StringComparison.Ordinal);
             Assert.Contains("connect-src 'self'", policy, StringComparison.Ordinal);
             Assert.Contains("frame-ancestors 'none'", policy, StringComparison.Ordinal);
+            // The admin pages install as a web app, whose manifest the policy has to admit.
+            Assert.Contains("manifest-src 'self'", policy, StringComparison.Ordinal);
 
             Assert.Equal(HttpStatusCode.OK, (await browser.SendAsync(owner.AtTheAccountPage(HttpMethod.Get, "/admin"))).StatusCode);
         }

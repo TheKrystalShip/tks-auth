@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — the admin pages install as the web app "Auth" (web, daemon)
+
+- `admin.html` links `/ui/admin.webmanifest` ("Auth", starting at `/admin/` with the provider's whole
+  origin as its scope, so signing in and the account pages stay in the app) and carries the iOS home-screen
+  icons, title and launch images; the icons are the Krystal Ship mark. The page policy admits the manifest
+  (`manifest-src 'self'`). The app installs from the manifest alone, and nothing is cached offline.
+
 ### Changed — Polish of the provider's pages (web)
 
 - `/authorize/context` names whether the client is one of the provider's own pages (`client.own`); the

@@ -1,0 +1,34 @@
+{
+  "id": "/admin/",
+  "name": "Auth",
+  "short_name": "Auth",
+  "description": "Accounts, roles and applications for The Krystal Ship.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/admin/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0B0F14",
+  "theme_color": "#0B0F14",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/ui/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ui/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ui/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

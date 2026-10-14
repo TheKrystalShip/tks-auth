@@ -7,7 +7,67 @@
     <meta name="color-scheme" content="dark light" />
     <script src="/ui/theme-boot.js"></script>
     <link rel="icon" type="image/png" href="/assets/tks-mark.png" />
-    <title>tks-auth</title>
+    <meta name="theme-color" content="#0B0F14" />
+
+    <!-- The admin pages install as the web app "Auth": the manifest drives Android Chrome's install,
+         and iOS Safari, which ignores it, reads the apple-* tags and the launch images below. -->
+    <link rel="manifest" href="/admin.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- black: the status bar is black and the page does not extend under it. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Auth" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
+
+    <!-- Launch screens shown while an installed app starts. iOS picks the entry whose media query
+         matches the device; each image is a solid #0B0F14 background with the app icon centred.
+         Portrait only — iOS uses portrait splash even on landscape launches.
+         Sizes = logical_width×logical_height × device_pixel_ratio. -->
+    <!-- iPhone SE (1st gen / 5 / 5s) — 320×568 @2x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-640x1136.png"
+          media="(device-width:320px) and (device-height:568px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <!-- iPhone 6/7/8, SE 2nd/3rd gen — 375×667 @2x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-750x1334.png"
+          media="(device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <!-- iPhone XR, 11 — 414×896 @2x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-828x1792.png"
+          media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <!-- iPhone X, XS, 11 Pro, 12 mini, 13 mini — 375×812 @3x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1125x2436.png"
+          media="(device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <!-- iPhone XS Max, 11 Pro Max — 414×896 @3x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1242x2688.png"
+          media="(device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <!-- iPhone 12, 12 Pro, 13, 13 Pro, 14 — 390×844 @3x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1170x2532.png"
+          media="(device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <!-- iPhone 12 Pro Max, 13 Pro Max, 14 Plus — 428×926 @3x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1284x2778.png"
+          media="(device-width:428px) and (device-height:926px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <!-- iPhone 14 Pro, 15, 15 Pro, 16 — 393×852 @3x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1179x2556.png"
+          media="(device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <!-- iPhone 14 Pro Max, 15 Plus, 15 Pro Max, 16 Plus — 430×932 @3x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1290x2796.png"
+          media="(device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <!-- iPhone 16 Pro Max — 440×956 @3x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1320x2868.png"
+          media="(device-width:440px) and (device-height:956px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)" />
+    <!-- iPad (all sizes that share 768×1024 @2x) -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1536x2048.png"
+          media="(device-width:768px) and (device-height:1024px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <!-- iPad Pro 11-inch — 834×1194 @2x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-1668x2388.png"
+          media="(device-width:834px) and (device-height:1194px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+    <!-- iPad Pro 12.9-inch — 1024×1366 @2x -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-2048x2732.png"
+          media="(device-width:1024px) and (device-height:1366px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" />
+
+    <title>Auth</title>
   </head>
   <!-- Administering access is the application's alone: it holds a session of its own, which a page
        with no script cannot. -->

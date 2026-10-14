@@ -218,6 +218,7 @@ internal static class ProviderPages
         IHeaderDictionary headers = ctx.Response.Headers;
         headers.ContentSecurityPolicy =
             "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; "
+            + "manifest-src 'self'; "
             + $"connect-src 'self'; form-action {formAction}; frame-ancestors 'none'; base-uri 'none'";
         headers.CacheControl = "no-store";
         // Same-origin, not none: a page's own posts must carry its Origin, which is what proves a
