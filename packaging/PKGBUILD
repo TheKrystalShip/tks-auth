@@ -31,8 +31,7 @@ provides=('kgsm-auth-anchor')
 replaces=('kgsm-auth-anchor' 'kgsm-web-auth')
 conflicts=('kgsm-auth-anchor' 'kgsm-web-auth')
 backup=('etc/tks-auth/tks-auth.env'
-        'etc/tks-auth/providers.env'
-        'etc/nginx/kgsm/tks-auth.admin-allow')
+        'etc/tks-auth/providers.env')
 install="tks-auth.install"
 optdepends=(
     'kgsm-api: the node whose Control Panel people sign in to through this anchor'
@@ -121,8 +120,6 @@ package() {
     # nothing else. Inert on a machine with no nginx.
     install -Dm644 "${repo}/deploy/nginx/tks-auth.locations" \
         "${pkgdir}/etc/nginx/kgsm/tks-auth.locations"
-    install -Dm644 "${repo}/deploy/nginx/tks-auth.admin-allow" \
-        "${pkgdir}/etc/nginx/kgsm/tks-auth.admin-allow"
     install -Dm644 "${repo}/deploy/nginx/tks-auth.sites.conf" \
         "${pkgdir}/etc/nginx/conf.d/00-tks-auth-sites.conf"
     install -Dm644 "${repo}/deploy/tks-auth.serving.tmpfiles" \

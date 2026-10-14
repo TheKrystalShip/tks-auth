@@ -21,24 +21,3 @@ location / {
     proxy_set_header   X-Forwarded-Proto $scheme;
     proxy_set_header   Connection        '';
 }
-
-# The routes only an administrator uses: the admin pages and the application and authority-check
-# routes they call. The Control Panel and the cluster's members use none of them, so they are answered
-# from the allowlisted networks alone ($tks_auth_admin_net, from /etc/nginx/kgsm/tks-auth.admin-allow
-# via the http-context geo in tks-auth.sites.conf). Any other address is rewritten to a path the
-# daemon has no route for and proxied by `location /`, so the 404 is the daemon's own and is
-# indistinguishable from any unmatched path. The daemon routes case-insensitively and treats a
-# trailing slash as the same route, hence ~* and the optional slash.
-location ~* ^/(admin/|auth/cluster/applications(/|$)|auth/cluster/authority/checks/?$) {
-    if ($tks_auth_admin_net = 0) {
-        rewrite ^ /.unrouted last;
-    }
-
-    proxy_pass         http://127.0.0.1:8098;
-    proxy_http_version 1.1;
-    proxy_set_header   Host              $host;
-    proxy_set_header   X-Real-IP         $remote_addr;
-    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-    proxy_set_header   X-Forwarded-Proto $scheme;
-    proxy_set_header   Connection        '';
-}

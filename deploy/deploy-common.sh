@@ -89,7 +89,6 @@ TLS_DIR="/var/lib/kgsm/tls/${PROJECT}"
 SITES_DIR="/var/lib/kgsm/nginx"
 LOCATIONS_SRC="${REPO_DIR}/deploy/nginx/${PROJECT}.locations"
 SITES_INCLUDE_SRC="${REPO_DIR}/deploy/nginx/${PROJECT}.sites.conf"
-ADMIN_ALLOW_SRC="${REPO_DIR}/deploy/nginx/${PROJECT}.admin-allow"
 NGINX_RELOAD_TEMPLATE="${REPO_DIR}/deploy/polkit/47-${PROJECT}-nginx-reload.rules.in"
 NGINX_RELOAD_DST="/etc/polkit-1/rules.d/47-${PROJECT}-nginx-reload.rules"
 
@@ -113,10 +112,6 @@ setup_serving() {
     fi
 
     $SUDO install -D -m 0644 -o root -g root "$LOCATIONS_SRC" "/etc/nginx/kgsm/${PROJECT}.locations"
-    # A configuration file: an operator's edits survive, so it is installed only when absent.
-    if [[ ! -e "/etc/nginx/kgsm/${PROJECT}.admin-allow" ]]; then
-        $SUDO install -D -m 0644 -o root -g root "$ADMIN_ALLOW_SRC" "/etc/nginx/kgsm/${PROJECT}.admin-allow"
-    fi
     # This component's own include, one per component, so two components on one machine never claim
     # the same file.
     $SUDO install -m 0644 -o root -g root "$SITES_INCLUDE_SRC" "/etc/nginx/conf.d/00-${PROJECT}-sites.conf"

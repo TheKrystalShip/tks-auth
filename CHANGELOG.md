@@ -143,15 +143,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   actions. The addresses accept an id after a page name, and an empty or unknown address opens the
   overview. `npm run check` also holds `theme-boot.js` to krystal-ui's list of themes.
 
-### Added — the admin-only routes answer allowlisted networks alone (nginx)
-
-- `GET /admin/`, `/auth/cluster/applications` with everything under it, and
-  `POST /auth/cluster/authority/checks` are answered only to the networks listed in
-  `/etc/nginx/kgsm/tks-auth.admin-allow` (loopback, RFC 1918 and unique-local ranges by default).
-  Any other address gets the daemon's own unknown-path 404, byte for byte what an unmatched path
-  returns. The file is a configuration file: `setup.sh` installs it only when absent and the package
-  lists it in `backup=()`. The Control Panel's and the members' routes are not fenced.
-
 ### Changed — every page follows the stored theme preference (web)
 
 - The sign-in, wait, account, device and admin pages apply the theme stored under krystal-ui's theme key
