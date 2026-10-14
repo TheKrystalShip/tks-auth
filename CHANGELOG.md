@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — every design-system sheet (web), 4.11.1
+
+- **The pages import Krystal's `styles.css` whole** (0.36.1), so the account list's and assignments'
+  avatars, every icon button's tooltip and the detail pages' tabs draw styled, and a component a page
+  starts drawing never arrives unstyled.
+
 ### Changed — the pages draw their forms, dialogs and lists through Krystal 0.35.0 (web)
 
 - Every form (sign-in and register, the device code and its decision, the account dialogs, the admin

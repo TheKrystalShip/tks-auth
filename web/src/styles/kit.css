@@ -1,5 +1,6 @@
-/* The kit every tks-auth page draws with: the design system's own sheets
-   (@thekrystalship/krystal) and the partials below.
+/* The kit every tks-auth page draws with: every design-system sheet (@thekrystalship/krystal's
+   styles.css, whole, so a component a page starts drawing never arrives unstyled) and the partials
+   below.
 
    The package's sheets sit in the cascade layers krystal.tokens, krystal.base and krystal.components.
    tks-auth's document resets sit in tks.reset, ordered before them, and every other rule of the pages
@@ -7,28 +8,5 @@
    owns its domain. */
 @layer tks.reset, krystal.tokens, krystal.base, krystal.components;
 
-@import "@thekrystalship/krystal/styles/tokens.css";
-@import "@thekrystalship/krystal/styles/motion.css";
-@import "@thekrystalship/krystal/styles/scrollbar.css";
+@import "@thekrystalship/krystal/styles.css";
 @import "./base.css";
-@import "@thekrystalship/krystal/styles/controls.css";
-@import "@thekrystalship/krystal/styles/providers.css";
-@import "@thekrystalship/krystal/styles/cardscreen.css";
-@import "@thekrystalship/krystal/styles/page.css";
-@import "@thekrystalship/krystal/styles/pill.css";
-@import "@thekrystalship/krystal/styles/list.css";
-@import "@thekrystalship/krystal/styles/shell.css";
-@import "@thekrystalship/krystal/styles/subtabs.css";
-@import "@thekrystalship/krystal/styles/select.css";
-@import "@thekrystalship/krystal/styles/portal.css";
-@import "@thekrystalship/krystal/styles/dialog.css";
-@import "@thekrystalship/krystal/styles/toolbar.css";
-@import "@thekrystalship/krystal/styles/breadcrumbs.css";
-@import "@thekrystalship/krystal/styles/brief.css";
-@import "@thekrystalship/krystal/styles/settings.css";
-@import "@thekrystalship/krystal/styles/form.css";
-@import "@thekrystalship/krystal/styles/signin.css";
-@import "@thekrystalship/krystal/styles/list-page.css";
-@import "@thekrystalship/krystal/styles/detail-page.css";
-@import "@thekrystalship/krystal/styles/theme-picker.css";
-@import "@thekrystalship/krystal/styles/toast.css";
