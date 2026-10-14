@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — a phone's gutter (web), 4.11.3
+
+- **A page's column has the same gutter on both sides of a phone**, 12px at 480px wide and below, as the
+  panel's has; the drawer's edge handle sits over the left edge.
+
 ### Changed — the pages draw the remaining shapes through Krystal 0.37.0 (web), 4.11.2
 
 - **The register tab's Display name** follows the username and the strength meter hangs under the password
