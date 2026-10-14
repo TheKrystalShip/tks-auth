@@ -10,7 +10,7 @@
     "lint": "eslint src scripts"
   },
   "dependencies": {
-    "@thekrystalship/krystal-ui": "0.30.0",
+    "@thekrystalship/krystal-ui": "0.31.0",
     "lucide-react": "^0.460.0",
     "oidc-client-ts": "^3.5.0",
     "react": "^18.3.1",

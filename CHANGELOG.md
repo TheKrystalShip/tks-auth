@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the pages run on krystal-ui 0.31.0 (web)
+
+- The sign-in, wait, account, device and admin pages build against krystal-ui 0.31.0: WOFF2 fonts, Floating UI
+  popovers, focus-trapping dialogs and the `--r-sm` small radius.
+
 ### Fixed — the Auth app's home-screen icon has no dark border (web)
 
 - The manifest's icons are the Control Panel's exactly: `icon-512.png` serves both the plain and the
