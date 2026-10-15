@@ -123,17 +123,17 @@ function Assignments({ view, accountId, scope }) {
       {(canAssign || !scope) && (
         <Form form={form} className="admin-assign__form">
           {!accountId && (
-            <FormField name="who" control="select" aria-label="Account" disabled={busy}>
+            <FormField name="who" control="select" className="admin-assign__field" aria-label="Account" disabled={busy}>
               <option value="">Account…</option>
               {people.map((p) => <option key={p.id} value={p.id}>{p.displayName || p.username}</option>)}
             </FormField>
           )}
           {!scope && (
-            <FormField name="where" control="select" aria-label="Scope" disabled={busy}>
+            <FormField name="where" control="select" className="admin-assign__field" aria-label="Scope" disabled={busy}>
               {scopeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </FormField>
           )}
-          <FormField name="role" control="select" aria-label="Role" disabled={busy || !canAssign || !account}>
+          <FormField name="role" control="select" className="admin-assign__field" aria-label="Role" disabled={busy || !canAssign || !account}>
             <option value="">Role…</option>
             {roles.map((r) => {
               const v = verdictForRole(r.id);

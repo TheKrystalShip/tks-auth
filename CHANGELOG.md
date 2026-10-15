@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the pages take Krystal 0.40.0 and reach into fewer package classes (web), 4.11.5
+
+- **The admin application form's fields, the assignment form's controls, the permission page's filing
+  select and the sign-in screen's foot name** carry site classes of their own, so no rule in the site's
+  sheets selects `.k-field`, `.k-select` or `.k-cardscreen__foot`.
+
 ### Changed — the page gutter is the frame's (web), 4.11.4
 
 - **The pages inherit Krystal 0.38.0's gutter**: the frame's main column pads both sides by

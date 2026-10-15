@@ -109,7 +109,7 @@ function PermissionPage({ id }) {
         {closed && verdict && !verdict.allowed && <div className="admin-quiet">{verdict.message}</div>}
         {!closed && (
           <div className="admin-section-form">
-            <Select value="" aria-label="File an action into this permission" disabled={busy || fileable.length === 0}
+            <Select value="" className="admin-section-form__select" aria-label="File an action into this permission" disabled={busy || fileable.length === 0}
               onChange={(e) => { if (e.target.value) setActions([...permission.actions, e.target.value]); }}>
               <option value="">{fileable.length === 0 ? "Every action is filed here" : "File an action…"}</option>
               {components.map((c) => (

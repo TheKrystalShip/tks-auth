@@ -162,7 +162,7 @@ function SignInApp() {
       onAnchorError={setAnchorError}
       onSubmit={submit}
       onProvider={(provider) => window.location.assign("/authorize/" + encodeURIComponent(provider))}
-      foot={name ? <span>{registering ? "Creating your account for" : "Signing in to"} <b>{name}</b></span> : null} />
+      foot={name ? <span>{registering ? "Creating your account for" : "Signing in to"} <b className="signin-foot__name">{name}</b></span> : null} />
   );
 }
 

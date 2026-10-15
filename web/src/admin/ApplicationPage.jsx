@@ -194,15 +194,15 @@ function Settings({ app, editable, busy, onSave }) {
         <Button variant="primary" size="sm" busy={busy} disabled={busy} onClick={form.submit}>Save</Button>
       ) : null}>
       <Form form={form} className="admin-section-fields">
-        <FormField name="name" label="Name" control="input" wide={false} disabled={off} />
-        <FormField name="audience" label="Audience" control="input" wide={false} mono spellCheck="false"
+        <FormField name="name" label="Name" control="input" wide={false} className="admin-field" disabled={off} />
+        <FormField name="audience" label="Audience" control="input" wide={false} className="admin-field" mono spellCheck="false"
           autoCapitalize="off" disabled={off} />
-        <FormField name="manifestUrl" label="Manifest" hint={manifestText(app) || undefined} control="input" mono
+        <FormField name="manifestUrl" label="Manifest" hint={manifestText(app) || undefined} control="input" mono className="admin-field"
           spellCheck="false" autoCapitalize="off" disabled={off} />
         <FormField name="lifetime" label="Access lifetime (minutes)" control="input" wide={false} type="number"
-          className="admin-field--short" disabled={off} />
+          className="admin-field admin-field--short" disabled={off} />
         <FormField name="discord" label="Discord applications" hint="Whose tokens this application’s clients may present."
-          control="input" mono spellCheck="false" autoCapitalize="off" disabled={off} />
+          control="input" mono className="admin-field" spellCheck="false" autoCapitalize="off" disabled={off} />
       </Form>
       <SettingsRow icon="link" title="Acts for linked Discord users">
         <Toggle on={form.values.actForDiscord} disabled={off} label="Acts for linked Discord users"

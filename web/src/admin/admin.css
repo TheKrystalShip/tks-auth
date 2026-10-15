@@ -27,7 +27,7 @@
 
 /* A field holds its control at the control's own width, so a short value sits in a short input and a
    control that asks to be `wide` still fills the column. */
-.admin-section-fields .k-field { align-items: flex-start; }
+.admin-section-fields .admin-field { align-items: flex-start; }
 .admin-field--short input { width: 110px; }
 
 .admin-form__title {
@@ -92,9 +92,8 @@
 .admin-assign__list + .admin-assign__form,
 .admin-flat-list + .admin-section-form { border-top: var(--edge); }
 
-.admin-assign__form > .k-field,
-.admin-assign__form > .k-select,
-.admin-section-form > .k-select { flex: 1 1 160px; min-width: 0; }
+.admin-assign__field,
+.admin-section-form__select { flex: 1 1 160px; min-width: 0; }
 
 /* ── Overview ── */
 .overview-grid {
