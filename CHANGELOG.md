@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — Krystal 0.42.1 (web), 4.11.8
+
+- **The pages draw through Krystal 0.42.1**, whose menus, popovers and dialogs hand focus back to their
+  trigger. The sheets' Stylelint config reports a selector on a `.k-` class as an error.
+
 ### Changed — the sheets select no package class (web), 4.11.7
 
 - **A page's heading height is `PageHeader`'s own**, and the service requests' rows share their phone
