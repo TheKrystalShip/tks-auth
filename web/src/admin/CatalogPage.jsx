@@ -125,6 +125,7 @@ function CatalogPage({ params }) {
                         {a.unmapped && !(canFile && view.permissions.length > 0) && <Pill size="sm" tone="warn">unmapped</Pill>}
                       </>}
                       aside={a.declaredBy.map((d) => d.member + (d.version ? " " + d.version : "")).join(", ") || "—"}
+                      actionsBelow={a.unmapped && canFile && view.permissions.length > 0}
                       actions={a.unmapped && canFile && view.permissions.length > 0 ? (
                         <Select value="" aria-label={"File " + a.action + " into a permission"} disabled={busy}
                           onChange={(e) => { if (e.target.value) fileInto(a.action, e.target.value); }}>

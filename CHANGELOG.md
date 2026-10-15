@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — no rule in the sheets selects a package class (web), 4.11.6
+
+- **The one-time client secret** is a `Notice block`, and **the admin lists' rows that carry a Select**
+  (catalog actions, service requirements) take `ListRow actionsBelow`, so the sheets hold no selector on
+  `.k-notice__text`, `.k-listrow__actions` or `.k-select`. The pages draw through Krystal 0.41.0.
+
 ### Changed — the pages take Krystal 0.40.0 and reach into fewer package classes (web), 4.11.5
 
 - **The admin application form's fields, the assignment form's controls, the permission page's filing

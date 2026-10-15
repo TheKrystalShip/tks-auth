@@ -82,7 +82,7 @@ function ApplicationPage({ id }) {
       <RefusalNote refusal={refusal} />
 
       {secrets.length > 0 && (
-        <Notice tone="warn" icon="key-round" className="admin-secrets">
+        <Notice block tone="warn" icon="key-round" className="admin-secrets">
           <div className="admin-secrets__title">Client secret, shown once. Copy it now; it cannot be read again.</div>
           {secrets.map((s) => (
             <div key={s.clientId} className="admin-secret" data-secret-for={s.clientId}>

@@ -95,6 +95,7 @@ function Requirement({ svc, q, canManage, busy, scopeText, scopes, run, onRevoke
       lead={<span className="admin-state"><Pill size="sm" tone={s ? s.tone : "neutral"} data-state={q.state}>{s ? s.label : q.state}</Pill></span>}
       meta={!q.declared ? <Pill size="sm" tone="muted">no longer declared</Pill> : null}
       aside={q.state === "approved" ? scopeText(q.grant) + " · " + decided : q.scopeKind}
+      actionsBelow={canManage && q.state !== "revoked"}
       actions={canManage && q.state !== "revoked" ? (
         <>
           <Select value={scope} aria-label={"Scope for " + q.action} disabled={busy}
