@@ -1,5 +1,5 @@
 /* The column a document's page stands in, inside the frame. Both documents use it, so content keeps
-   one width and one left edge as a person moves between them. */
+   one width and one left edge as a person moves between them. The frame's main column pads the sides. */
 .frame-body {
   box-sizing: border-box;
   width: 100%;
@@ -8,13 +8,7 @@
   gap: 16px;
   max-width: 1040px;
   margin: 0 auto;
-  padding: 16px 16px 64px;
-}
-
-/* A phone's gutter is the same on both sides, as the panel's is; the drawer's edge handle sits over the
-   left edge rather than pushing the column off centre. */
-@media (max-width: 480px) {
-  .frame-body { padding-left: 12px; padding-right: 12px; }
+  padding-block: 16px 64px;
 }
 
 /* A heading is as tall as a button, so pages whose heading carries an action and pages whose heading

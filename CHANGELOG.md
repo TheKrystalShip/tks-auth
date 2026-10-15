@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the page gutter is the frame's (web), 4.11.4
+
+- **The pages inherit Krystal 0.38.0's gutter**: the frame's main column pads both sides by
+  `--k-page-gutter` (24px, 16px at 768px and below, 12px at 480px and below), and `.frame-body` keeps
+  only its vertical padding and its maximum width.
+
 ### Fixed — a phone's gutter (web), 4.11.3
 
 - **A page's column has the same gutter on both sides of a phone**, 12px at 480px wide and below, as the
