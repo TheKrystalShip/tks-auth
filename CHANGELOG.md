@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the sheets select no package class (web), 4.11.7
+
+- **A page's heading height is `PageHeader`'s own**, and the service requests' rows share their phone
+  line between the scope select and the buttons through `ListRow actionsBelow`. The pages draw through
+  Krystal 0.41.1.
+
 ### Changed — no rule in the sheets selects a package class (web), 4.11.6
 
 - **The one-time client secret** is a `Notice block`, and **the admin lists' rows that carry a Select**

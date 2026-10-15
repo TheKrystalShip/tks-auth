@@ -10,7 +10,3 @@
   margin: 0 auto;
   padding-block: 16px 64px;
 }
-
-/* A heading is as tall as a button, so pages whose heading carries an action and pages whose heading
-   does not start their content at the same height. */
-.frame-body .k-pagehead { min-height: 34px; }
