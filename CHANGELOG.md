@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — Sign out everywhere asks first (web), 4.11.9
+
+- **The account page's "Sign out everywhere" opens a confirmation** before it ends every session of the
+  account (this browser, devices, TVs and applications), as the administration page's does; Cancel and
+  Escape leave every session in place.
+
 ### Changed — Krystal 0.42.1 (web), 4.11.8
 
 - **The pages draw through Krystal 0.42.1**, whose menus, popovers and dialogs hand focus back to their

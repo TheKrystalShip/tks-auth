@@ -1,15 +1,17 @@
-import { Button, PageHeader, SettingsRow, SettingsSection } from "@thekrystalship/krystal";
+import React from "react";
+import { Button, ConfirmDialog, PageHeader, SettingsRow, SettingsSection } from "@thekrystalship/krystal";
 import { deviceIcon, deviceName } from "../../lib/devices.js";
 import { when } from "../../lib/formatting.js";
 
 // Where this account is signed in: browsers, applications and devices, each ended or renamed here.
 function DevicesPage({ me, busy, onRename, onEnd, onEndAll }) {
+  const [confirming, setConfirming] = React.useState(false);
   return (
     <>
       <PageHeader title="Devices & sessions" />
       <SettingsSection icon="monitor-smartphone" title="Signed in"
         action={me.sessions.length > 1 ? (
-          <Button variant="outline" size="sm" busy={busy === "all"} onClick={onEndAll}>Sign out everywhere</Button>
+          <Button variant="outline" size="sm" busy={busy === "all"} tone="danger" onClick={() => setConfirming(true)}>Sign out everywhere</Button>
         ) : null}>
         {me.sessions.map((row) => (
           <SettingsRow key={row.sid}
@@ -26,6 +28,14 @@ function DevicesPage({ me, busy, onRename, onEnd, onEndAll }) {
           </SettingsRow>
         ))}
       </SettingsSection>
+      {confirming && (
+        <ConfirmDialog data-dialog="confirm-sign-out-everywhere" icon="log-out" tone="danger"
+          title="Sign out everywhere?" confirm="Sign out" busyLabel="Signing out…"
+          onClose={() => setConfirming(false)} onConfirm={onEndAll}>
+          This ends every session of your account, including this browser, your devices, TVs and applications.
+          You can sign in again straight away; it does not disable the account.
+        </ConfirmDialog>
+      )}
     </>
   );
 }
