@@ -24,7 +24,7 @@ const response = await session.authorizedFetch("/api/things");
 
 | Call | Does |
 |---|---|
-| `restore()` | On the callback path, completes the sign-in and returns the path the sign-in carried (null for anything else). Elsewhere loads the stored session and starts the renewal timer. Never throws for a network failure. |
+| `restore()` | On the callback path, completes the sign-in and returns the path the sign-in carried (null for anything else); a callback that fails leaves the status `none`, so the site signs in again, and a second failure within a minute is `ended` (`refused`), so it never loops. Elsewhere loads the stored session and starts the renewal timer. Never throws for a network failure. |
 | `signIn({ returnTo })` | Full-page redirect to the anchor. `returnTo` defaults to the current path, query and hash and rides in the OIDC `state`; only a path on the site's own origin is handed back. Resolves `false` when the anchor could not be asked. |
 | `fresh()` | A token valid for at least `renewAheadS`, renewing if needed. Rejects (`error.code` is `ended` or `none`) only when there is no session. While the session is `stale` it resolves with the held token. |
 | `authorizedFetch(input, init)` | `fetch` with the bearer. A 401 renews once and replays once. `init.fresh = true` renews first. A body that is a stream cannot be replayed. |

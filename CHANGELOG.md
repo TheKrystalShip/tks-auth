@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — client 0.1.1
+
+- **A sign-in callback that keeps failing ends instead of looping.** The first failure signs in again
+  without a word (a code spent by a reload or the back button); a second within a minute is `ended` with
+  reason `refused`.
+
 ### Changed — the admin pages sign in through `@thekrystalship/auth-client`, 4.13.0
 
 - **The admin pages' own OpenID Connect client is the package.** Renewal, the refresh-collision recheck

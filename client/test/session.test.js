@@ -70,6 +70,18 @@ describe("sign-in", () => {
     expect(denied.getSnapshot()).toMatchObject({ status: "ended", reason: "denied" });
   });
 
+  it("signs in again once after a failed callback, and ends when it fails again", async () => {
+    history.pushState(null, "", "/signed-in?code=spent&state=nothing-stored");
+    const first = createSession(cfg);
+    await first.restore();
+    expect(first.getSnapshot().status).toBe("none");
+
+    history.pushState(null, "", "/signed-in?code=spent&state=nothing-stored");
+    const second = createSession(cfg);
+    await second.restore();
+    expect(second.getSnapshot()).toMatchObject({ status: "ended", reason: "refused" });
+  });
+
   it("keeps only same-origin paths as a return-to", async () => {
     const leaving = createSession(cfg);
     void leaving.signIn({ returnTo: "//evil.test/x" });

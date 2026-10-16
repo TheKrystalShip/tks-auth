@@ -17,6 +17,11 @@ export { claimsOf } from "./claims.js";
 /** Every request to the anchor is bounded: a token endpoint that never answers holds every renewal. */
 const PROVIDER_TIMEOUT_S = 10;
 const RETRY_FIRST_MS = 15000;
+/** How soon a second failed sign-in callback counts as a loop. */
+const CALLBACK_RETRY_WINDOW_MS = 60000;
+const readSession = (key) => { try { return globalThis.sessionStorage.getItem(key); } catch { return null; } };
+const writeSession = (key, value) => { try { globalThis.sessionStorage.setItem(key, value); } catch { /* storage refused */ } };
+const removeSession = (key) => { try { globalThis.sessionStorage.removeItem(key); } catch { /* storage refused */ } };
 const RETRY_CAP_MS = 120000;
 /** The floor under the renewal timer, so a token shorter-lived than `renewAheadS` does not spin. */
 const TIMER_FLOOR_MS = 5000;
@@ -484,11 +489,25 @@ export function createSession(config = {}) {
         publish("none");
         return null;
       }
+      removeSession(`${prefix}callback-failed`);
       holdUser(user);
       return safeReturnTo(/** @type {any} */ (user.state)?.returnTo);
     } catch (error) {
-      if (error instanceof ErrorResponse && error.error === "access_denied") endNow("denied");
-      else publish("none");
+      if (error instanceof ErrorResponse && error.error === "access_denied") {
+        endNow("denied");
+        return null;
+      }
+      // A callback that fails once (a code already spent by a reload or the back button) signs in
+      // again without a word; one that fails again within a minute would loop, so it ends.
+      const key = `${prefix}callback-failed`;
+      const last = Number(readSession(key)) || 0;
+      if (Date.now() - last < CALLBACK_RETRY_WINDOW_MS) {
+        removeSession(key);
+        endNow("refused");
+      } else {
+        writeSession(key, String(Date.now()));
+        publish("none");
+      }
       return null;
     }
   }
