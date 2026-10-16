@@ -13,6 +13,8 @@ against. A change here changes who can do what on every surface at once. Canon:
   the anchor's minter compiled for tests.
 - `src/Auth.Anchor`: the `tks-auth` daemon, built from the libraries by project reference. Published to no
   feed. Its minter is `src/Auth.Anchor/Minting/`.
+- `client/`: `@thekrystalship/auth-client`, the browser sign-in package every site configures (own
+  `package.json`, Vitest over a fake anchor; `client/README.md`).
 - `web/`: the sign-in, wait, account, device and admin pages (Vite + React on krystal-ui), built into `ui/`
   beside the binary.
 - **Each package's locked decisions live in a `CLAUDE.md` beside it.** Read the one for the package you are
@@ -75,11 +77,13 @@ Each package versions on its own clock, and the daemon on one of its own. `deplo
 daemon's, because that is the one the pacman package ships.
 
 **Tags carry the prefix of the thing they version:** `auth-v*`, `access-v*`, `users-v*`, `journal-v*`,
-`cluster-v*`, `testing-v*` for the packages, and a bare `v*` for the daemon. Only the bare `v*` fires the
+`cluster-v*`, `testing-v*` for the packages, `client-v*` for the browser client, and a bare `v*` for the
+daemon. Only the bare `v*` fires the
 release workflow, which asserts the tag against `deploy/version.sh`.
 
 - **Version source:** each package's `<Version>` in its own csproj; the daemon's in
-  `src/Auth.Anchor/Anchor.csproj`.
+  `src/Auth.Anchor/Anchor.csproj`; the browser client's (`@thekrystalship/auth-client`, `client/`) in
+  `client/package.json`, published to GitHub Packages with `npm publish` from `client/`.
 - Bump on any user-facing change; patch for fixes, minor for additions, major for a breaking change, with a
   `CHANGELOG.md` entry under `## [Unreleased]`.
 - Consumers pin a version from the org's GitHub Packages feed, so shipping a change means bump the version,

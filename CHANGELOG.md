@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — the browser sign-in client, client 0.1.0
+
+- **`@thekrystalship/auth-client`**, in `client/`: the browser half of signing in as one package. A
+  session object (`restore`, `signIn`, `fresh`, `authorizedFetch`, `signOut`, `adopt`, `end`,
+  `updateAccount`, `subscribe`/`getSnapshot`) over `oidc-client-ts`, and a `react` subpath with
+  `useSession`.
+- **Signing in is invisible while it is recoverable.** Renewal runs on a timer ahead of expiry, on a 401
+  with one replay, and before a call that cannot be replayed. One renewal is in flight per client across
+  tabs, under a Web Lock, with the stored session read first. Network failures make the session `stale`
+  and retry with backoff. `ended` follows only a refusal that survives a storage recheck and a 30 s grace.
+- **The device grant** (`device.start`, a poller that honours `slow_down`) stores its session like any
+  other and signs out by revoking the refresh token.
+
 ### Changed — Krystal 1.0.0 (web), 4.12.2
 
 - **The pages draw through Krystal 1.0.0.**

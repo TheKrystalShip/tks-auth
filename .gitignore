@@ -12,3 +12,7 @@ TestResults/
 packaging/*.pkg.tar.zst*
 packaging/pkg/
 packaging/src/
+
+# The client package's dependencies and build.
+/client/node_modules/
+/client/dist/
