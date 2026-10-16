@@ -24,7 +24,7 @@ import { RolePage } from "./RolePage.jsx";
 import { RolesPage } from "./RolesPage.jsx";
 import { go, useRoute } from "./route.js";
 import { ServicesPage } from "./ServicesPage.jsx";
-import { profile, signOut } from "./session.js";
+import { session } from "./auth.js";
 import { accessStore, administers, authorityStore, callRefusal } from "./stores.js";
 
 const PAGES = {
@@ -55,11 +55,10 @@ function badgesOf(view) {
   };
 }
 
-function AdminApp() {
+function AdminApp({ account }) {
   const access = useStore(accessStore);
   const view = useStore(authorityStore, (s) => s.view);
   const route = useRoute();
-  const who = profile();
 
   const allowed = access.state === "ok" && administers();
   React.useEffect(() => { if (allowed) authorityStore.refresh().catch(() => {}); }, [allowed]);
@@ -82,7 +81,7 @@ function AdminApp() {
     );
   }
 
-  const user = who ? { name: who.preferred_username || who.sub, display: who.name || who.preferred_username || who.sub } : null;
+  const user = account ? { name: account.username || account.id, display: account.name || account.username || account.id } : null;
 
   return (
     <Frame
@@ -92,7 +91,7 @@ function AdminApp() {
       offered={offeredApplications ? ["applications"] : []}
       badges={badgesOf(allowed ? view : null)}
       user={user}
-      onSignOut={() => signOut()}
+      onSignOut={() => session.signOut()}
       onNavigate={(p) => go(p.id)}>
       <div className="frame-body">{body}</div>
       <Toasts />

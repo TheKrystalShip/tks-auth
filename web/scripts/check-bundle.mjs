@@ -13,7 +13,7 @@
 //   3. A document stops loading theme-boot.js, and the stored theme shows only after the bundle runs.
 //   4. theme-boot.js's lists of dark and light themes drift from Krystal's THEME_OPTS when the pin
 //      moves, and a stored theme the script does not know paints in the wrong mode first.
-//   5. The sign-in, wait or account page grows an import of the admin pages' session, and a page that
+//   5. The sign-in, wait or account page grows an import of the admin pages, and a page that
 //      must hold no bearer ships one — tree-shaking does not remove a static import of a module with
 //      side effects.
 
@@ -62,7 +62,7 @@ for (const file of seen) {
     fail(`    imported by ${relative(SRC, via.get(file))} — cut the edge`);
   }
 }
-if (!failed) console.log(`✓ sign-in pages: ${seen.size} modules, none of them the admin pages' session`);
+if (!failed) console.log(`✓ sign-in pages: ${seen.size} modules, none of them the admin pages`);
 
 if (!existsSync(DIST)) {
   fail("✗ no dist/ — run `npm run build` first");

@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — the admin pages sign in through `@thekrystalship/auth-client`, 4.13.0
+
+- **The admin pages' own OpenID Connect client is the package.** Renewal, the refresh-collision recheck
+  and the 401 replay are the package's; the pages keep one module of configuration (`client` `tks-auth`,
+  callback `/admin/`) and `client.js` calls through `authorizedFetch`.
+- **Only an ended session is drawn:** one screen with one action, sign in again. A session whose account
+  no longer administers says it has no access. Restoring and stale sessions draw nothing.
+- **A stored administrator session carries over** to the package's storage key on first load.
+
 ### Added — the browser sign-in client, client 0.1.0
 
 - **`@thekrystalship/auth-client`**, in `client/`: the browser half of signing in as one package. A

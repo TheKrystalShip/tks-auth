@@ -1,11 +1,11 @@
-// client.js — the admin pages' calls: same-origin, to the provider's admin routes, with the session's
-// bearer.
+// client.js — the admin pages' calls: same-origin, to the provider's admin routes, through the
+// session's `authorizedFetch`, which carries the bearer, renews a refused one and replays the call once.
 //
-// A refused bearer is renewed once and the call made again; a session that cannot be renewed sends
-// the person to sign in. Every other refusal is thrown as the provider wrote it — `status`, `envCode`,
-// `userMessage` and the body — so a page shows the provider's sentence beside the control it is about.
+// A refusal is thrown as the provider wrote it — `status`, `envCode`, `userMessage` and the body — so a
+// page shows the provider's sentence beside the control it is about. A call the session cannot
+// authorize at all is a 401 here; the session's own end is what the gate draws.
 
-import { renew, signIn, token } from "./session.js";
+import { session } from "./auth.js";
 
 class ApiError extends Error {
   constructor(status, body) {
@@ -18,29 +18,17 @@ class ApiError extends Error {
   }
 }
 
-async function send(method, path, body) {
+async function call(method, path, body) {
   const headers = { Accept: "application/json" };
-  const bearer = token();
-  if (bearer) headers.Authorization = "Bearer " + bearer;
   if (body !== undefined) headers["Content-Type"] = "application/json";
+  let res;
   try {
-    return await fetch(path, {
+    res = await session.authorizedFetch(path, {
       method, headers, credentials: "omit",
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch {
-    return null;
-  }
-}
-
-async function call(method, path, body) {
-  let res = await send(method, path, body);
-  if (res && res.status === 401) {
-    if (await renew()) res = await send(method, path, body);
-    if (res && res.status === 401) {
-      await signIn();
-      throw new ApiError(401, null);
-    }
+  } catch (err) {
+    throw new ApiError(err && (err.code === "ended" || err.code === "none") ? 401 : 0, null);
   }
   if (!res) throw new ApiError(0, null);
 

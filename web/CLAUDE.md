@@ -9,6 +9,7 @@ are live the moment the files land.
 npm ci && npm run build   # → dist/
 npm run check             # every document within the provider's policy, the floor intact, no bearer on the sign-in pages
 npm run lint              # 0 errors
+npm test                  # the gate and the stored-session carry-over
 ```
 
 ## Two applications, five documents
@@ -26,12 +27,14 @@ npm run lint              # 0 errors
     fragments a round trip through a provider or another surface leaves (`#linked=`, `#link_error=`,
     `#proved`, `#confirm`, `#reauth_error=`).
 - **`admin.html` → `src/admin/`.** Overview, accounts, roles, permissions, the catalog grouped by
-  application, assignments, service requests and applications, in the frame. An OpenID Connect client of
-  the provider that served it — the built-in public client `tks-auth`, its redirect `/admin/` on the
-  issuer's own origin (`session.js`) — holding a bearer for tks-auth's own application, which the admin
-  routes accept. The bearer is attached in `client.js` alone, which renews it once when it is refused
-  (`eslint.config.js` enforces it). The daemon serves this document to administrators only and answers
-  everybody else as it answers an unknown path.
+  application, assignments, service requests and applications, in the frame. A browser client of the
+  provider that served it, through `@thekrystalship/auth-client`: the built-in public client `tks-auth`,
+  its callback `/admin/` on the issuer's own origin, configured in `src/admin/auth.js`. The package
+  keeps the session signed in; the pages hold nothing of it. Calls go through the session's
+  `authorizedFetch` in `client.js` alone (`eslint.config.js` enforces it). The gate (`src/admin/Gate.jsx`)
+  draws only an ended session, as one screen with one action: signed out, or, when the account no
+  longer administers (`denied`), without access. The daemon serves this document to administrators only
+  and answers everybody else as it answers an unknown path.
   - Addresses are `#/<page>[/<id>][?<name>=<value>]` (`src/admin/route.js`); an account, a role, a
     permission and an application each open on a page of their own at `#/<page>/<id>`.
   - It installs as the web app "Auth" from `public/admin.webmanifest` (scope: the whole origin, so

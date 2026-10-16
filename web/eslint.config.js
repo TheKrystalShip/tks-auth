@@ -34,13 +34,13 @@ export default [
       "react-hooks/exhaustive-deps": "warn",
       "no-unused-vars": ["warn", { args: "none", ignoreRestSiblings: true, varsIgnorePattern: "^_" }],
 
-      // A bearer is attached in one place, `src/admin/client.js`, which renews it when it is refused.
-      // A call that attaches one by hand works for as long as something else keeps the session fresh
-      // and fails silently wherever nothing does.
+      // A bearer is attached in one place, `src/admin/client.js`, through the session's `authorizedFetch`,
+      // which renews it when it is refused. A call that attaches one by hand works for as long as
+      // something else keeps the session fresh and fails silently wherever nothing does.
       "no-restricted-syntax": ["error",
         {
           selector: "Property[key.name='Authorization'], MemberExpression[property.name='Authorization']",
-          message: "Attach a bearer only in src/admin/client.js, which renews it when it is refused.",
+          message: "Attach a bearer only in src/admin/client.js, through the session's authorizedFetch.",
         },
         ...restrictedSyntax,
       ],

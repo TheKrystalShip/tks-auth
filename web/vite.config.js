@@ -15,8 +15,10 @@ export default defineConfig({
   base: "/ui/",
   plugins: [react()],
   server: { port: 5175 },
+  test: { environment: "jsdom", include: ["src/**/*.test.{js,jsx}"] },
   build: {
     outDir: "dist",
+    target: "es2022",
     sourcemap: true,
     rollupOptions: {
       input: {
