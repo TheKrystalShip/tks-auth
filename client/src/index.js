@@ -410,14 +410,22 @@ export function createSession(config = {}) {
 
   const tokenGood = () => expiresAt != null && expiresAt - Date.now() >= renewAheadMs;
 
-  async function fresh() {
+  /** @param {{ force?: boolean }} [options] */
+  async function fresh(options = {}) {
     if (restoring && snapshot.status === "restoring") await restoring;
     gate();
-    if (!tokenGood() && !refusal) {
+    // `force`: a server refused the token in hand, on a request that cannot be replayed through
+    // authorizedFetch (a stream, a worker's upload); renew whatever its expiry says.
+    if ((options.force || !tokenGood()) && !refusal) {
       await renew();
       gate();
     }
     return token;
+  }
+
+  /** The token held now, for a request that cannot wait on a promise; null without a session. */
+  function currentToken() {
+    return snapshot.status === "live" || snapshot.status === "stale" ? token : null;
   }
 
   async function authorizedFetch(input, init) {
@@ -589,6 +597,7 @@ export function createSession(config = {}) {
     restore,
     signIn,
     fresh,
+    token: currentToken,
     authorizedFetch,
     signOut,
     adopt,

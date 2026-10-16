@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — client 0.2.0
+
+- **`session.fresh({ force: true })`** renews whatever the expiry says, for a request a server refused
+  that `authorizedFetch` cannot replay (a stream, a worker's upload).
+- **`session.token()`** gives the token held now, or null, for a request that cannot wait on a promise
+  (a media element's source).
+
 ### Fixed — 4.13.1
 
 - **Signing out of the admin pages lands on the account page's sign-in**, not on the unknown-path answer

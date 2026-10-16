@@ -51,7 +51,8 @@
  * @typedef {object} Session
  * @property {() => Promise<string | null>} restore
  * @property {(options?: { returnTo?: string }) => Promise<boolean>} signIn
- * @property {() => Promise<string>} fresh
+ * @property {(options?: { force?: boolean }) => Promise<string>} fresh
+ * @property {() => string | null} token
  * @property {(input: RequestInfo | URL, init?: RequestInit & { fresh?: boolean }) => Promise<Response>} authorizedFetch
  * @property {() => Promise<void>} signOut
  * @property {(tokens: AdoptedTokens, renew: () => Promise<AdoptedTokens | null | undefined>) => void} adopt

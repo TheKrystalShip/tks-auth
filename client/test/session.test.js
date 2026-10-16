@@ -111,6 +111,26 @@ describe("renewal", () => {
     expect(seen.every((s) => s === "live")).toBe(true);
   });
 
+  it("renews on fresh({ force }) though the token in hand is unexpired, and token() gives the held one", async () => {
+    const { session, tokens } = await live();
+    expect(session.token()).toBe(tokens.access_token);
+    expect(await session.fresh()).toBe(tokens.access_token);
+    expect(anchor.calls.refresh).toBe(0);
+
+    const forced = await session.fresh({ force: true });
+
+    expect(anchor.calls.refresh).toBe(1);
+    expect(forced).not.toBe(tokens.access_token);
+    expect(session.token()).toBe(forced);
+    expect(session.getSnapshot().status).toBe("live");
+  });
+
+  it("has no token() without a session", async () => {
+    const session = createSession(cfg);
+    await session.restore();
+    expect(session.token()).toBeNull();
+  });
+
   it("renews on a 401 and replays the call once", async () => {
     const { session, tokens } = await live();
     anchor.invalidate(tokens.access_token);
