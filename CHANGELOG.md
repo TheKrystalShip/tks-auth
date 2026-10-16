@@ -7,6 +7,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — 4.13.2
+
+- The account and admin pages are drawn by design system 2.0.0.
+
 ### Added — client 0.2.0
 
 - **`session.fresh({ force: true })`** renews whatever the expiry says, for a request a server refused
