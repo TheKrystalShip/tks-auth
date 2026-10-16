@@ -7,6 +7,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — Krystal 1.0.0 (web), 4.12.2
+
+- **The pages draw through Krystal 1.0.0.**
+
 ### Changed — Krystal 0.43.2 (web), 4.12.1
 
 - **The pages draw through Krystal 0.43.2**, whose main column reserves no scrollbar gutter, so a page's
