@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — 4.13.1
+
+- **Signing out of the admin pages lands on the account page's sign-in**, not on the unknown-path answer
+  `/admin/` gives a browser with no session. The built-in admin client accepts `/account` as a
+  post-sign-out address.
+
 ### Fixed — client 0.1.1
 
 - **A sign-in callback that keeps failing ends instead of looping.** The first failure signs in again

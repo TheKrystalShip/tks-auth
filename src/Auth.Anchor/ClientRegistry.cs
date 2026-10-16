@@ -81,10 +81,13 @@ internal sealed partial class ClientRegistry
         if (!Uri.TryCreate(issuer, UriKind.Absolute, out Uri? uri) || uri.Scheme is not ("https" or "http"))
             return null;
 
-        string pages = uri.GetLeftPart(UriPartial.Authority) + Application.ProviderPagesPath;
+        string origin = uri.GetLeftPart(UriPartial.Authority);
+        string pages = origin + Application.ProviderPagesPath;
+        // A signed-out browser is sent to the account page, which asks it to sign in: the admin pages
+        // answer only a live administrator's session, so returning there would land on an unknown path.
         return new RegisteredClient(
-            Application.ProviderClientId, "tks-auth", [pages], [pages], ClientSources.Builtin, MemberId: null, now,
-            Application.ProviderId);
+            Application.ProviderClientId, "tks-auth", [pages], [pages, origin + "/account"], ClientSources.Builtin,
+            MemberId: null, now, Application.ProviderId);
     }
 
     /// <summary>The snapshot, reloaded first when another process has written the store since it was read.</summary>

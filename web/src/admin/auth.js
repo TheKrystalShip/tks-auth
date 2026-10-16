@@ -34,7 +34,9 @@ const session = createSession({
     return { issuer, clientId: CLIENT_ID };
   },
   redirectPath: PATH,
-  postSignOutPath: PATH,
+  // The admin pages answer only a live administrator's session; signed out, the account page asks the
+  // browser to sign in.
+  postSignOutPath: "/account",
 });
 
 export { adoptStoredUser, session };

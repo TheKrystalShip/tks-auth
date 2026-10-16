@@ -111,7 +111,7 @@ public sealed class AdminPagesTests(AnchorFixture anchor)
         RegisteredClient client = clients.Find(Application.ProviderClientId)!;
 
         Assert.Equal([Pages], client.RedirectUris);
-        Assert.Equal([Pages], client.PostLogoutRedirectUris);
+        Assert.Equal([Pages, AnchorFixture.Issuer + "/account"], client.PostLogoutRedirectUris);
         Assert.False(client.Confidential);
         Assert.Same(anchor.Service<ApplicationRegistry>().Provider, anchor.Service<ApplicationRegistry>().Of(client));
         Assert.DoesNotContain(clients.Kgsm, c => c.ClientId == Application.ProviderClientId);
