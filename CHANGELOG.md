@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — Krystal 0.43.2 (web), 4.12.1
+
+- **The pages draw through Krystal 0.43.2**, whose main column reserves no scrollbar gutter, so a page's
+  left and right gutters are equal.
+
 ### Changed — Krystal 0.43.1 (web), 4.12.0
 
 - **The pages draw through Krystal 0.43.1**: the frame's main column keeps its scrollbar room, so a page
