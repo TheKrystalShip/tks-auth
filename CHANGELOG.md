@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — Krystal 0.43.1 (web), 4.12.0
+
+- **The pages draw through Krystal 0.43.1**: the frame's main column keeps its scrollbar room, so a page
+  that grows past the screen does not shift sideways, and a text field in a settings row's controls has a
+  180px floor.
+
 ### Fixed — Sign out everywhere asks first (web), 4.11.9
 
 - **The account page's "Sign out everywhere" opens a confirmation** before it ends every session of the
