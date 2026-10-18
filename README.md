@@ -334,6 +334,7 @@ page's parameters ride in its address, so another surface opens it at a scope:
 
 | | |
 |---|---|
+| `GET /` | a redirect to the account page |
 | `GET /account` | the account page, or its sign-in when this browser holds none |
 | `GET /account/sign-in` | sign in at the anchor to reach the account page; no code is minted |
 | `GET /account/me` | the account, its identities, its sessions and until when the last proof is recent |

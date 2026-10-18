@@ -208,10 +208,12 @@ internal static class TksAuthCore
         app.MapPost("/device/decision", DevicePageEndpoints.Decide);
 
         // The provider's own pages, and the account page's calls. Every one of those is authenticated by
-        // the provider's cookie and answered on this origin alone. The admin pages are a client of this
+        // the provider's cookie and answered on this origin alone; the origin itself opens the account
+        // page, which is where an app on this origin starts. The admin pages are a client of this
         // provider and call the admin routes below with the bearer they hold.
         app.MapGet("/ui/{**path}", ProviderBundle.ServeAssetAsync);
         app.MapGet(Application.ProviderPagesPath, ProviderBundle.ServeAdminAsync);
+        app.MapGet("/", (HttpContext ctx) => ctx.Response.Redirect("/account"));
         app.MapGet("/account", AccountPageEndpoints.Page);
         app.MapGet("/account/sign-in", AccountPageEndpoints.SignIn);
         app.MapGet("/account/me", AccountPageEndpoints.Me);

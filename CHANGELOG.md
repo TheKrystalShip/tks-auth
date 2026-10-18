@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — 4.14.0
+
+- **The origin itself opens the account page**: `GET /` redirects to `/account`, which is where the
+  Android app on the TKS shell starts.
+- **Auth for Android** (`android/`, its own clock, `android-v1.0.0`): the provider's pages as an app on
+  the TKS shell, its icon Lucide's key.
+
 ### Changed — 4.13.3
 
 - The account and admin pages are drawn by design system 3.0.0.

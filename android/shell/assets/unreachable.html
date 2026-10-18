@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Krystal Cinema</title>
+<!-- The site could not be reached: its host, and Retry, which tries again on its own every fifteen
+     seconds, or after `after` ms, drawing nothing while `quiet`. Back leaves the app, since nothing
+     here answers it. Downloads carry on regardless. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #0B0F14; color: #F2F5F9; }
+  body {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+    font-family: system-ui, sans-serif;
+  }
+  h1 { margin: 0; font-size: 24px; font-weight: 600; text-align: center; padding: 0 24px; }
+  button {
+    font: inherit; font-size: 15px; font-weight: 600; height: 40px; padding: 0 22px;
+    border: 0; border-radius: 8px; background: #F2F5F9; color: #0B0F14;
+    box-shadow: 0 20px 36px rgba(0, 0, 0, 0.75), 0 0 22px rgba(64, 160, 192, 0.38);
+  }
+  button:focus { outline: none; }
+</style>
+</head>
+<body>
+<h1 id="what">Can't reach Krystal Cinema</h1>
+<button id="again" autofocus>Retry</button>
+<script>
+  const query = new URLSearchParams(location.search);
+  const host = query.get("host");
+  const to = query.get("to");
+  // `quiet` draws nothing while the app tries again after `after` ms, a cold start's first attempts.
+  const quiet = query.get("quiet") === "1";
+  const after = Number(query.get("after")) || 15000;
+  if (quiet) document.body.style.visibility = "hidden";
+  if (host) document.getElementById("what").textContent = "Can't reach " + host;
+  const retry = () => { if (to) location.replace(to); };
+  const button = document.getElementById("again");
+  button.addEventListener("click", retry);
+  button.focus();
+  setTimeout(retry, after);
+</script>
+</body>
+</html>

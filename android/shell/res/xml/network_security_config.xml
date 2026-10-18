@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A release build speaks https alone. The debug build's copy (debug/res/) overlays this one. -->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

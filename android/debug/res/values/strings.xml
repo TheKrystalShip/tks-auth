@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The debug build installs beside the release one, under its own app id, and says which it is. -->
+<resources>
+  <string name="app_name">Auth Debug</string>
+</resources>

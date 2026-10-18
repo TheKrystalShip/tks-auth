@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The status bar's mark for a download: a downward arrow onto a line, drawn in one colour, as
+     Android draws every notification icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+  <path android:fillColor="#FFFFFFFF" android:pathData="M11,4h2v9.17l3.59,-3.58L18,11l-6,6l-6,-6l1.41,-1.41L11,13.17V4zM5,19h14v2H5z" />
+</vector>

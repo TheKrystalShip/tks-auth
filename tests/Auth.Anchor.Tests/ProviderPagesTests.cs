@@ -255,6 +255,14 @@ public sealed class ProviderPagesTests(AnchorFixture anchor)
 
     // ── The account page ──────────────────────────────────────────────────────
 
+    [Fact]
+    public async Task The_origin_itself_opens_the_account_page()
+    {
+        HttpResponseMessage root = await anchor.Following().GetAsync("/");
+        Assert.Equal(HttpStatusCode.Redirect, root.StatusCode);
+        Assert.Equal("/account", root.Headers.Location!.ToString());
+    }
+
     /// <summary>A browser signed in at the anchor through the account page's own sign-in.</summary>
     private async Task<HttpClient> SignedInAsync(KgsmUser user, string password)
     {
