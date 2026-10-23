@@ -5,6 +5,11 @@ Auth for Android phones, the app in this directory. Its version clock is its own
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-23
+
+### Fixed
+- On the TKS shell 1.5.1: the page shown when the site cannot be reached no longer names Cinema.
+
 ## [1.1.0] - 2026-10-23
 
 ### Changed
