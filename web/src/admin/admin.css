@@ -43,7 +43,7 @@
 .admin-secrets {
   padding: 14px;
   border: var(--edge);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--surface-1);
 }
 

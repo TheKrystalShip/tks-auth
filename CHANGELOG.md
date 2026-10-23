@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — 5.0.1
+
+- The account and admin pages are drawn by design system 8.0.0: the sidebar's account row is the avatar and
+  the name, and its menu is the one every site shares, Profile, Settings (Appearance), a rule and Sign
+  out; every surface takes the 4px corner.
+
 ### Changed — 5.0.0
 
 - **The issuer is the provider's one address, and the deployment's.** `Anchor__Issuer` is set in
