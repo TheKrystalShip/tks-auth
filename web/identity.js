@@ -9,4 +9,5 @@ export default {
     { d: "M16 7.5a.5.5 0 1 0 1 0a.5.5 0 1 0-1 0z", fill: true },
   ],
   android: "../android/res",
+  androidPalettes: true,
 };

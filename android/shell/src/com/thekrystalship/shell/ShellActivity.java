@@ -45,7 +45,6 @@ import java.nio.charset.StandardCharsets;
  */
 public final class ShellActivity extends Activity {
     private static final String UNREACHABLE = "file:///android_asset/unreachable.html";
-    private static final int BACKGROUND = 0xFF0B0F14;
     private static final String TONE = "tone";
     private static final int QUIET_TRIES = 2;
     private static final int QUIET_AFTER_MS = 1500;
@@ -65,16 +64,19 @@ public final class ShellActivity extends Activity {
     private String pageScript;
     /** The file input waiting on the system's picker, if one is. */
     private ValueCallback<Uri[]> picking;
+    /** The launcher's icon, in the palette the page shows. */
+    private LauncherIcon launcherIcon;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         origin = Origin.of(getIntent());
+        launcherIcon = new LauncherIcon(this);
         Downloads downloads = Downloads.of(this);
         files = new LocalFiles(origin, downloads);
         WebView.setWebContentsDebuggingEnabled(Built.DEBUG);
 
-        int tone = getSharedPreferences("shell", MODE_PRIVATE).getInt(TONE, BACKGROUND);
+        int tone = getSharedPreferences("shell", MODE_PRIVATE).getInt(TONE, getColor(R.color.icon_background));
         frame = new FrameLayout(this);
         web = new WebView(this);
         paint(tone);
@@ -183,9 +185,20 @@ public final class ShellActivity extends Activity {
     }
 
     @Override
+    protected void onStop() {
+        launcherIcon.apply();
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         web.destroy();
         super.onDestroy();
+    }
+
+    /** The palette the page shows, which the launcher's icon takes once the app leaves the screen. */
+    void palette(String palette) {
+        launcherIcon.want(palette);
     }
 
     /**

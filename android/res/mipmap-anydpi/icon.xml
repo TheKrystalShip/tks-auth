@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Written by krystal-icons: the launcher icon, and the splash Android draws from it while the app
+<!-- Written by krystal-icons: a launcher icon, and the splash Android draws from it while the app
      starts; the glyph alone is the themed icon Android draws in the person's colours. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
   <background android:drawable="@color/icon_background" />

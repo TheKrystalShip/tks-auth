@@ -2,4 +2,7 @@
 <!-- The shell's own words. An app's res/ names the app (app_name) and may word these its own way. -->
 <resources>
   <string name="downloads_channel">Downloads</string>
+  <!-- The palette whose launcher icon a fresh install shows, for an app with an icon per palette
+       (LauncherIcon); an app without one leaves it empty. -->
+  <string name="icon_default" translatable="false"></string>
 </resources>

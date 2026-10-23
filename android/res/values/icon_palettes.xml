@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Written by krystal-icons: each palette's icon ground, and the palette a fresh install's icon is in. -->
+<resources>
+  <string name="icon_default" translatable="false">dark</string>
+  <color name="icon_background_dark">#FF12232C</color>
+  <color name="icon_background_amoled">#FF09161B</color>
+  <color name="icon_background_nord">#FF3B4854</color>
+  <color name="icon_background_catppuccin_mocha">#FF36314A</color>
+  <color name="icon_background_dracula">#FF3D3951</color>
+  <color name="icon_background_tokyo_night">#FF272E43</color>
+  <color name="icon_background_synthwave">#FF442446</color>
+  <color name="icon_background_gruvbox">#FF3D2D20</color>
+  <color name="icon_background_amber_crt">#FF301A08</color>
+  <color name="icon_background_one_dark">#FF303E4E</color>
+  <color name="icon_background_rose_pine">#FF312B3F</color>
+  <color name="icon_background_kanagawa">#FF37322F</color>
+  <color name="icon_background_everforest">#FF3E4845</color>
+  <color name="icon_background_solarized_dark">#FF05384C</color>
+  <color name="icon_background_github_dark">#FF182637</color>
+  <color name="icon_background_monokai">#FF3A3441</color>
+  <color name="icon_background_ayu_mirage">#FF3E3C38</color>
+  <color name="icon_background_light">#FFDAE5EB</color>
+  <color name="icon_background_github_light">#FFE1EDFB</color>
+  <color name="icon_background_solarized_light">#FFE3E9E1</color>
+  <color name="icon_background_catppuccin_latte">#FFE3DBF4</color>
+  <color name="icon_background_nord_light">#FFDBE2EB</color>
+  <color name="icon_background_gruvbox_light">#FFF2DBAF</color>
+  <color name="icon_background_everforest_light">#FFE6E5BB</color>
+  <color name="icon_background_rose_pine_dawn">#FFECE4E4</color>
+  <color name="icon_background_tokyo_night_day">#FFCCD6E7</color>
+  <color name="icon_background_one_light">#FFE4EAF9</color>
+  <color name="icon_background_ayu_light">#FFF7EBDA</color>
+  <color name="icon_background_matrix">#FF0B2510</color>
+  <color name="icon_background_winamp">#FF1C3F1C</color>
+  <color name="icon_background_lcars">#FF241500</color>
+  <color name="icon_background_cyberpunk">#FF282608</color>
+  <color name="icon_background_dos_blue">#FF24249E</color>
+  <color name="icon_background_pico8">#FF242105</color>
+  <color name="icon_background_c64">#FF434086</color>
+  <color name="icon_background_win95">#FFA9A9B8</color>
+  <color name="icon_background_cvd_redgreen_dark">#FF0B252E</color>
+  <color name="icon_background_cvd_redgreen_light">#FFDDEDF2</color>
+  <color name="icon_background_cvd_deuteran_dark">#FF0B212E</color>
+  <color name="icon_background_cvd_deuteran_light">#FFDEECFB</color>
+  <color name="icon_background_cvd_protan_dark">#FF13222E</color>
+  <color name="icon_background_cvd_protan_light">#FFDDE8F4</color>
+  <color name="icon_background_cvd_tritan_dark">#FF0B2B29</color>
+  <color name="icon_background_cvd_tritan_light">#FFDDEEEB</color>
+  <color name="icon_background_cvd_universal_dark">#FF0B2326</color>
+  <color name="icon_background_cvd_universal_light">#FFDDEAEB</color>
+  <color name="icon_background_cvd_mono_dark">#FF171717</color>
+  <color name="icon_background_cvd_mono_light">#FFEBEBEB</color>
+</resources>

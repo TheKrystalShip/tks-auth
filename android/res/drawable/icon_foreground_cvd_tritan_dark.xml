@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Written by krystal-icons from the site's identity: its glyph in the accent of cvd-tritan-dark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+  <group android:scaleX="1.375" android:scaleY="1.375" android:translateX="37.5" android:translateY="37.5">
+    <path android:strokeColor="#FF00F5CE" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M 2.586 17.414 A 2 2 0 0 0 2 18.828 V 21 a 1 1 0 0 0 1 1 h 3 a 1 1 0 0 0 1 -1 v -1 a 1 1 0 0 1 1 -1 h 1 a 1 1 0 0 0 1 -1 v -1 a 1 1 0 0 1 1 -1 h 0.172 a 2 2 0 0 0 1.414 -0.586 l 0.814 -0.814 a 6.5 6.5 0 1 0 -4 -4 z" />
+    <path android:fillColor="#FF00F5CE" android:strokeColor="#FF00F5CE" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M 16 7.5 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0 z" />
+  </group>
+</vector>

@@ -98,6 +98,15 @@ final class Built {
 }
 EOF
 
+# An icon per palette (res/mipmap-anydpi/icon_<palette>.xml) is a launcher entry per palette, of which
+# the one res/ names icon_default is enabled (LauncherIcon); an app with none has the activity's own.
+palettes="$(find "$app/res/mipmap-anydpi" -maxdepth 1 -name 'icon_*.xml' 2>/dev/null | sed -E 's|.*/icon_([a-z0-9_]+)\.xml$|\1|' | sort)"
+icon_default="$(sed -n -E 's|.*<string name="icon_default"[^>]*>([^<]*)</string>.*|\1|p' "$app"/res/values/*.xml 2>/dev/null | head -n1)"
+if [[ -n "$palettes" ]] && ! grep -qx "$icon_default" <<<"$palettes"; then
+  echo "res/ has an icon per palette but icon_default ('$icon_default') names none of them" >&2
+  exit 1
+fi
+
 # The manifest: the shell's components under the shell's package, renamed to the app's id when linked.
 {
   cat <<'EOF'
@@ -121,16 +130,32 @@ EOF
       android:icon="@mipmap/icon"
       android:allowBackup="false"
       android:networkSecurityConfig="@xml/network_security_config"
-      android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+      android:theme="@style/Shell">
     <activity android:name="com.thekrystalship.shell.ShellActivity" android:exported="true"
         android:launchMode="singleTask"
         android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density">
+EOF
+  if [[ -z "$palettes" ]]; then cat <<'EOF'
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
-    </activity>
 EOF
+  fi
+  echo '    </activity>'
+  for palette in $palettes; do
+    enabled=false; [[ "$palette" == "$icon_default" ]] && enabled=true
+    cat <<EOF
+    <activity-alias android:name="com.thekrystalship.shell.icon.$palette" android:exported="true"
+        android:targetActivity="com.thekrystalship.shell.ShellActivity" android:enabled="$enabled"
+        android:icon="@mipmap/icon_$palette">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity-alias>
+EOF
+  done
   if $downloads; then cat <<'EOF'
     <service android:name="com.thekrystalship.shell.DownloadService" android:exported="false"
         android:foregroundServiceType="dataSync" />

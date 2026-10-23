@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Android's splash screen is drawn on the icon's ground too, so the icon sits on its own colour
+       and the window it opens into is the same. -->
+  <style name="Shell" parent="android:Theme.DeviceDefault.NoActionBar">
+    <item name="android:windowBackground">@color/icon_background</item>
+    <item name="android:windowSplashScreenBackground">@color/icon_background</item>
+  </style>
+</resources>

@@ -26,6 +26,8 @@ import org.json.JSONObject;
  *   <li>{@code fileUrl(id, name)}: where the page reads a whole downloaded file ({@link LocalFiles}).</li>
  *   <li>{@code theme(colour)}: the colour the page shows, which the strips behind the system bars take;
  *       the shell's own page script says it.</li>
+ *   <li>{@code icon(palette)}: the palette the page shows (its {@code data-theme}), which the launcher's
+ *       icon takes ({@link LauncherIcon}); the shell's own page script says it.</li>
  *   <li>{@code saveFile(name, type, base64)}: saves bytes the page made into the phone's Downloads
  *       ({@link SavedFiles}); the shell's own page script calls it for a {@code download} link to a
  *       {@code blob:} or {@code data:} address.</li>
@@ -39,7 +41,7 @@ final class Bridge {
     /** The name the page finds the bridge under. */
     static final String NAME = "TksShell";
     /** The shell's own version, which moves when what a page can ask of it does. */
-    static final String VERSION = "3";
+    static final String VERSION = "4";
 
     private final ShellActivity activity;
     private final Origin origin;
@@ -143,6 +145,12 @@ final class Bridge {
         if (!activity.onSite()) return;
         Integer parsed = parse(colour);
         if (parsed != null) activity.tone(parsed);
+    }
+
+    /** The palette the page shows, which the launcher's icon takes when the app has one for it. */
+    @JavascriptInterface
+    public void icon(String palette) {
+        if (activity.onSite()) activity.palette(palette);
     }
 
     /** {@code rgb(r, g, b)}, {@code rgba(r, g, b, a)} or {@code #rrggbb}, as an opaque colour, or null. */

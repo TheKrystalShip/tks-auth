@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- The window starts in the ground of the app's icon (icon_background, which every app's res/
+       declares), so the first frame before the page is drawn matches the icon it was launched from. -->
+  <style name="Shell" parent="android:Theme.DeviceDefault.NoActionBar">
+    <item name="android:windowBackground">@color/icon_background</item>
+  </style>
+</resources>

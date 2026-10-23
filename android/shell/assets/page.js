@@ -2,7 +2,8 @@
 //
 // The colour the page shows is told to the shell (TksShell.theme), which paints the strips behind the
 // system bars with it and picks their icons to read on it: the body's background, else the root's,
-// else the page's theme-color. It is told when the page loads and again whenever the page's theme can
+// else the page's theme-color. The palette it shows, its root's data-theme, is told too
+// (TksShell.icon), and the launcher's icon takes it where the app has one for it. It is told when the page loads and again whenever the page's theme can
 // have changed (its root's or body's attributes, the theme-color, the system's light or dark), a
 // moment after as well, since a theme may ease from one colour to the next.
 //
@@ -28,6 +29,7 @@
   }
 
   var told = null;
+  var toldPalette = null;
   function shown(element) {
     if (!element) return null;
     var colour = getComputedStyle(element).backgroundColor;
@@ -39,6 +41,11 @@
     if (colour && colour !== told && window.TksShell.theme) {
       told = colour;
       window.TksShell.theme(colour);
+    }
+    var palette = document.documentElement.getAttribute("data-theme");
+    if (palette && palette !== toldPalette && window.TksShell.icon) {
+      toldPalette = palette;
+      window.TksShell.icon(palette);
     }
   }
   function soon() {
