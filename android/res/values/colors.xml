@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <!-- #40A0C0 at 14% over #0B0F14: the ground every app on the shell draws its icon on. -->
+  <!-- Written by krystal-icons: the accent's tint over the canvas of dark, the ground of the icon,
+       of the splash Android draws from it and of the window the site opens into. -->
   <color name="icon_background">#FF12232C</color>
 </resources>

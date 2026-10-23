@@ -7,13 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "check": "node scripts/check-bundle.mjs",
-    "lint": "eslint src scripts",
+    "lint": "eslint src scripts identity.js",
+    "icons": "krystal-icons",
     "lint:css": "stylelint \"src/**/*.css\"",
     "test": "vitest run"
   },
   "dependencies": {
     "@thekrystalship/auth-client": "0.1.1",
-    "@thekrystalship/krystal": "8.0.0",
+    "@thekrystalship/krystal": "8.1.0",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

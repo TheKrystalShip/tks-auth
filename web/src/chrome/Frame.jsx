@@ -42,7 +42,7 @@ function Frame({ doc, active, showAdmin, offered, badges, user, onSignOut, onNav
   const sidebar = (
     <Sidebar
       mark={MARK}
-      wordmark="The Krystal Ship"
+      wordmark="Auth"
       open={drawerOpen}
       collapsed={collapsed}
       onToggleCollapse={() => setCollapsed((c) => !c)}

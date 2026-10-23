@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { settleSplash } from "@thekrystalship/krystal";
 
 import "../styles/kit.css";
 import "./admin.css";
@@ -12,8 +14,8 @@ import { refreshAccess, refreshMembers } from "./stores.js";
 // application replaces it once the session is restored, and the gate leaves for the provider's sign-in
 // when there is none.
 //
-// One appearance, shared with the provider's other pages: krystal-ui's stored theme preference,
-// applied by `theme-boot.js` before first paint and followed live by its theme store.
+// One appearance, shared with the provider's other pages: Krystal's stored theme preference,
+// applied by the design system's boot script before first paint and followed live by its theme store.
 
 // Coming back from the provider, the page goes on to where the person was headed.
 const returnTo = await session.restore();
@@ -28,4 +30,10 @@ document.addEventListener("visibilitychange", () => {
 
 const floor = document.getElementById("floor");
 if (floor) floor.remove();
-createRoot(document.getElementById("root")).render(<Gate />);
+// The splash leaves after the first commit nothing on screen holds it through.
+function Root() {
+  useEffect(() => settleSplash());
+  return <Gate />;
+}
+
+createRoot(document.getElementById("root")).render(<Root />);

@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { settleSplash } from "@thekrystalship/krystal";
 
 import "../styles/kit.css";
 import "./pages.css";
@@ -16,8 +18,8 @@ import { WaitApp } from "./WaitApp.jsx";
 // a bundle that fails to load leaves the floor standing rather than an empty page.
 //
 // One appearance, shared by every page on this origin: the preference stored under Krystal's
-// theme key, set on the Appearance page. `theme-boot.js` applies it before first paint (the document's
-// policy allows no inline script); Krystal's theme store applies it again when this loads and, for
+// theme key, set on the Appearance page. The design system's boot script applies it before first paint
+// (the document's policy allows no inline script); Krystal's theme store applies it again when this loads and, for
 // `auto`, follows the system colour scheme as it changes. The provider is handed no theme name.
 
 const PAGES = { "sign-in": SignInApp, wait: WaitApp, account: AccountApp, device: DeviceApp };
@@ -26,4 +28,10 @@ const Page = PAGES[document.body.dataset.page] || SignInApp;
 const floor = document.getElementById("floor");
 if (floor) floor.remove();
 
-createRoot(document.getElementById("root")).render(<Page />);
+// The splash leaves after the first commit nothing on screen holds it through.
+function Root() {
+  useEffect(() => settleSplash());
+  return <Page />;
+}
+
+createRoot(document.getElementById("root")).render(<Root />);

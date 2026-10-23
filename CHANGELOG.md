@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — 5.1.0
+
+- **Auth's identity.** The pages carry the key their Android app carries: the favicon, the install icons
+  and the launch screens are drawn from it by the design system (krystal 8.1.0), and the tab's icon and
+  browser colour follow the theme shown. Each page's title names Auth ("Sign in · Auth", "Account ·
+  Auth"), and the sidebar's wordmark beside the organisation's mark is Auth. Every page opens on the
+  splash until its application is drawn; a page read without script shows its floor as before.
+
 ### Changed — 5.0.1
 
 - The account and admin pages are drawn by design system 8.0.0: the sidebar's account row is the avatar and

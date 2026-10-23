@@ -80,8 +80,11 @@ admin pages' `useRefusingForm` (`src/admin/kit.jsx`) puts the provider's refusal
 `SignInScreen`, and the admin lists and account page are `ListPage` and `DetailPage`. `eslint.config.js`
 merges the package's `restrictedSyntax` and `restrictedImports` into its own rules at error.
 
-`public/theme-boot.js` applies the stored theme before first paint (the policy forbids inline script).
-Its theme lists mirror Krystal's `THEME_OPTS`; `npm run check` fails when they drift.
+The design system's `siteIdentity` (`vite.config.js`, from `identity.js`) gives every document its stored
+theme before first paint, its tab icon and browser colour in that theme, and the splash: a script and a
+stylesheet under `/ui/`, since the policy forbids inline script and style. `npm run check` fails when a
+document stops loading the script. `npm run icons` writes the install icons, the launch screens and the
+Android app's launcher icon.
 
 ## Harness
 
