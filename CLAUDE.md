@@ -57,6 +57,7 @@ TMPDIR=~/.cache KGSM_JOURNAL_STATE_ROOT=<scratch> dotnet test tks-auth.slnx -c R
 dotnet publish src/Auth.Anchor/Anchor.csproj -c Release -r linux-x64 -o artifacts/publish   # 0 ILC warnings
 (cd web && npm ci && npm run build && npm run check && npm run lint)   # the pages -> web/dist
 ./deploy/deploy.sh   # both, the pages into /opt/tks-auth/ui beside the binary
+./deploy/deploy-app.sh   # the Android app's release, as /opt/tks-auth/ui/auth.apk
 ```
 
 The pages are checked in a real browser by the workspace harness (`scripts/visual-harness/`):

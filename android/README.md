@@ -35,9 +35,5 @@ one, with its WebView open to the DevTools protocol.
 ## Serving it
 
 The account and admin pages offer the release on an Android phone's browser, in the footer's App
-group, at `/ui/auth.apk`. It is handed to the pages' directory on its own, and `deploy/deploy.sh`
-leaves it in place:
-
-```bash
-cp android/out/tks-auth-app-<version>.apk /opt/tks-auth/ui/auth.apk
-```
+group, at `/ui/auth.apk`. `deploy/deploy-app.sh` builds the release and publishes it in the pages'
+directory, and `deploy/deploy.sh` leaves it in place.

@@ -82,7 +82,7 @@ STOPPED=1
 
 # --delete prunes what a previous build emitted and this one does not — a stale native lib beside
 # the binary is one the daemon would still dlopen. The prefix holds the publish tree and the Android
-# app, ui/auth.apk, which is handed over on its own (android/README.md) and excluded from the sync;
+# app, ui/auth.apk, which deploy-app.sh publishes on its own and is excluded from the sync;
 # the signing key, the session store and the operator's env file all live elsewhere.
 log "syncing publish tree → ${PREFIX}"
 rsync -a --delete --exclude='*.pdb' --exclude='*.dbg' --exclude='*.xml' --exclude='/ui/auth.apk' "$PUBLISH_DIR/" "$PREFIX/"
