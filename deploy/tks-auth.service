@@ -18,10 +18,7 @@ ExecStart=/opt/tks-auth/tks-auth
 # Binding the world here would put an unencrypted sign-in on the network beside the encrypted one.
 Environment=Anchor__ListenAddress=http://127.0.0.1:8098
 
-# The address other members and browsers reach this anchor at. It cannot be worked out from the
-# inside — behind a proxy the daemon sees only the loopback hop — so it is stated, and it is what the
-# roster carries and what a panel redirects a person to when they sign in.
-# Environment=Anchor__PublicBaseUrl=https://auth.example
+# The provider's one address is its issuer, set by the deployment in /etc/tks-auth/tks-auth.env.
 
 # The account store — this anchor's own, in its state directory. The node on this machine keeps its
 # replica in a file of its own.

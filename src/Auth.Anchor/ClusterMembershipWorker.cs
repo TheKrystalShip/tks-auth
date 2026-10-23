@@ -79,12 +79,10 @@ internal sealed class ClusterMembershipWorker(
         publications.Publish(ClusterAuthFacts.Audience, options.ClusterId);
         publications.Publish(ClusterAuthFacts.Issuer, options.Issuer);
 
-        // Where a browser goes, which is a different question from where members reach this anchor
-        // even though one address answers both here. Stated rather than inferred from the roster:
-        // an anchor on a LAN address for member traffic behind a public vhost for browsers has two
-        // answers, and sending a browser to the first one sends it somewhere it cannot reach.
-        // Blank states nothing, and a reader falls back to the address members learned.
-        if (options.PublicBaseUrl is { Length: > 0 } browserUrl)
+        // Where a browser goes: the issuer's origin. Stated rather than inferred from the roster, which
+        // also carries the loopback and LAN addresses members reach this provider at, and a browser sent
+        // to one of those is sent somewhere it cannot reach. An issuer that is not a URL states nothing.
+        if (options.IssuerOrigin is { } browserUrl)
             publications.Publish(ClusterAuthFacts.SignInUrl, browserUrl);
 
         using var timer = new PeriodicTimer(Interval);

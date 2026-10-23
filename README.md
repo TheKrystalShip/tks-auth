@@ -157,7 +157,7 @@ var tokens = new SessionTokenService(
         Audience: clusterId,
         AccessLifetime: TimeSpan.FromMinutes(15),
         RefreshLifetime: TimeSpan.FromDays(30),
-        Issuer: "https://auth.anchors.example.com"),
+        Issuer: "https://auth.example.com"),
     signer);
 
 MintedToken access  = tokens.MintAccess(identity, sid);
@@ -220,7 +220,7 @@ cluster in `cluster.md`, the sign-in in `sign-in.md`); this is what the daemon s
 the OpenID Connect doors, registered clients, the account page, the admin and authority routes, and
 the journal. **The KGSM module** (`KgsmModule`) is composed beside it only when a KGSM cluster is
 configured — the cluster secret is set, the one switch, read once at start: cluster membership and the
-bus, the DNS member, the standing and the founding claim, the `auth.*` facts members read, replication
+bus, the standing and the founding claim, the `auth.*` facts members read, replication
 of the account store, members' catalog reports and uninstalls, forgetting a removed member, session
 revocations members hear, and this anchor's own component surface (`/auth/config`, `/auth/logs`, …)
 read from KGSM's descriptor.
@@ -266,9 +266,11 @@ anchor is unreachable.
 ### The OpenID Connect provider
 
 The anchor is also the cluster's OpenID Connect provider — authorization code with PKCE (S256), public
-and confidential clients, no consent screen — served at its issuer. `Anchor__Issuer` has to be the anchor's
-browser-facing URL (`https://auth.anchors.example.com`); with anything else every door below answers
-`no_issuer` and mints nothing. The design is `kgsm-docs/systems/identity/sign-in.md`, the wire
+and confidential clients, no consent screen — served at its issuer. `Anchor__Issuer` is the provider's one address, set by the deployment in
+`/etc/tks-auth/tks-auth.env` and never from a configuration surface (`https://auth.example.com`): browsers
+sign in at it, every provider callback is built on it, and members reach it there. With anything but a URL
+every door below answers `no_issuer` and mints nothing. An https issuer is served by `tks-auth-serve`, which
+issues the name's certificate and renders its vhost. The design is `kgsm-docs/systems/identity/sign-in.md`, the wire
 `kgsm-docs/reference/oidc-provider.md`.
 
 | | |

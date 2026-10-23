@@ -59,7 +59,6 @@ public sealed class StandaloneAnchorTests : IDisposable
             ["Anchor__ClusterId"] = "standalone-audience",
             ["Anchor__MemberId"] = "standalone-auth",
             ["Anchor__Issuer"] = Issuer,
-            ["Anchor__PublicBaseUrl"] = Issuer,
             ["Anchor__PanelOrigins"] = null,
             ["Anchor__AllowSelfRegistration"] = null,
             ["Anchor__UiPath"] = Path.Combine(_root, "ui"),

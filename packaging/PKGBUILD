@@ -114,21 +114,14 @@ package() {
     install -Dm644 "${srcdir}/49-tks-auth-self-restart.rules" \
         "${pkgdir}/usr/share/polkit-1/rules.d/49-tks-auth-self-restart.rules"
 
-    # Serving the name the cluster's DNS anchor gives the accounts capability: the proxy rules every
-    # server block for this anchor includes, the include that loads the site it generates, its key and
-    # site directories, and the grant to reload the web server after writing the site — reload and
-    # nothing else. Inert on a machine with no nginx.
-    install -Dm644 "${repo}/deploy/nginx/tks-auth.locations" \
-        "${pkgdir}/etc/nginx/kgsm/tks-auth.locations"
-    install -Dm644 "${repo}/deploy/nginx/tks-auth.sites.conf" \
-        "${pkgdir}/etc/nginx/conf.d/00-tks-auth-sites.conf"
-    install -Dm644 "${repo}/deploy/tks-auth.serving.tmpfiles" \
-        "${pkgdir}/usr/lib/tmpfiles.d/tks-auth-serving.conf"
-    sed -e "s|@PROJECT@|tks-auth|g" -e "s|@SVC_USER@|kgsm|g" \
-        "${repo}/deploy/polkit/47-tks-auth-nginx-reload.rules.in" \
-        > "${srcdir}/47-tks-auth-nginx-reload.rules"
-    install -Dm644 "${srcdir}/47-tks-auth-nginx-reload.rules" \
-        "${pkgdir}/usr/share/polkit-1/rules.d/47-tks-auth-nginx-reload.rules"
+    # Serving the provider at its one address, the host of the issuer in /etc/tks-auth/tks-auth.env: the
+    # oneshot that issues the name's certificate and renders its vhost, and the templates it reads.
+    install -Dm755 "${repo}/deploy/serving/tks-auth-serve" "${pkgdir}/usr/lib/tks-auth/serving/tks-auth-serve"
+    install -Dm644 "${repo}/deploy/serving/tks-auth.conf.in" "${pkgdir}/usr/lib/tks-auth/serving/tks-auth.conf.in"
+    install -Dm644 "${repo}/deploy/serving/acme.conf" "${pkgdir}/usr/lib/tks-auth/serving/acme.conf"
+    install -Dm755 "${repo}/deploy/serving/reload-nginx.hook" "${pkgdir}/usr/lib/tks-auth/serving/reload-nginx.hook"
+    install -Dm644 "${repo}/deploy/serving/tks-auth-serve.service" \
+        "${pkgdir}/usr/lib/systemd/system/tks-auth-serve.service"
 
     install -Dm644 "${repo}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

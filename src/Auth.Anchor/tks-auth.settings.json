@@ -22,24 +22,10 @@
     // is not what the anchor falls back to.
     "MemberId": "",
 
-    // The address other members reach this anchor at. Blank leaves it to the addresses the join
-    // exchange reflects back, which is the right answer on a machine that can see its own.
-    "PublicBaseUrl": "",
-
-    // Where this machine is reached from the internet — normally its network's dynamic-DNS name. The
-    // cluster's DNS anchor points the accounts capability's name at it while this anchor holds it.
-    // Blank states no host, and the name is not published.
-    "PublicHost": "",
-
     // The cluster a session is scoped to. It is the token audience: a session minted here is valid
     // on every member of THIS cluster and on nothing else. Changing it invalidates every token
     // already issued, so a running cluster keeps the value it started with.
     "ClusterId": "kgsm-cluster",
-
-    // The token issuer, and — when it is this anchor's browser-facing URL — the address the cluster's
-    // OpenID Connect sign-in is served under. The provider's doors serve nothing until it is a URL.
-    // Validated, so changing it on a running anchor signs everyone out.
-    "Issuer": "kgsm",
 
     // The account store: the cluster's accounts and access, this anchor's alone and in its
     // StateDirectory=. Every other member, this machine's node included, holds a replica of its own.

@@ -11,7 +11,7 @@ this repo's `README.md` documents the doors. Minting is `Minting/CLAUDE.md`.
 - **`Program.cs` composes the core, and the KGSM module only when a cluster is configured.**
   `TksAuthCore` (`AddTksAuthCore`, `MapTksAuthCore`) is accounts, sessions, the OpenID Connect doors, the
   applications and their clients, the account page, the admin and authority routes and the journal.
-  `KgsmModule` (`AddKgsmModule`, `MapKgsmModule`) is membership and the bus, the DNS member,
+  `KgsmModule` (`AddKgsmModule`, `MapKgsmModule`) is membership and the bus,
   `ClusterMembershipWorker`, the catalog's handlers and `AuthorityReporter`, `MemberDepartureWorker`,
   `AuthorityBroadcast` and its worker, `SessionBroadcast`, the member snapshot, the roster,
   `/auth/cluster/public-key` and the component surface.
@@ -220,8 +220,11 @@ this repo's `README.md` documents the doors. Minting is `Minting/CLAUDE.md`.
 
 ## The OpenID Connect provider
 
-- **The issuer is configuration, never inferred from a request,** and an anchor whose issuer is not an
-  absolute URL answers `no_issuer` at every OIDC door.
+- **The issuer is the provider's one address, set by the deployment and never inferred from a request.**
+  Browsers, every provider callback and other members all use its origin; a second name for the same
+  daemon would start a round trip whose cookie the callback never sees. It is not a descriptor field, so no
+  configuration surface can move it. An anchor whose issuer is not an absolute URL answers `no_issuer` at
+  every OIDC door.
 - **Until the client and its redirect are known to be registered, a refusal is rendered on the anchor's own
   origin;** redirects are matched exactly.
 - **The request in flight lives here, behind `kgsm_authz`;** the page, its form and its provider links carry

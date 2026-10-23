@@ -1,21 +1,13 @@
-using TheKrystalShip.KGSM.Cluster.Membership;
-
 namespace TheKrystalShip.Auth.Anchor;
 
 /// <summary>
-/// Where a browser reaches this anchor, and the provider callbacks built from it.
+/// Where a browser reaches this provider, and the provider callbacks built from it.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The configured public address when there is one; otherwise the issuer's origin, when the issuer is a
-/// URL; otherwise the name this anchor serves in a cluster with a DNS anchor — the accounts capability's
-/// own name, which is the same for whichever member holds the capability. Read on every use: the name is
-/// only this anchor's while it holds the capability and serves it.
-/// </para>
-/// <para>
-/// The issuer comes before an assigned name because a sign-in begins at the issuer, and the request in
-/// flight is a cookie on the issuer's origin: a provider's round trip that returned to another origin
-/// would arrive without it and could complete nothing.
+/// The issuer's origin, and only that. A sign-in begins on the issuer's origin and its request in flight
+/// is a cookie there, so a provider's round trip that returned to any other name would arrive without it
+/// and complete nothing. One address means a page reached by another name cannot start one.
 /// </para>
 /// <para>
 /// A provider accepts only redirect URIs registered on its application, so the callback has to be one of
@@ -23,16 +15,10 @@ namespace TheKrystalShip.Auth.Anchor;
 /// one base means the two a provider needs registered can never name different origins.
 /// </para>
 /// </remarks>
-internal sealed class AnchorAddress(AnchorOptions options, IEnumerable<ISelfAddressSource> assigned)
+internal sealed class AnchorAddress(AnchorOptions options)
 {
-    private readonly ISelfAddressSource[] _assigned = [.. assigned];
-
-    /// <summary>The origin a browser reaches this anchor at, or null when it has none to state.</summary>
-    public string? Base =>
-        options.PublicBaseUrl is { Length: > 0 } configured
-            ? configured.TrimEnd('/')
-            : options.IssuerOrigin
-                ?? _assigned.SelectMany(s => s.Addresses).FirstOrDefault()?.TrimEnd('/');
+    /// <summary>The origin a browser reaches this provider at, or null while the issuer is not a URL.</summary>
+    public string? Base => options.IssuerOrigin;
 
     /// <summary>Where a provider sends the browser back after a sign-in, or null with no address.</summary>
     public string? RedirectUri(string provider) =>

@@ -1,0 +1,16 @@
+[Unit]
+Description=tks-auth served at the host of the issuer in /etc/tks-auth/tks-auth.env
+Documentation=https://github.com/TheKrystalShip/tks-auth
+# The certificate is issued over the network through nginx's webroot.
+Wants=network-online.target
+After=network-online.target nginx.service
+
+[Service]
+Type=oneshot
+# Root: it writes nginx's sites and runs certbot against /etc/letsencrypt.
+ExecStart=/usr/lib/tks-auth/serving/tks-auth-serve
+PrivateTmp=yes
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

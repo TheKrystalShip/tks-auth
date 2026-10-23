@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs once per renewed certificate. nginx reads certificates when it loads its configuration, so a
+# renewal is not served until it reloads; a reload keeps every connection it already holds.
+exec systemctl reload nginx

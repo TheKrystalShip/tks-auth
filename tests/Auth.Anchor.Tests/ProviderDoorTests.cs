@@ -420,46 +420,25 @@ public sealed class RegisterTests(AnchorFixture anchor)
     }
 
     [Fact]
-    public void The_callback_names_the_capability_name_this_anchor_serves_when_none_is_configured()
-    {
-        AnchorOptions unconfigured = AnchorOptions.FromSettings(new AnchorSettings { PublicBaseUrl = "" });
-        var served = new Served("https://auth.anchors.example.com");
-        var address = new AnchorAddress(unconfigured, [served]);
-
-        Assert.Equal("https://auth.anchors.example.com/auth/discord/callback", address.RedirectUri("discord"));
-        Assert.Equal(
-            "https://auth.anchors.example.com/auth/identities/discord/callback", address.LinkRedirectUri("discord"));
-
-        // Standing by, or before the certificate is installed, the name answers nobody here: a bounce
-        // built from it would send a person to a handshake that fails, so there is no callback at all.
-        served.Now = [];
-        Assert.Null(address.RedirectUri("discord"));
-
-        // An operator's address wins over the served name.
-        AnchorOptions configured = AnchorOptions.FromSettings(new AnchorSettings { PublicBaseUrl = "https://sign-in.example.com/" });
-        Assert.Equal(
-            "https://sign-in.example.com/auth/discord/callback",
-            new AnchorAddress(configured, [new Served("https://auth.anchors.example.com")]).RedirectUri("discord"));
-    }
-
-    [Fact]
-    public void The_callback_returns_to_the_issuers_origin_before_an_assigned_name()
+    public void The_callbacks_are_built_on_the_issuers_origin_alone()
     {
         // A sign-in begins at the issuer and its request in flight is a cookie there; a round trip that
-        // came back to the capability's assigned name instead would arrive without it.
-        AnchorOptions issued = AnchorOptions.FromSettings(
-            new AnchorSettings { PublicBaseUrl = "", Issuer = "https://auth.example.com" });
-        var address = new AnchorAddress(issued, [new Served("https://auth.anchors.example.com")]);
+        // came back to any other name would arrive without it.
+        var address = new AnchorAddress(AnchorOptions.FromSettings(new AnchorSettings { Issuer = "https://auth.example.com/" }));
 
         Assert.Equal("https://auth.example.com/auth/discord/callback", address.RedirectUri("discord"));
         Assert.Equal(
             "https://auth.example.com/auth/identities/discord/callback", address.LinkRedirectUri("discord"));
     }
 
-    private sealed class Served(params string[] addresses) : TheKrystalShip.KGSM.Cluster.Membership.ISelfAddressSource
+    [Fact]
+    public void An_issuer_that_is_not_a_url_builds_no_callback()
     {
-        public IReadOnlyList<string> Now { get; set; } = addresses;
-        public IReadOnlyList<string> Addresses => Now;
+        // The deployment has not said where this provider is, so there is nowhere to send anybody back to.
+        var address = new AnchorAddress(AnchorOptions.FromSettings(new AnchorSettings()));
+
+        Assert.Null(address.RedirectUri("discord"));
+        Assert.Null(address.LinkRedirectUri("discord"));
     }
 
     [Fact]

@@ -135,29 +135,6 @@ internal sealed class AnchorSettings
         NoDefault = true)]
     public string MemberId { get; set; } = "";
 
-    /// <summary>
-    /// The address browsers and other members reach this anchor at, and the origin its provider callbacks
-    /// are built on. Blank uses the accounts capability's name while this anchor serves it, in a cluster
-    /// with a DNS anchor.
-    /// </summary>
-    /// <panel>The address people and other members of the cluster reach this anchor at, and where a
-    /// sign-in provider sends people back to. In a cluster with a DNS anchor leave it blank: the accounts
-    /// capability's own name is used. Set it only for an anchor with no DNS anchor to name it.</panel>
-    [ConfigField("publicBaseUrl", "Public address", Group = "network", Risk = ConfigRisk.Wiring)]
-    public string PublicBaseUrl { get; set; } = "";
-
-    /// <summary>
-    /// Where this anchor is reached from the internet, for the cluster's DNS anchor to point the
-    /// capability's name at.
-    /// </summary>
-    /// <panel>Where this machine is reached from the internet — normally the dynamic-DNS name its network
-    /// keeps pointed at a changing home address, such as example.ddns.net. In a cluster with a DNS anchor,
-    /// the accounts capability's name points at it while this anchor holds it, and this anchor serves that
-    /// name on a certificate the DNS anchor issues. A fixed public address works too. Empty means the name
-    /// is not published.</panel>
-    [ConfigField("publicHost", "Public host", Group = "network", Risk = ConfigRisk.Wiring, NoDefault = true)]
-    public string PublicHost { get; set; } = "";
-
     /// <summary>The cluster a session is scoped to, and the token audience.</summary>
     /// <panel>The cluster this anchor holds the accounts for. A session it mints is valid on every
     /// member of this cluster and on nothing else. Changing it signs everybody out.</panel>
@@ -165,14 +142,14 @@ internal sealed class AnchorSettings
     public string ClusterId { get; set; } = "kgsm-cluster";
 
     /// <summary>
-    /// The <c>iss</c> claim, and what validation requires. The OpenID Connect doors are served only when
-    /// it is the provider's browser-facing URL, which they are served under.
+    /// The <c>iss</c> claim and this provider's one address: the origin browsers sign in at, every
+    /// provider callback is built on and other members reach it at. Set by the deployment, never from a
+    /// configuration surface, because it is what the service is: changing it signs everybody out and
+    /// moves every registered callback. The OpenID Connect doors are served only while it is an absolute
+    /// URL.
     /// </summary>
-    /// <panel>The address this anchor signs people in at, stamped on every session as its issuer, such as
-    /// https://auth.anchors.example.com. Sign-in for every surface of the cluster is served only when this
-    /// is a URL. It is checked when a session is presented, so changing it signs everybody out.</panel>
-    [ConfigField("issuer", "Token issuer", Group = "network", Risk = ConfigRisk.Destructive)]
-    public string Issuer { get; set; } = "kgsm";
+    [ConfigIgnore]
+    public string Issuer { get; set; } = "";
 
     /// <summary>The account store this anchor is the writer of.</summary>
     /// <panel>The file the cluster's accounts and access live in — this anchor's alone. Every other

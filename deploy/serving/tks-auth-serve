@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+#
+# tks-auth-serve — serve the sign-in provider at its one address, the host of the issuer the deployment set.
+#
+# Run as root: by tks-auth-serve.service at boot and whenever an administrator restarts that unit after
+# changing the issuer, and by deploy/setup.sh. Everything it writes is derived from that one value and the
+# files beside it, and each file is compared before it is written, so a run that changes nothing reloads
+# nothing.
+#
+# With an https issuer it serves, in this order: the machine's plain-HTTP surface (the ACME webroot and the
+# https upgrade) where the machine has none, the name's Let's Encrypt certificate issued over that webroot,
+# and the provider's vhost. With any other issuer it withdraws the vhost: an http issuer is a provider
+# reached directly on its port, and a blank one is a provider that has not been told where it is.
+#
+set -euo pipefail
+
+ENV_FILE=/etc/tks-auth/tks-auth.env
+SERVING="${TKS_AUTH_SERVING:-/usr/lib/tks-auth/serving}"
+ACME_ROOT=/var/lib/letsencrypt
+SITE=/etc/nginx/conf.d/tks-auth.conf
+ACME_SITE=/etc/nginx/conf.d/00-acme.conf
+RENEW_HOOK=/etc/letsencrypt/renewal-hooks/deploy/reload-nginx
+
+log() { printf '%s\n' "$*"; }
+err() { printf '<3>%s\n' "$*" >&2; }
+
+# The last assignment of a key, unquoted. Read rather than sourced: the file is an administrator's, and
+# sourcing it would run whatever else it holds as root.
+value_of() {
+    [[ -f "$ENV_FILE" ]] || return 0
+    sed -n "s/^[[:space:]]*$1=[[:space:]]*//p" "$ENV_FILE" | tail -n1 | sed -E 's/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/; s/[[:space:]]+$//'
+}
+
+ISSUER="$(value_of Anchor__Issuer)"
+EMAIL="$(value_of TKS_AUTH_ACME_EMAIL)"
+LISTEN="$(value_of Anchor__ListenAddress)"
+LISTEN="${LISTEN:-http://127.0.0.1:8098}"
+LISTEN="${LISTEN#http://}"
+LISTEN="${LISTEN%/}"
+# A daemon bound to every interface is still reached on loopback from the proxy beside it.
+LISTEN="${LISTEN/#0.0.0.0:/127.0.0.1:}"
+
+HOST=""
+if [[ "$ISSUER" =~ ^https://([^/:]+)/?$ ]]; then
+    HOST="${BASH_REMATCH[1]}"
+fi
+
+# place <rendered file> <destination> <mode> — returns 0 when the destination changed.
+place() {
+    local src="$1" dst="$2" mode="$3"
+    if cmp -s "$src" "$dst" 2>/dev/null; then
+        return 1
+    fi
+    install -D -m "$mode" "$src" "$dst"
+}
+
+# nginx is told only once it accepts the whole configuration, so a bad render never takes down the sites
+# already being served. reload-or-restart also starts it where nothing had yet.
+reload_nginx() {
+    if ! nginx -t -q; then
+        err "nginx refused the configuration; nothing was reloaded"
+        nginx -t || true
+        exit 1
+    fi
+    systemctl reload-or-restart nginx.service
+}
+
+if [[ -z "$HOST" ]]; then
+    if [[ -e "$SITE" ]]; then
+        rm -f "$SITE"
+        log "the issuer is not an https URL ('${ISSUER}') — withdrew ${SITE}"
+        reload_nginx
+    else
+        log "the issuer is not an https URL ('${ISSUER}') — nothing to serve"
+    fi
+    exit 0
+fi
+
+if ! command -v nginx >/dev/null || ! command -v certbot >/dev/null; then
+    err "serving ${HOST} needs nginx and certbot installed"
+    exit 1
+fi
+
+# The plain-HTTP surface first: the certificate below is issued through it. Another site on the machine may
+# already have installed one, and a second default server on :80 would stop nginx loading at all.
+install -d -m 0755 "$ACME_ROOT"
+changed=0
+if [[ ! -e "$ACME_SITE" ]] && ! nginx -T 2>/dev/null | grep -q "root ${ACME_ROOT};"; then
+    place "${SERVING}/acme.conf" "$ACME_SITE" 0644 && { log "installed the ACME webroot and https upgrade on :80"; changed=1; }
+fi
+if [[ ! -e "$RENEW_HOOK" ]]; then
+    place "${SERVING}/reload-nginx.hook" "$RENEW_HOOK" 0755 && log "installed the renewal hook that reloads nginx"
+fi
+(( changed )) && reload_nginx
+
+if [[ -f "/etc/letsencrypt/live/${HOST}/fullchain.pem" ]]; then
+    log "the certificate lineage for ${HOST} already exists"
+else
+    log "asking Let's Encrypt for ${HOST}"
+    contact=(--register-unsafely-without-email)
+    [[ -n "$EMAIL" ]] && contact=(--email "$EMAIL")
+    certbot certonly --webroot -w "$ACME_ROOT" -d "$HOST" --cert-name "$HOST" \
+        --non-interactive --agree-tos --keep-until-expiring "${contact[@]}" \
+        || { err "certbot could not issue a certificate for ${HOST}; the provider's vhost was not installed"; exit 1; }
+fi
+
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+sed -e "s|@HOST@|${HOST}|g" -e "s|@LISTEN@|${LISTEN}|g" "${SERVING}/tks-auth.conf.in" > "$rendered"
+if place "$rendered" "$SITE" 0644; then
+    log "installed the provider's vhost for ${HOST}"
+    reload_nginx
+else
+    log "the provider's vhost for ${HOST} is current"
+fi

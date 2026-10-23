@@ -7,6 +7,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — 5.0.0
+
+- **The issuer is the provider's one address, and the deployment's.** `Anchor__Issuer` is set in
+  `/etc/tks-auth/tks-auth.env` and is no longer a field of the configuration surface. Browsers sign in at
+  its origin, every provider callback is built on it, and other members reach the provider there (it is
+  the address the roster carries, and the sign-in URL members read). With no issuer set the provider signs
+  nobody in.
+- **The provider serves its own name.** `tks-auth-serve` (and `tks-auth-serve.service` in the package)
+  issues a Let's Encrypt certificate for the issuer's host over nginx's ACME webroot and renders the vhost
+  at `/etc/nginx/conf.d/tks-auth.conf`, installing the machine's ACME webroot and renewal hook where it
+  has none. `deploy/setup.sh` runs it.
+
+### Removed — 5.0.0
+
+- `Anchor__PublicBaseUrl` and `Anchor__PublicHost`. The provider is no longer a member of the cluster's
+  DNS: it asks for no name and no certificate from the DNS anchor and generates no site under
+  `/var/lib/kgsm/nginx`, so `/etc/nginx/kgsm/tks-auth.locations`, `00-tks-auth-sites.conf`, the
+  `/var/lib/kgsm/tls/tks-auth` directory and the nginx reload grant are gone with it.
+
 ### Added — 4.14.0
 
 - **The origin itself opens the account page**: `GET /` redirects to `/account`, which is where the

@@ -13,10 +13,8 @@ namespace TheKrystalShip.Auth.Anchor;
 /// </remarks>
 /// <param name="MemberId">This anchor's identity as a cluster member.</param>
 /// <param name="ListenAddress">Where Kestrel binds.</param>
-/// <param name="PublicBaseUrl">Where browsers and other members reach it, when configured.</param>
-/// <param name="PublicHost">Where it is reached from the internet, as the DNS anchor points its name.</param>
 /// <param name="ClusterId">The token audience: the cluster a session is valid on.</param>
-/// <param name="Issuer">The <c>iss</c> claim; the provider's browser-facing URL when it serves OpenID Connect.</param>
+/// <param name="Issuer">The <c>iss</c> claim and the provider's one address, when it is a URL.</param>
 /// <param name="UserStorePath">The account store.</param>
 /// <param name="SessionStorePath">Where live sessions are recorded.</param>
 /// <param name="SigningKeyPath">The private signing key.</param>
@@ -37,8 +35,6 @@ namespace TheKrystalShip.Auth.Anchor;
 internal sealed record AnchorOptions(
     string MemberId,
     string ListenAddress,
-    string PublicBaseUrl,
-    string PublicHost,
     string ClusterId,
     string Issuer,
     string UserStorePath,
@@ -98,14 +94,10 @@ internal sealed record AnchorOptions(
         return new AnchorOptions(
             MemberId: DeriveMemberId(s.MemberId),
             ListenAddress: Text(s.ListenAddress, "http://0.0.0.0:8098"),
-            // Blank is the ordinary case, not a gap: a machine that can see its own address has one
-            // reflected back to it when a member joins.
-            PublicBaseUrl: s.PublicBaseUrl?.Trim() ?? "",
-            PublicHost: s.PublicHost?.Trim() ?? "",
             ClusterId: Text(s.ClusterId, "kgsm-cluster"),
             // A URL loses the trailing slash a person naturally types, so the discovery document, every
             // token's iss and the gossiped fact all state the one string a client compares them by.
-            Issuer: Text(s.Issuer, "kgsm").TrimEnd('/'),
+            Issuer: (s.Issuer?.Trim() ?? "").TrimEnd('/'),
             UserStorePath: Text(s.UserStorePath, "/var/lib/tks-auth/accounts.db"),
             SessionStorePath: Text(s.SessionStorePath, "/var/lib/tks-auth/sessions.db"),
             SigningKeyPath: Text(s.SigningKeyPath, "/var/lib/tks-auth/session-signing.pem"),

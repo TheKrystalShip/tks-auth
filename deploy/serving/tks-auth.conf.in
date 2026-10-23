@@ -1,0 +1,32 @@
+# tks-auth — the sign-in provider, at its one address: the host of the issuer in /etc/tks-auth/tks-auth.env.
+#
+# Rendered by tks-auth-serve once the name's certificate exists, and withdrawn by it when the issuer is not
+# an https URL. Every request goes to the daemon on loopback.
+
+server {
+    listen      443 ssl;
+    listen      [::]:443 ssl;
+    http2       on;
+    server_name @HOST@;
+
+    ssl_certificate     /etc/letsencrypt/live/@HOST@/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/@HOST@/privkey.pem;
+
+    # A sign-in is a username and a password, and the member-to-member wire is capped by the cluster package
+    # itself. Nothing legitimate arrives here large.
+    client_max_body_size 1m;
+
+    location / {
+        proxy_pass         http://@LISTEN@;
+        proxy_http_version 1.1;
+
+        # Host travels unchanged, and the scheme matters: the provider answers CORS against the browser's
+        # Origin and mints sessions a browser stores, so what it reasons about has to be what the browser
+        # actually spoke rather than the loopback hop.
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   Connection        '';
+    }
+}

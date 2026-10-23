@@ -68,25 +68,6 @@
       "risk": "wiring"
     },
     {
-      "key": "publicBaseUrl",
-      "env": "Anchor__PublicBaseUrl",
-      "label": "Public address",
-      "description": "The address people and other members of the cluster reach this anchor at, and where a sign-in provider sends people back to. In a cluster with a DNS anchor leave it blank: the accounts capability's own name is used. Set it only for an anchor with no DNS anchor to name it.",
-      "group": "network",
-      "type": "string",
-      "default": "",
-      "risk": "wiring"
-    },
-    {
-      "key": "publicHost",
-      "env": "Anchor__PublicHost",
-      "label": "Public host",
-      "description": "Where this machine is reached from the internet — normally the dynamic-DNS name its network keeps pointed at a changing home address, such as example.ddns.net. In a cluster with a DNS anchor, the accounts capability's name points at it while this anchor holds it, and this anchor serves that name on a certificate the DNS anchor issues. A fixed public address works too. Empty means the name is not published.",
-      "group": "network",
-      "type": "string",
-      "risk": "wiring"
-    },
-    {
       "key": "clusterId",
       "env": "Anchor__ClusterId",
       "label": "Cluster id",
@@ -94,16 +75,6 @@
       "group": "network",
       "type": "string",
       "default": "kgsm-cluster",
-      "risk": "destructive"
-    },
-    {
-      "key": "issuer",
-      "env": "Anchor__Issuer",
-      "label": "Token issuer",
-      "description": "The address this anchor signs people in at, stamped on every session as its issuer, such as https://auth.anchors.example.com. Sign-in for every surface of the cluster is served only when this is a URL. It is checked when a session is presented, so changing it signs everybody out.",
-      "group": "network",
-      "type": "string",
-      "default": "kgsm",
       "risk": "destructive"
     },
     {

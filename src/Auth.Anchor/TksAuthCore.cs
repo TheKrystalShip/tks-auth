@@ -125,17 +125,12 @@ internal static class TksAuthCore
         // account store answers what they may do — so a provider is added with no authority story of its
         // own. Transient like the typed HttpClient underneath it: holding one for the process lifetime
         // pins its handler and silently stops the factory rotating it, so DNS changes never land.
-        //
-        // The address the callbacks are built from is the configured one, or — with the module — the
-        // name a cluster's DNS anchor assigned; with neither registered the sequence is empty.
         services.AddHttpClient(nameof(DiscordDirectory), c => c.Timeout = TimeSpan.FromSeconds(10));
 
         // Who a Discord token an application exchanges belongs to, remembered for its life up to a cap,
         // on the same typed client.
         services.AddSingleton<DiscordAuthorizations>();
-        services.AddSingleton(sp => new AnchorAddress(
-            sp.GetRequiredService<AnchorOptions>(),
-            sp.GetServices<ISelfAddressSource>()));
+        services.AddSingleton(sp => new AnchorAddress(sp.GetRequiredService<AnchorOptions>()));
         services.AddTransient(sp => new ProviderCatalog(
             sp.GetRequiredService<IConfiguration>(),
             sp.GetRequiredService<IHttpClientFactory>(),

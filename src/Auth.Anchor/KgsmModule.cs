@@ -4,7 +4,6 @@ using TheKrystalShip.KGSM.Cluster.Membership;
 using TheKrystalShip.KGSM.Cluster.Messaging;
 using TheKrystalShip.KGSM.ComponentSurface;
 using TheKrystalShip.KGSM.ComponentSurface.Http;
-using TheKrystalShip.KGSM.Dns.Member;
 
 namespace TheKrystalShip.Auth.Anchor;
 
@@ -19,7 +18,7 @@ namespace TheKrystalShip.Auth.Anchor;
 /// switch and nothing that can disagree with it.
 /// </para>
 /// <para>
-/// The module is cluster membership and the bus, the DNS member, the standing worker and the founding
+/// The module is cluster membership and the bus, the standing worker and the founding
 /// claim through <c>/etc/kgsm/cluster-founded</c>, the published facts (<c>auth.*</c>, including where
 /// clients live), the account store's replication to every member, every member's catalog report, the
 /// end of a removed member's grants, the session revocations members hear, and this anchor's component
@@ -51,7 +50,9 @@ internal static class KgsmModule
         // on the other's behalf.
         StorePath = Path.Combine(
             Path.GetDirectoryName(Path.GetFullPath(options.SessionStorePath)) ?? ".", "cluster.db"),
-        PublicBaseUrl = options.PublicBaseUrl,
+        // Members reach this provider where browsers do, at the issuer's origin, ahead of any address it
+        // was reflected at.
+        PublicBaseUrl = options.IssuerOrigin ?? "",
     };
 
     internal static IServiceCollection AddKgsmModule(
@@ -59,11 +60,6 @@ internal static class KgsmModule
     {
         // Cluster membership and durable member-to-member messaging.
         services.AddKgsmCluster(cluster);
-
-        // The accounts capability's name, when a DNS anchor holds the cluster's zone: this anchor says
-        // where it is reached, and while it holds the capability it keeps a certificate for the name and
-        // serves it. Inert with nobody holding dns.
-        services.AddKgsmDnsMember(options.PublicHost, "tks-auth");
 
         // An anchor registers no card source of its own. What it has to say about itself — its id, its
         // kind, its addresses, its incarnation — is entirely what the package already holds; the node

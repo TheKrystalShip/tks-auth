@@ -72,7 +72,6 @@ public sealed class AnchorFixture : IDisposable
         Environment.SetEnvironmentVariable("Anchor__ClusterId", ClusterId);
         Environment.SetEnvironmentVariable("Anchor__PanelOrigins", PanelUrl);
         Environment.SetEnvironmentVariable("Anchor__MemberId", MemberId);
-        Environment.SetEnvironmentVariable("Anchor__PublicBaseUrl", SignInUrl);
         Environment.SetEnvironmentVariable("Anchor__Issuer", Issuer);
         Environment.SetEnvironmentVariable("Anchor__AllowSelfRegistration", "true");
 
