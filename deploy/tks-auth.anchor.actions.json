@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "component": "auth",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "actions": [
     {
       "id": "accounts.approve",

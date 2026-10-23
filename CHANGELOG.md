@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — 5.2.0
+
+- **The Android app, from the footer.** The account and admin pages end with the footer every site
+  has: what Auth is and its source, and, on an Android phone's browser, the Android app at
+  `/ui/auth.apk`, served beside the pages as an Android package. Inside the app it is not offered. The
+  deploy's sync leaves that file in place.
+
 ### Changed — 5.1.0
 
 - **Auth's identity.** The pages carry the key their Android app carries: the favicon, the install icons

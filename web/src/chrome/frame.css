@@ -10,3 +10,6 @@
   margin: 0 auto;
   padding-block: 16px 64px;
 }
+
+/* The footer's link to the organisation, in the face its address is written in. */
+.frame-footer-org { font-family: var(--font-mono); }

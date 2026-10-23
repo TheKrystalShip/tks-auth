@@ -31,3 +31,13 @@ does. The APK lands in `android/out/`. A release is signed with the key in `~/.c
 which is never in a repository and has to be kept: Android installs an update only under the key the
 app was installed with. The debug build is `com.thekrystalship.auth.debug`, installed beside a release
 one, with its WebView open to the DevTools protocol.
+
+## Serving it
+
+The account and admin pages offer the release on an Android phone's browser, in the footer's App
+group, at `/ui/auth.apk`. It is handed to the pages' directory on its own, and `deploy/deploy.sh`
+leaves it in place:
+
+```bash
+cp android/out/tks-auth-app-<version>.apk /opt/tks-auth/ui/auth.apk
+```

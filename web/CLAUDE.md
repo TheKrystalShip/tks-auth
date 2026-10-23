@@ -43,7 +43,8 @@ npm test                  # the gate and the stored-session carry-over
 - **The frame** (`src/chrome/Frame.jsx`, places in `src/chrome/nav.js`) is Krystal's `AppShell` and
   `Sidebar`, shared by the account and admin documents. It imports nothing from `src/admin/`; the
   Administration groups appear when the caller says the account administers, and moving between the two
-  documents is a plain link.
+  documents is a plain link. Every page in it ends with the footer, which offers the Android app
+  (`/ui/auth.apk`, `../android/README.md`) on an Android phone's browser outside the app.
 
 **These pages name no action.** A control is gated on the request it would make, against the
 provider's published operations and the caller's `/me/access` (`src/admin/stores.js`, over

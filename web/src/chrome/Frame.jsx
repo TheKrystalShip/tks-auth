@@ -8,16 +8,55 @@
 // The caller decides what to offer and what to count: `showAdmin` shows the administration groups,
 // `offered` names the gated places that may be shown, and `badges` maps a place id to `{ count, tone }`.
 // Nothing here knows how any of it is decided.
+//
+// Every page ends with the footer: what Auth is, the Android app on an Android phone's browser, and
+// the source. The app is the APK this daemon serves beside the pages, at `/ui/auth.apk`, which the
+// phone installs once it allows installing from the browser; inside the app, whose shell puts
+// `TksShell` on the page, it is not offered.
 
 import React from "react";
 
 import {
-  AppShell, NavItem, Sidebar, SidebarAccount, SidebarGroup, useEdgeSwipe, useStoredFlag,
+  AppShell, Footer, GithubMark, NavItem, Sidebar, SidebarAccount, SidebarGroup, useEdgeSwipe, useStoredFlag,
 } from "@thekrystalship/krystal";
 import { GROUPS, PLACES, hrefOf, placeOf } from "./nav.js";
 import "./frame.css";
 
 const MARK = import.meta.env.BASE_URL + "assets/tks-mark.png";
+const ORG = "https://github.com/TheKrystalShip";
+
+const APP = [
+  { name: "Auth for Android", href: import.meta.env.BASE_URL + "auth.apk", icon: "smartphone", featured: true, sub: "Your account, and signing in a device, as an app" },
+];
+const offerApp = () => typeof navigator !== "undefined" && /Android/.test(navigator.userAgent) && !window.TksShell;
+
+const SOURCE = [
+  { name: "TheKrystalShip", href: ORG, glyph: <GithubMark size={18} />, featured: true, sub: "Where everything here is built" },
+  { name: "tks-auth", href: ORG + "/tks-auth", icon: "git-branch", sub: "The accounts, and signing in to every site" },
+  { name: "tks-krystal", href: ORG + "/tks-krystal", icon: "git-branch", sub: "The design system these pages are drawn with" },
+];
+
+function FrameFooter() {
+  return (
+    <Footer
+      mark={MARK}
+      wordmark="Auth"
+      tagline="One account for every site of The Krystal Ship: sign in once, and every site knows who you are and what you may do."
+      note="Self-hosted and open source"
+      groups={[
+        ...(offerApp() ? [{ label: "App", links: APP }] : []),
+        { label: "Source code", mono: true, links: SOURCE },
+      ]}
+      copy={`© ${new Date().getFullYear()} The Krystal Ship`}
+      end={
+        <a href={ORG} target="_blank" rel="noreferrer noopener" className="frame-footer-org">
+          <GithubMark size={13} />
+          github.com/TheKrystalShip
+        </a>
+      }
+    />
+  );
+}
 
 function Frame({ doc, active, showAdmin, offered, badges, user, onSignOut, onNavigate, children }) {
   const [collapsed, setCollapsed] = useStoredFlag("tks-auth:sidebar:collapsed");
@@ -78,6 +117,7 @@ function Frame({ doc, active, showAdmin, offered, badges, user, onSignOut, onNav
   return (
     <AppShell sidebar={sidebar} collapsed={collapsed} drawerOpen={drawerOpen} onDrawer={setDrawerOpen}>
       {children}
+      <FrameFooter />
     </AppShell>
   );
 }

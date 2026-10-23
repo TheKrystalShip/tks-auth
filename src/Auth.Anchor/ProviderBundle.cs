@@ -32,7 +32,15 @@ internal sealed class ProviderBundle(AnchorOptions options)
     /// <summary>The marker the provider links are written at.</summary>
     internal const string ProvidersMarker = "<!--kgsm-floor-providers-->";
 
-    private static readonly FileExtensionContentTypeProvider ContentTypes = new();
+    /// <summary>
+    /// The types the bundle's files are served as: the framework's map, and the Android app's APK
+    /// (<c>auth.apk</c>, handed over beside the pages), which a phone installs only when it is served
+    /// as one.
+    /// </summary>
+    private static readonly FileExtensionContentTypeProvider ContentTypes = new()
+    {
+        Mappings = { [".apk"] = "application/vnd.android.package-archive" },
+    };
 
     /// <summary>The pages the bundle carries.</summary>
     internal enum Page { SignIn, Wait, Account, Device, Admin }
