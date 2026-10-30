@@ -26,12 +26,7 @@ public sealed class ProviderPagesTests(AnchorFixture anchor)
 
     private async Task RegisterClientAsync()
     {
-        var registry = anchor.Service<ClientRegistry>();
-        if (registry.Find(Client) is null)
-        {
-            await registry.RegisterAsync(new ClientRegistration(Client, "Pages client", [Redirect], []),
-                DateTimeOffset.UtcNow, CancellationToken.None);
-        }
+        await anchor.ClientAsync(Client, "Pages client", [Redirect], []);
     }
 
     private static string AuthorizeUrl()

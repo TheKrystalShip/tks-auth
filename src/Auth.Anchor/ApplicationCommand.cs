@@ -39,6 +39,7 @@ internal static class ApplicationCommand
                                 [--confidential | --device]
                tks-auth app client remove <id> <client-id>
                tks-auth app rotate-secret <id> <client-id>
+               tks-auth app adopt <id>
         """;
 
     /// <summary>Run the command. Returns the process's exit code.</summary>
@@ -93,6 +94,9 @@ internal static class ApplicationCommand
             case [Verb, "rotate-secret", { Length: > 0 } id, { Length: > 0 } clientId]:
                 return Report(stdout, await registry.RotateSecretAsync(id, clientId, actor, origin: null, ct), registry, provider);
 
+            case [Verb, "adopt", { Length: > 0 } id]:
+                return Report(stdout, await registry.AdoptClientsAsync(id, actor, origin: null, ct), registry, provider);
+
             default:
                 Console.Error.WriteLine(Usage);
                 return 2;
@@ -135,6 +139,9 @@ internal static class ApplicationCommand
             Describe(stdout, registry.Find(application.Id) ?? application, registry,
                 provider.GetRequiredService<ApplicationCatalog>());
         }
+
+        foreach (string moved in result.Moved ?? [])
+            stdout.WriteLine($"client {moved} moved under {result.Application?.Id}");
 
         foreach (IssuedSecret secret in result.Secrets ?? [])
             stdout.WriteLine($"client {secret.ClientId} secret: {secret.Secret}  (shown once; only its hash is kept)");

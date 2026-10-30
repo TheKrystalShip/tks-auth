@@ -10,8 +10,8 @@ namespace TheKrystalShip.Auth.Anchor;
 /// <param name="AccessLifetimeMinutes">Its access tokens' lifetime.</param>
 /// <param name="DiscordApplications">The Discord applications its clients may present.</param>
 /// <param name="ActForDiscord">Whether it may act for linked Discord users.</param>
-/// <param name="ActionsClaim">The claim its access tokens list its actions in, or null for KGSM's, which list none.</param>
-/// <param name="Source"><c>builtin</c> for KGSM, <c>admin</c> for one registered here.</param>
+/// <param name="ActionsClaim">The claim its access tokens list its actions in.</param>
+/// <param name="Source"><c>builtin</c> for tks-auth's own, <c>admin</c> for one registered here.</param>
 /// <param name="Created">When it was registered.</param>
 /// <param name="Clients">The clients it signs people in through. Never a secret in any form.</param>
 /// <param name="Manifest">What the last reading of its manifest came to, when this process has read it.</param>
@@ -34,7 +34,7 @@ internal sealed record ApplicationRecord(
 /// <param name="RedirectUris">Where codes may be sent.</param>
 /// <param name="PostLogoutRedirectUris">Where a signed-out browser may be returned.</param>
 /// <param name="Confidential">Whether it authenticates with a secret.</param>
-/// <param name="Source">Where it came from: <c>admin</c>, or for KGSM's, <c>member</c> or <c>config</c> too.</param>
+/// <param name="Source">Where it came from: <c>admin</c>, <c>member</c> or <c>config</c>.</param>
 /// <param name="MemberId">The member announcing it, for a member's surface.</param>
 /// <param name="Device">Whether it signs in with the device grant.</param>
 internal sealed record ApplicationClientRecord(
@@ -49,7 +49,7 @@ internal sealed record ApplicationClientRecord(
 /// <summary>What the last reading of an application's manifest came to.</summary>
 internal sealed record ApplicationManifestRecord(DateTimeOffset At, bool Taken, string? Problem, int Actions);
 
-/// <summary>Every application, KGSM's first.</summary>
+/// <summary>Every application, the built-in one first.</summary>
 internal sealed record ApplicationsPage(IReadOnlyList<ApplicationRecord> Data);
 
 /// <summary>An application after a change, and every secret the change made — shown here and never again.</summary>
@@ -190,7 +190,7 @@ internal static class ApplicationEndpoints
     internal static ApplicationRecord ToRecord(Application a, ApplicationRegistry registry, ApplicationCatalog catalog) =>
         new(
             a.Id, a.Name, a.Audience, a.ManifestUrl, (int)a.AccessLifetime.TotalMinutes, a.DiscordApplications,
-            a.ActForDiscord, a.IsKgsm ? null : Minting.ApplicationClaims.Actions, a.Source, a.Created,
+            a.ActForDiscord, Minting.ApplicationClaims.Actions, a.Source, a.Created,
             [.. registry.ClientsOf(a).Select(c => new ApplicationClientRecord(
                 c.ClientId, c.RedirectUris, c.PostLogoutRedirectUris, c.Confidential, c.Source, c.MemberId, c.Device))],
             catalog.StateOf(a) is { } state

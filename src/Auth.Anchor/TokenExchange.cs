@@ -24,8 +24,8 @@ namespace TheKrystalShip.Auth.Anchor;
 /// </para>
 /// <para>
 /// <b>The client authenticates, and is confidential.</b> A public client is <c>unauthorized_client</c>;
-/// a client that does not prove its secret, or names none, is <c>invalid_client</c>. KGSM's clients are
-/// refused: a KGSM session lives under a browser's sign-in here, and an exchange has none.
+/// a client that does not prove its secret, or names none, is <c>invalid_client</c>. A client of no
+/// application is refused: there is no audience to mint for.
 /// </para>
 /// <para>
 /// <b>The account decides the answer, and says why.</b> Only an active account gets a token. A pending,
@@ -87,10 +87,10 @@ internal static partial class TokenExchange
         }
 
         RegisteredClient client = auth.Client!;
-        if (services.GetRequiredService<ApplicationRegistry>().Of(client) is not { IsKgsm: false } application)
+        if (services.GetRequiredService<ApplicationRegistry>().Of(client) is not { } application)
         {
             await OidcEndpoints.OAuthErrorAsync(ctx, StatusCodes.Status400BadRequest, "unauthorized_client",
-                "Token exchange mints for an application outside KGSM.");
+                "Token exchange mints for a client of an application.");
             return;
         }
 

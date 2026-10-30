@@ -102,7 +102,7 @@ internal static class TksAuthCore
         services.AddSingleton(sp => new ClientRegistry(
             sp.GetRequiredService<SqliteSessionRegistry>(), options.PanelOrigins, options.Issuer));
 
-        // The applications those clients sign people in to — KGSM's built in, every other registered by
+        // The applications those clients sign people in to — each registered by
         // the admin surface or the host command — and the actions each declares in the manifest it serves,
         // read on registration and on an interval.
         AddApplications(services);
@@ -220,12 +220,6 @@ internal static class TksAuthCore
         app.MapPost("/account/sessions/revoke", AccountPageEndpoints.Revoke);
         app.MapPost("/account/sessions/name", AccountPageEndpoints.Rename);
         app.MapPost("/account/sign-out", AccountPageEndpoints.SignOut);
-
-        // The clients it answers that were registered by hand. In a KGSM cluster the surfaces members
-        // announce join them over gossip.
-        app.MapGet("/auth/cluster/clients", OidcEndpoints.ListClients);
-        app.MapPost("/auth/cluster/clients", OidcEndpoints.RegisterClient);
-        app.MapDelete("/auth/cluster/clients/{clientId}", OidcEndpoints.RemoveClient);
 
         // The applications this provider signs people in to, their clients and their client secrets.
         ApplicationEndpoints.Map(app);

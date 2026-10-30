@@ -287,7 +287,6 @@ issues the name's certificate and renders its vhost. The design is `kgsm-docs/sy
 | `POST /revoke` | end the session a refresh token belongs to (RFC 7009), on behalf of the client it was minted for; `200` for any token that ends nothing (see [Signing a device out](#signing-a-device-out)) |
 | `GET /userinfo` | the account behind a KGSM bearer |
 | `GET /sign-out`, `POST /sign-out` | end a browser's sign-in and everything minted under it; asks without a hint |
-| `GET/POST /auth/cluster/clients`, `DELETE /auth/cluster/clients/{id}` | KGSM's clients, on `auth:config.read` and `auth:config.write` |
 | `/auth/cluster/applications` | the applications and their clients and secrets, on `auth:applications.manage` (see [Applications](#applications)) |
 
 **Two cookies on the anchor's own origin, both `HttpOnly; SameSite=Lax; Path=/`.** `kgsm_authz` names
@@ -301,13 +300,13 @@ them, a second account on the same browser ends the first's, and the same accoun
 keeps them. The sessions page lists the provider session with `kind: provider`; ending it there is
 signing out.
 
-**Every client belongs to an application.** KGSM's come from three places. A member serving a surface
-states the `auth.client` fact — paths only, joined to the browser address its roster row carries — and
-appears with no operator step; it leaves when the member does. A Control Panel on a static host, which no
-member can announce, is declared in `Anchor__PanelOrigins`: one client per origin, id the origin's host,
-at the paths every panel lands on (`ClusterClientAnnouncement.ControlPanel`), never stored and never
-removable through the registry. Anything else for KGSM is registered through `/auth/cluster/clients`. An
-application outside KGSM has the clients registered with it. Redirects are matched exactly and must be HTTPS, or HTTP where
+**Every client belongs to an application,** and a client with none signs nobody in. An application has the
+clients registered with it. A Control Panel on a static host is declared in `Anchor__PanelOrigins`: one
+client per origin of the `kgsm` application, id the origin's host, at the paths every panel lands on
+(`ClusterClientAnnouncement.ControlPanel`), never stored and never removable through the registry. A
+surface a member announces through the `auth.client` fact is stored with no application until
+`tks-auth app adopt <application>` moves it, and every client with no application, under that
+application as a client registered by hand. Redirects are matched exactly and must be HTTPS, or HTTP where
 the cluster itself accepts plaintext — this machine, a private network or a local name — so a cluster of
 one on a LAN has somewhere to send a code. A registered client's origin may read discovery, the key set,
 `/token`, `/revoke`, `/device_authorization`, `/userinfo` and the account API across origins, without credentials; nothing that reads the
@@ -356,20 +355,20 @@ already attached to the same account; it never signs anybody in and never makes 
 origin reads the discovery document, exchanges its code and drives the administration with the bearer
 it holds, so every registered client's origin is answered on those paths — without credentials, and
 never on anything that reads the provider's cookie. There is deliberately no wildcard: this surface
-mints credentials. KGSM's clients' origins are published as `auth.origins` for every member to admit;
-an application outside KGSM is nothing a member serves, and none of its origins is published.
+mints credentials. The `kgsm` application's clients' origins are published as `auth.origins` for every member to admit;
+any other application is nothing a member serves, and none of its origins is published.
 
 ### Applications
 
 An **application** is an API this provider signs people in to: an id, which is also the namespace its
 actions are declared in (`cinema` declares `cinema:*`), a name, an **audience**, the address it serves
 its action manifest at, an access lifetime, the Discord applications its clients may present, whether
-it may act for linked Discord users, and the clients it signs people in through. **Two are built in.**
-KGSM: its audience is the cluster id, its clients are the ones above, and nothing here changes its
-tokens. And tks-auth itself (`auth`): its audience is `tks-auth`, its one client the admin pages', and
-its tokens list the `auth:*` actions the account holds. Every other application is registered on
-`auth:applications.manage`, by the Applications admin page or on the host, and is stored beside the
-clients in the session store.
+it may act for linked Discord users, and the clients it signs people in through. **One is built in:**
+tks-auth itself (`auth`), whose audience is `tks-auth`, whose one client is the admin pages', and whose
+tokens list the `auth:*` actions the account holds. Every other application, KGSM's (`kgsm`) included,
+is registered on `auth:applications.manage`, by the Applications admin page or on the host, and is stored
+beside the clients in the session store. The `kgsm` application is the one whose manifest may name the
+components KGSM's members declare as well.
 
 ```bash
 tks-auth app add cinema --name "Krystal Cinema" --manifest https://movies.example.com/.well-known/tks-actions.json \
@@ -377,6 +376,7 @@ tks-auth app add cinema --name "Krystal Cinema" --manifest https://movies.exampl
 tks-auth app client add cinema --client-id cinema-api --confidential     # the secret is printed once
 tks-auth app set cinema --lifetime 5
 tks-auth app rotate-secret cinema cinema-api
+tks-auth app adopt kgsm                # every client with no application becomes a client of kgsm
 tks-auth app list
 tks-auth app remove cinema
 tks-auth migrate kgsm                  # prints the roles it would make and the grants it would drop; --apply does it
@@ -392,9 +392,9 @@ service account over the daemon's own files, and the daemon picks the change up 
 application's lifetime — five minutes unless set. It lists the application's actions the account holds in
 **`tks_actions`**, an array, evaluated by `AccessEvaluator` across the whole organization (the stored scope
 `cluster`) at every mint and every refresh, so a role taken away reaches the application within one
-lifetime. Its refresh token is audienced to the issuer and is accepted nowhere but `/token`. A KGSM member
-refuses an application's token, and an application refuses KGSM's, by audience alone; this provider's own
-doors take KGSM's sessions and its admin pages', and no other application's.
+lifetime. Its refresh token is audienced to the issuer and is accepted nowhere but `/token`. Every resource
+server refuses a token that is not audienced to it; this provider's own doors take the cluster's
+sessions and its admin pages', and no application's.
 
 **Confidential clients authenticate with a secret** the provider makes, shows once and keeps as a hash:
 `client_secret_basic` or `client_secret_post`, one at a time, and a wrong one is `invalid_client` with

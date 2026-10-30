@@ -114,18 +114,12 @@ public sealed class AdminPagesTests(AnchorFixture anchor)
         Assert.Equal([Pages, AnchorFixture.Issuer + "/account"], client.PostLogoutRedirectUris);
         Assert.False(client.Confidential);
         Assert.Same(anchor.Service<ApplicationRegistry>().Provider, anchor.Service<ApplicationRegistry>().Of(client));
-        Assert.DoesNotContain(clients.Kgsm, c => c.ClientId == Application.ProviderClientId);
 
-        string owner = (await anchor.SignedInAsync(owner: true, prefix: "admin-pages-owner")).Session.Access;
-        HttpResponseMessage over = await SendAsync(HttpMethod.Post, "/auth/cluster/clients", owner, new
-        {
-            clientId = Application.ProviderClientId,
-            name = "Somebody else",
-            redirectUris = new[] { "https://elsewhere.test/admin/" },
-        });
-        Assert.Equal(HttpStatusCode.Conflict, over.StatusCode);
-        Assert.NotEqual(HttpStatusCode.NoContent,
-            (await SendAsync(HttpMethod.Delete, "/auth/cluster/clients/" + Application.ProviderClientId, owner)).StatusCode);
+        ApplicationResult over = await anchor.Service<ApplicationRegistry>().AddClientAsync(
+            Application.ProviderId,
+            new ApplicationClientRequest(Application.ProviderClientId, ["https://elsewhere.test/admin/"], [], Confidential: false),
+            "local:test", origin: null, CancellationToken.None);
+        Assert.Equal(ApplicationOutcome.BuiltIn, over.Outcome);
     }
 
     [Fact]

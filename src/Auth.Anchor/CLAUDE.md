@@ -45,9 +45,11 @@ this repo's `README.md` documents the doors. Minting is `Minting/CLAUDE.md`.
 
 ## The daemon
 
-- **A KGSM session's audience is the cluster, not a machine.** It reaches the minter as
-  `SessionTokenOptions.Audience`; changing `Anchor__ClusterId` on a running cluster invalidates every token.
-  Every other application's tokens carry that application's audience.
+- **Every sign-in mints an application's token.** A client belongs to an application, a client with none
+  signs nobody in, and the access token carries that application's audience, lifetime and `tks_actions`.
+  `kgsm` is stored like any other application; its components are the one namespace an application may
+  take from the members that declare them. `SessionTokenOptions.Audience` (the cluster) is the audience of
+  the sessions the retained cluster module still verifies.
 - **Signing is asymmetric, `ValidAlgorithms` is pinned, and the private key is generated exactly once.** A
   file that exists and cannot be read stops the daemon and is never a reason to generate. It is created
   with mode `0600`, not chmod'd after.

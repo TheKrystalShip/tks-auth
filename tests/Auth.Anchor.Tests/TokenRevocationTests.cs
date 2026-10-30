@@ -185,18 +185,6 @@ public sealed class TokenRevocationTests(AnchorFixture anchor)
     }
 
     [Fact]
-    public async Task A_kgsm_session_is_ended_by_whoever_holds_its_refresh_token()
-    {
-        (_, AnchorFixture.Session session) = await anchor.SignedInAsync(prefix: "revoke");
-
-        await AssertRevokedAnswer(await RevokeAsync(session.Refresh, clientId: null));
-
-        Assert.False(await anchor.Service<SqliteSessionRegistry>().IsAliveAsync(session.Sid));
-        // The browser's sign-in it lived under is not this token's to end.
-        Assert.True(await anchor.Service<SqliteSessionRegistry>().FindProviderSessionAsync(session.ProviderSession) is not null);
-    }
-
-    [Fact]
     public async Task A_token_that_ends_nothing_answers_as_one_that_did()
     {
         Registered app = await ApplicationAsync();

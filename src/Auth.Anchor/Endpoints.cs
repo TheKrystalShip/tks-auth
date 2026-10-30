@@ -243,20 +243,16 @@ internal static class Endpoints
     /// the actions its token lists could not be evaluated.
     /// </summary>
     /// <remarks>
-    /// KGSM's are the cluster's session: audienced to the cluster, carrying no actions, verified by every
-    /// member and evaluated there from its replica. Any other application's access token is audienced to
-    /// it, lives its lifetime and lists its actions the account holds, evaluated here at every mint; its
-    /// refresh token is audienced to this provider, the one place it is presented. A device's name rides on
-    /// the application's access token, read from the session at every mint, so a rename reaches the next one.
+    /// An application's access token is audienced to it, lives its lifetime and lists the actions the
+    /// account holds in it, evaluated here at every mint; its refresh token is audienced to this provider,
+    /// the one place it is presented. A device's name rides on the application's access token, read from
+    /// the session at every mint, so a rename reaches the next one.
     /// </remarks>
     private static async Task<(MintedToken Access, MintedToken Refresh)?> MintPairAsync(
         HttpContext ctx, KgsmIdentity identity, KgsmUser user, string sessionId,
         string? clientId, Application application, string? deviceName)
     {
         var tokens = ctx.RequestServices.GetRequiredService<ISessionTokenService>();
-        if (application.IsKgsm)
-            return (tokens.MintAccess(identity, sessionId), tokens.MintRefresh(identity, sessionId));
-
         IReadOnlyList<string> held;
         try
         {
@@ -437,8 +433,8 @@ internal static class Endpoints
     /// </summary>
     /// <remarks>
     /// The one rule for continuing and for ending a session by its refresh token, so the two cannot
-    /// disagree about who holds it. A session recorded without a client is KGSM's, and whoever presents its
-    /// refresh token holds it.
+    /// disagree about who holds it. A session recorded without a client belongs to no application and is
+    /// held by nobody.
     /// </remarks>
     internal static HolderCheck CheckHolder(
         HttpContext ctx, RefreshClaims claims, ClientAuthentication auth,
@@ -450,28 +446,23 @@ internal static class Endpoints
 
         application = null;
         clientId = registry.SessionClient(claims.SessionId);
-        RegisteredClient? client = null;
-        if (clientId is not null)
-        {
-            client = ctx.RequestServices.GetRequiredService<ClientRegistry>().Find(clientId);
-            if (client is null)
-                return HolderCheck.NotHeld;
+        if (clientId is null
+            || ctx.RequestServices.GetRequiredService<ClientRegistry>().Find(clientId) is not { } client)
+            return HolderCheck.NotHeld;
 
-            if (!auth.Speaks(client))
-            {
-                return client.Confidential && auth.Result == ClientAuthentication.Outcome.Unauthenticated
-                    ? HolderCheck.ClientUnauthenticated
-                    : HolderCheck.OtherClient;
-            }
+        if (!auth.Speaks(client))
+        {
+            return client.Confidential && auth.Result == ClientAuthentication.Outcome.Unauthenticated
+                ? HolderCheck.ClientUnauthenticated
+                : HolderCheck.OtherClient;
         }
 
-        if ((client is null ? applications.Kgsm : applications.Of(client)) is not { } found)
+        if (applications.Of(client) is not { } found)
             return HolderCheck.NotHeld;
 
         // The token says which kind of session it continues; the row says which client. They agree for every
         // token this provider minted.
-        string expectedAudience = found.IsKgsm ? options.ClusterId : options.Issuer;
-        if (!string.Equals(claims.Audience, expectedAudience, StringComparison.Ordinal))
+        if (!string.Equals(claims.Audience, options.Issuer, StringComparison.Ordinal))
             return HolderCheck.NotHeld;
 
         application = found;

@@ -13,7 +13,7 @@ namespace TheKrystalShip.Auth.Anchor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Only a client registered for it.</b> A client of an application outside KGSM marked
+/// <b>Only a client registered for it.</b> A client of an application marked
 /// <see cref="RegisteredClient.Device"/>, which is public: a device keeps no secret. Any other client is
 /// <c>unauthorized_client</c>.
 /// </para>
@@ -180,7 +180,7 @@ internal static class DeviceAuthorization
         }
 
         if (DeviceClientProblem(ctx, client) is not null
-            || services.GetRequiredService<ApplicationRegistry>().Of(client) is not { IsKgsm: false } application)
+            || services.GetRequiredService<ApplicationRegistry>().Of(client) is not { } application)
         {
             await OidcEndpoints.OAuthErrorAsync(ctx, StatusCodes.Status400BadRequest, "unauthorized_client",
                 "This client does not sign in with the device grant.");
@@ -280,9 +280,9 @@ internal static class DeviceAuthorization
         if (!client.Device || client.Confidential)
             return "This client does not sign in with the device grant.";
 
-        return ctx.RequestServices.GetRequiredService<ApplicationRegistry>().Of(client) is { IsKgsm: false }
+        return ctx.RequestServices.GetRequiredService<ApplicationRegistry>().Of(client) is not null
             ? null
-            : "The device grant signs in to an application outside KGSM.";
+            : "The device grant signs in to an application's client.";
     }
 
     // ── Names ─────────────────────────────────────────────────────────────────

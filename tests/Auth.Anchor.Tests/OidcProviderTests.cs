@@ -7,6 +7,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Data.Sqlite;
 
+using Microsoft.IdentityModel.JsonWebTokens;
+
 using TheKrystalShip.Auth.Cluster;
 using TheKrystalShip.Auth.Minting;
 using TheKrystalShip.Auth.Users;
@@ -42,19 +44,8 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
 
     private async Task RegisterClientsAsync()
     {
-        var registry = anchor.Service<ClientRegistry>();
-        if (registry.Find(Panel) is null)
-        {
-            await registry.RegisterAsync(
-                new ClientRegistration(Panel, "Test panel", [PanelRedirect], [PanelSignedOut]),
-                DateTimeOffset.UtcNow, CancellationToken.None);
-        }
-        if (registry.Find(Chat) is null)
-        {
-            await registry.RegisterAsync(
-                new ClientRegistration(Chat, "Test chat", [ChatRedirect], []),
-                DateTimeOffset.UtcNow, CancellationToken.None);
-        }
+        await anchor.ClientAsync(Panel, "Test panel", [PanelRedirect], [PanelSignedOut]);
+        await anchor.ClientAsync(Chat, "Test chat", [ChatRedirect], []);
     }
 
     private async Task<(KgsmUser User, string Password)> AccountAsync(
@@ -161,11 +152,16 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
         return JsonDocument.Parse(Convert.FromBase64String(payload)).RootElement;
     }
 
+    /// <summary>
+    /// What a resource server finds when it asks whether the session behind a bearer is still live: OK
+    /// while it is, Unauthorized once it has ended.
+    /// </summary>
     private async Task<HttpStatusCode> UserInfoStatusAsync(string accessToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/userinfo");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return (await anchor.Client.SendAsync(request)).StatusCode;
+        string sid = new JsonWebToken(accessToken).GetClaim(KgsmAuthClaims.SessionId).Value;
+        return await anchor.Service<ISessionValidator>().IsValidAsync(sid, CancellationToken.None)
+            ? HttpStatusCode.OK
+            : HttpStatusCode.Unauthorized;
     }
 
     private async Task<HttpStatusCode> RefreshStatusAsync(string refreshToken)
@@ -313,9 +309,9 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
         Assert.Equal("Bearer", tokens.GetProperty("token_type").GetString());
         Assert.True(tokens.GetProperty("expires_in").GetInt64() > 0);
 
-        // The access token is the cluster's: its audience is the cluster and its issuer the URL.
+        // The access token is the application's: its audience is the application's and its issuer the URL.
         JsonElement access = Claims(tokens.GetProperty("access_token").GetString()!);
-        Assert.Equal(AnchorFixture.ClusterId, access.GetProperty("aud").GetString());
+        Assert.Equal("t-" + Panel, access.GetProperty("aud").GetString());
         Assert.Equal(AnchorFixture.Issuer, access.GetProperty("iss").GetString());
 
         // The id_token is the client's, and names the account and the provider session.
@@ -327,12 +323,9 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
         Assert.StartsWith("sid_", id.GetProperty("sid").GetString(), StringComparison.Ordinal);
         Assert.NotEqual(access.GetProperty("sid").GetString(), id.GetProperty("sid").GetString());
 
-        // The bearer reads the account behind it.
-        using var info = new HttpRequestMessage(HttpMethod.Get, "/userinfo");
-        info.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokens.GetProperty("access_token").GetString());
-        JsonElement me = await Json(await anchor.Client.SendAsync(info));
-        Assert.Equal(user.UserId, me.GetProperty("sub").GetString());
-        Assert.Equal(user.Username, me.GetProperty("preferred_username").GetString());
+        // The bearer names the account behind it.
+        Assert.Equal(user.UserId, access.GetProperty("sub").GetString());
+        Assert.Equal(user.Username, access.GetProperty("preferred_username").GetString());
 
         // Minted at the one mint site, so recorded as every sign-in is.
         Assert.Contains(anchor.Journal("auth.signed_in"),
@@ -818,52 +811,21 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
     private async Task<string> OwnerBearerAsync() =>
         (await anchor.SignedInAsync(owner: true, "oidc-owner")).Session.Access;
 
-    [Fact]
-    public async Task A_client_is_registered_listed_and_removed_by_hand()
-    {
-        string bearer = await OwnerBearerAsync();
-        string id = "hand-" + Guid.NewGuid().ToString("N")[..8];
-
-        using var create = new HttpRequestMessage(HttpMethod.Post, "/auth/cluster/clients")
-        {
-            Content = new StringContent(JsonSerializer.Serialize(new
-            {
-                clientId = id,
-                name = "A bucket panel",
-                redirectUris = new[] { "https://bucket.test/" },
-                postLogoutRedirectUris = new[] { "https://bucket.test/" },
-            }), Encoding.UTF8, "application/json"),
-        };
-        create.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-        HttpResponseMessage created = await anchor.Client.SendAsync(create);
-        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        Assert.Equal("admin", (await Json(created)).GetProperty("source").GetString());
-
-        using var list = new HttpRequestMessage(HttpMethod.Get, "/auth/cluster/clients");
-        list.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-        JsonElement page = await Json(await anchor.Client.SendAsync(list));
-        Assert.Contains(page.GetProperty("data").EnumerateArray(), c => c.GetProperty("clientId").GetString() == id);
-
-        using var remove = new HttpRequestMessage(HttpMethod.Delete, $"/auth/cluster/clients/{id}");
-        remove.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
-        Assert.Equal(HttpStatusCode.NoContent, (await anchor.Client.SendAsync(remove)).StatusCode);
-        Assert.Null(anchor.Service<ClientRegistry>().Find(id));
-    }
-
     [Theory]
     [InlineData("http://bucket.test/")]
     [InlineData("https://bucket.test/#fragment")]
     [InlineData("https://user@bucket.test/")]
     [InlineData("not a url")]
-    public async Task A_redirect_that_could_leak_a_code_cannot_be_registered(string uri)
+    public void A_redirect_that_could_leak_a_code_cannot_be_registered(string uri)
     {
-        var (outcome, _, _) = await anchor.Service<ClientRegistry>().RegisterAsync(
-            new ClientRegistration(null, "Bad", [uri], []), DateTimeOffset.UtcNow, CancellationToken.None);
-        Assert.Equal(ClientRegistry.RegisterOutcome.Invalid, outcome);
+        (RegisteredClient? client, string? problem) = ClientRegistry.Shape(
+            null, "Bad", [uri], [], "somebody", secretHash: null, DateTimeOffset.UtcNow);
+        Assert.Null(client);
+        Assert.NotNull(problem);
     }
 
     [Fact]
-    public void A_panel_on_a_static_host_is_a_client_because_the_configuration_says_so()
+    public void A_panel_on_a_static_host_is_a_client_of_the_kgsm_application_because_the_configuration_says_so()
     {
         string root = Path.Combine(Path.GetTempPath(), "kgsm-anchor-panels", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -873,6 +835,7 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
 
         RegisteredClient panel = registry.Find("kgsm.example.com")!;
         Assert.Equal(ClientSources.Config, panel.Source);
+        Assert.Equal(ApplicationCatalog.KgsmApplication, panel.ApplicationId);
         Assert.Equal(["https://kgsm.example.com/signed-in"], panel.RedirectUris);
         Assert.Equal(["https://kgsm.example.com/"], panel.PostLogoutRedirectUris);
         Assert.True(registry.IsClientOrigin("https://kgsm.example.com"));
@@ -884,24 +847,6 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
         Assert.Equal(["http://bucket.example.com", "https://x.test/path"],
             registry.RefusedPanelOrigins.Select(r => r.Origin));
         Assert.Null(registry.Find("bucket.example.com"));
-    }
-
-    [Fact]
-    public async Task A_declared_panel_can_be_neither_removed_nor_registered_over()
-    {
-        string root = Path.Combine(Path.GetTempPath(), "kgsm-anchor-panels", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(root);
-        var registry = new ClientRegistry(
-            new SqliteSessionRegistry(Path.Combine(root, "sessions.db")), ["https://kgsm.example.com"]);
-
-        Assert.Equal(ClientRegistry.RemoveOutcome.Declared,
-            await registry.RemoveAsync("kgsm.example.com", CancellationToken.None));
-
-        var (outcome, _, _) = await registry.RegisterAsync(
-            new ClientRegistration("kgsm.example.com", "Impostor", ["https://evil.example/cb"], []),
-            DateTimeOffset.UtcNow, CancellationToken.None);
-        Assert.Equal(ClientRegistry.RegisterOutcome.Taken, outcome);
-        Assert.Equal(["https://kgsm.example.com/signed-in"], registry.Find("kgsm.example.com")!.RedirectUris);
     }
 
     [Theory]
@@ -944,18 +889,10 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
         Assert.Equal(member, client.MemberId);
         Assert.Equal([$"{address}/", $"{address}/signed-in"], client.RedirectUris);
         Assert.True(registry.IsClientOrigin(address));
-        Assert.Contains(address, registry.Origins);
 
         // It leaves when the member stops announcing it.
         Assert.True(await registry.SyncMembersAsync([], DateTimeOffset.UtcNow, CancellationToken.None));
         Assert.Null(registry.Find(id));
-
-        // And a client registered by hand under the same id is never taken over by an announcement.
-        await registry.RegisterAsync(new ClientRegistration(id, "By hand", ["https://hand.test/"], []),
-            DateTimeOffset.UtcNow, CancellationToken.None);
-        await registry.SyncMembersAsync([row], DateTimeOffset.UtcNow, CancellationToken.None);
-        Assert.Equal(ClientSources.Admin, registry.Find(id)!.Source);
-        await registry.RemoveAsync(id, CancellationToken.None);
     }
 
     [Fact]
@@ -1019,26 +956,27 @@ public sealed class OidcProviderTests(AnchorFixture anchor)
     }
 
     [Fact]
-    public async Task Where_every_client_lives_is_stated_for_the_members_to_admit()
+    public async Task Where_the_kgsm_application_s_clients_live_is_stated_for_the_members_to_admit()
     {
         await RegisterClientsAsync();
         var publications = anchor.Service<SelfPublications>();
 
         // Read by every member through the holder, which is what admits a client across origins on a
-        // machine nobody configured: a client registered by hand and a declared panel exist only here.
+        // machine nobody configured: a declared panel exists only here. Another application's origins are
+        // nothing a member serves.
         IReadOnlyList<string> stated = [];
         for (int attempt = 0; attempt < 50; attempt++)
         {
             stated = publications.Current.TryGetValue(ClusterAuthFacts.ClientOrigins, out string? value)
                 ? ClusterClientOrigins.Read(value)
                 : [];
-            if (stated.Contains("https://chat.test"))
+            if (stated.Contains("https://panel.test"))
                 break;
             await Task.Delay(100);
         }
 
-        Assert.Contains("https://chat.test", stated);
         Assert.Contains("https://panel.test", stated);
+        Assert.DoesNotContain("https://chat.test", stated);
     }
 
     [Fact]

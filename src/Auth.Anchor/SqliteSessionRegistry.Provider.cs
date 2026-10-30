@@ -649,18 +649,46 @@ internal sealed partial class SqliteSessionRegistry
         return Task.FromResult<IReadOnlyList<RegisteredClient>>(clients);
     }
 
-    /// <summary>Register a client by hand. False when the id is already taken.</summary>
-    internal Task<bool> AddClientAsync(RegisteredClient client, CancellationToken ct = default)
+    /// <summary>
+    /// Put every client that belongs to no application under <paramref name="applicationId"/>, as a client
+    /// registered by hand: a member's announcement no longer keeps it, and no sync removes it.
+    /// </summary>
+    /// <returns>The ids it moved, in order.</returns>
+    internal Task<IReadOnlyList<string>> AdoptClientsAsync(string applicationId, CancellationToken ct = default)
     {
         lock (_writeGate)
         {
             using SqliteConnection connection = Open();
             using SqliteTransaction tx = connection.BeginTransaction();
-            bool added = InsertClient(connection, tx, client);
-            if (added)
+
+            var moved = new List<string>();
+            using (SqliteCommand read = connection.CreateCommand())
+            {
+                read.Transaction = tx;
+                read.CommandText = "SELECT client_id FROM clients WHERE application_id IS NULL ORDER BY client_id;";
+                using SqliteDataReader reader = read.ExecuteReader();
+                while (reader.Read())
+                    moved.Add(reader.GetString(0));
+            }
+
+            if (moved.Count > 0)
+            {
+                using SqliteCommand update = connection.CreateCommand();
+                update.Transaction = tx;
+                update.CommandText =
+                    """
+                    UPDATE clients
+                       SET application_id = $application, source = $source, member_id = NULL
+                     WHERE application_id IS NULL;
+                    """;
+                update.Parameters.AddWithValue("$application", applicationId);
+                update.Parameters.AddWithValue("$source", ClientSources.Admin);
+                update.ExecuteNonQuery();
                 BumpGeneration(connection, tx);
+            }
+
             tx.Commit();
-            return Task.FromResult(added);
+            return Task.FromResult<IReadOnlyList<string>>(moved);
         }
     }
 
@@ -678,27 +706,6 @@ internal sealed partial class SqliteSessionRegistry
             """;
         BindClient(cmd, client);
         return cmd.ExecuteNonQuery() == 1;
-    }
-
-    /// <summary>Remove a client of KGSM's registered by hand. False when there is none by that id.</summary>
-    internal Task<bool> RemoveAdminClientAsync(string clientId, CancellationToken ct = default)
-    {
-        lock (_writeGate)
-        {
-            using SqliteConnection connection = Open();
-            using SqliteTransaction tx = connection.BeginTransaction();
-            using SqliteCommand cmd = connection.CreateCommand();
-            cmd.Transaction = tx;
-            cmd.CommandText =
-                "DELETE FROM clients WHERE client_id = $id AND source = $source AND application_id IS NULL;";
-            cmd.Parameters.AddWithValue("$id", clientId);
-            cmd.Parameters.AddWithValue("$source", ClientSources.Admin);
-            bool removed = cmd.ExecuteNonQuery() == 1;
-            if (removed)
-                BumpGeneration(connection, tx);
-            tx.Commit();
-            return Task.FromResult(removed);
-        }
     }
 
     /// <summary>

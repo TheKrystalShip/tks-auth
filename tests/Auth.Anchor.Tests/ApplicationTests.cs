@@ -15,6 +15,7 @@ using TheKrystalShip.Auth.Cluster;
 using TheKrystalShip.Auth.Journal;
 using TheKrystalShip.Auth.Minting;
 using TheKrystalShip.Auth.Users;
+using TheKrystalShip.KGSM.Cluster.Membership;
 
 namespace TheKrystalShip.Auth.Anchor.Tests;
 
@@ -344,17 +345,14 @@ public sealed class ApplicationTests(AnchorFixture anchor) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task KGSM_and_its_namespaces_are_not_application_ids()
+    public async Task The_provider_s_own_namespace_is_not_an_application_id()
     {
         string bearer = await OwnerBearerAsync();
-        foreach (string id in (string[])[Application.KgsmId, ActionIds.AuthComponent])
-        {
-            HttpResponseMessage response = await SendAsync(HttpMethod.Post, ApplicationEndpoints.Route, bearer,
-                new { id, name = "Impostor" });
-            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        }
+        HttpResponseMessage response = await SendAsync(HttpMethod.Post, ApplicationEndpoints.Route, bearer,
+            new { id = ActionIds.AuthComponent, name = "Impostor" });
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 
-        HttpResponseMessage builtIn = await SendAsync(HttpMethod.Delete, ApplicationEndpoints.Route + "/kgsm", bearer);
+        HttpResponseMessage builtIn = await SendAsync(HttpMethod.Delete, ApplicationEndpoints.Route + "/auth", bearer);
         Assert.Equal(HttpStatusCode.Conflict, builtIn.StatusCode);
 
         HttpResponseMessage clusterAudience = await SendAsync(HttpMethod.Post, ApplicationEndpoints.Route, bearer,
@@ -505,33 +503,119 @@ public sealed class ApplicationTests(AnchorFixture anchor) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task KGSM_s_tokens_carry_no_actions_and_keep_the_cluster_audience_and_lifetime()
+    public async Task The_kgsm_application_is_an_ordinary_one_that_owns_the_components_members_declare()
     {
-        var registry = anchor.Service<ClientRegistry>();
-        const string panel = "apps-kgsm-panel";
-        const string redirect = "https://apps-kgsm.test/callback";
-        if (registry.Find(panel) is null)
-        {
-            await registry.RegisterAsync(new ClientRegistration(panel, "KGSM panel", [redirect], []),
-                DateTimeOffset.UtcNow, CancellationToken.None);
-        }
+        // A member still declares an `api` component, as every node does until the cluster stops reporting.
+        await anchor.Service<AuthorityIntake>().CatalogDeclaredAsync(
+            "test-node",
+            new MemberCatalogReport(Anchor: false,
+                [new ActionManifest(1, "api", "1.0.0", [new ManifestAction("me.read", "Read me", "read", "cluster", null)], [])],
+                Sequence: 1),
+            CancellationToken.None);
 
-        KgsmUser user = await anchor.SeedAsync("kgsm-" + Guid.NewGuid().ToString("N")[..8], Password);
+        string bearer = await OwnerBearerAsync();
+        string components = _manifests.Serve("kgsm-app", JsonSerializer.Serialize(new
+        {
+            schemaVersion = 1,
+            version = "1.0.0",
+            manifests = new object[]
+            {
+                new { schemaVersion = 1, component = "kgsm", version = "1.0.0",
+                      actions = new[] { new { id = "server.stop", title = "Stop", effect = "execute", scope = "cluster" } },
+                      requires = Array.Empty<object>() },
+                new { schemaVersion = 1, component = "api", version = "1.0.0",
+                      actions = new[] { new { id = "me.read", title = "Read me", effect = "read", scope = "cluster" } },
+                      requires = Array.Empty<object>() },
+            },
+        }));
+
+        // Another application cannot take a component a member declares; the kgsm application can.
+        string rival = _manifests.Serve("kgsm-rival", Manifest("api", actions: [("me.read", "Read me", false)]));
+        (_, string refused) = await CommandAsync("app", "add", NewId(), "--name", "Rival", "--manifest", rival);
+        Assert.Contains("manifest not taken", refused);
+
+        (int exit, string output) = await CommandAsync("app", "add", "kgsm", "--name", "KGSM", "--manifest", components);
+        Assert.Equal(0, exit);
+        Assert.Contains("manifest read:", output);
+        await DaemonSeesAsync("kgsm");
+
+        // The panel an operator declares in the configuration is a client of it.
+        RegisteredClient panel = anchor.Service<ClientRegistry>().Find("panel.test")!;
+        Assert.Equal("kgsm", anchor.Service<ApplicationRegistry>().Of(panel)!.Id);
+
+        KgsmUser user = await anchor.SeedAsync("kgsm-" + Guid.NewGuid().ToString("N")[..8], Password, owner: true);
+        const string redirect = AnchorFixture.PanelUrl + "/signed-in";
         Pkce pkce = NewPkce();
-        JsonElement tokens = await Json(await TokenAsync(CodeForm(await CodeAsync(user, panel, redirect, pkce), panel, redirect, pkce)));
+        JsonElement tokens = await Json(await TokenAsync(CodeForm(await CodeAsync(user, "panel.test", redirect, pkce), "panel.test", redirect, pkce)));
         string access = tokens.GetProperty("access_token").GetString()!;
 
-        JsonElement claims = Claims(access);
-        Assert.Equal(AnchorFixture.ClusterId, claims.GetProperty("aud").GetString());
-        Assert.False(claims.TryGetProperty(ApplicationClaims.Actions, out _));
-        Assert.Equal(user.AsIdentity().Handle, claims.GetProperty("sub").GetString());
-        Assert.Equal(15 * 60, claims.GetProperty("exp").GetInt64() - claims.GetProperty("iat").GetInt64());
-        Assert.True(await KgsmMemberAcceptsAsync(access));
+        JsonElement header = Header(access);
+        Assert.Equal("at+jwt", header.GetProperty("typ").GetString());
+        Assert.Equal("ES256", header.GetProperty("alg").GetString());
 
-        string next = (await Json(await TokenAsync(RefreshForm(tokens.GetProperty("refresh_token").GetString()!))))
-            .GetProperty("access_token").GetString()!;
-        Assert.Equal(AnchorFixture.ClusterId, Claims(next).GetProperty("aud").GetString());
-        Assert.True(await KgsmMemberAcceptsAsync(next));
+        JsonElement claims = Claims(access);
+        Assert.Equal("kgsm", claims.GetProperty("aud").GetString());
+        Assert.Equal(AnchorFixture.Issuer, claims.GetProperty("iss").GetString());
+        Assert.Equal(user.UserId, claims.GetProperty("sub").GetString());
+        Assert.Equal(user.DisplayName, claims.GetProperty("name").GetString());
+        Assert.Equal(5 * 60, claims.GetProperty("exp").GetInt64() - claims.GetProperty("iat").GetInt64());
+        Assert.Equal(
+            ["api:me.read", "kgsm:server.stop"],
+            claims.GetProperty(ApplicationClaims.Actions).EnumerateArray().Select(a => a.GetString()!)
+                .Where(a => a.StartsWith("api:", StringComparison.Ordinal) || a.StartsWith("kgsm:", StringComparison.Ordinal))
+                .Order(StringComparer.Ordinal));
+        Assert.True(await ApplicationAcceptsAsync(access, "kgsm"));
+        Assert.False(await KgsmMemberAcceptsAsync(access));
+
+        // The refresh token is audienced to the provider, never presentable elsewhere, and renews an
+        // access token for the application.
+        string refresh = tokens.GetProperty("refresh_token").GetString()!;
+        Assert.Equal(AnchorFixture.Issuer, Claims(refresh).GetProperty("aud").GetString());
+        Assert.False(await ApplicationAcceptsAsync(refresh, "kgsm"));
+        string next = (await Json(await TokenAsync(RefreshForm(refresh)))).GetProperty("access_token").GetString()!;
+        Assert.Equal("kgsm", Claims(next).GetProperty("aud").GetString());
+    }
+
+    [Fact]
+    public async Task Adopting_moves_the_clients_with_no_application_under_one_and_survives_the_sync()
+    {
+        string id = NewId();
+        (int added, _) = await CommandAsync("app", "add", id, "--name", "Adopter");
+        Assert.Equal(0, added);
+        await DaemonSeesAsync(id);
+
+        // A client a member announced, left with no application.
+        string member = "adopt-" + Guid.NewGuid().ToString("N")[..6];
+        string address = $"https://{member}.test";
+        MemberRow row = MemberRow.New(member, "node") with
+        {
+            Candidates = MemberCandidates.Encode([new MemberCandidate(address, Client: true)]),
+            Published = PublishedFacts.Encode(new Dictionary<string, string>
+            {
+                [ClusterClientAnnouncement.FactKey] = new ClusterClientAnnouncement("Control Panel", ["/signed-in"], ["/"]).ToJson(),
+            }),
+        };
+        var clients = anchor.Service<ClientRegistry>();
+        Assert.True(await clients.SyncMembersAsync([row], DateTimeOffset.UtcNow, CancellationToken.None));
+        string client = $"{member}.test";
+        Assert.Null(anchor.Service<ApplicationRegistry>().Of(clients.Find(client)!));
+
+        (int exit, string output) = await CommandAsync("app", "adopt", id);
+        Assert.Equal(0, exit);
+        Assert.Contains($"client {client} moved under {id}", output);
+        for (int attempt = 0; attempt < 50 && clients.Find(client)?.ApplicationId != id; attempt++)
+            await Task.Delay(100);
+
+        RegisteredClient adopted = clients.Find(client)!;
+        Assert.Equal(id, adopted.ApplicationId);
+        Assert.Equal(ClientSources.Admin, adopted.Source);
+
+        // The member stops announcing it, and it stays.
+        await clients.SyncMembersAsync([], DateTimeOffset.UtcNow, CancellationToken.None);
+        Assert.Equal(id, clients.Find(client)!.ApplicationId);
+
+        (_, string again) = await CommandAsync("app", "adopt", id);
+        Assert.DoesNotContain("moved under", again);
     }
 
     // ── Confidential clients ──────────────────────────────────────────────────

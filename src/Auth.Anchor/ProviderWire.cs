@@ -129,30 +129,6 @@ internal sealed record UserInfoResponse(
 /// <param name="Wait">The wait page, for an account not yet approved.</param>
 internal sealed record CredentialAnswer(string? Redirect, string? Wait);
 
-/// <summary>A client, as the administration surface lists one.</summary>
-internal sealed record ClientRecord(
-    string ClientId,
-    string Name,
-    IReadOnlyList<string> RedirectUris,
-    IReadOnlyList<string> PostLogoutRedirectUris,
-    string Source,
-    string? MemberId,
-    DateTimeOffset Created);
-
-/// <summary>Every registered client.</summary>
-internal sealed record ClientsPage(IReadOnlyList<ClientRecord> Data);
-
-/// <summary>What is posted to register a client by hand.</summary>
-/// <param name="ClientId">The id, or null to have one made.</param>
-/// <param name="Name">What a person is shown on the sign-in page.</param>
-/// <param name="RedirectUris">Where codes may be sent, each matched exactly.</param>
-/// <param name="PostLogoutRedirectUris">Where a signed-out browser may be returned, each matched exactly.</param>
-internal sealed record ClientRegistration(
-    string? ClientId,
-    string? Name,
-    IReadOnlyList<string>? RedirectUris,
-    IReadOnlyList<string>? PostLogoutRedirectUris);
-
 /// <summary>What the provider's pages are told about the request in flight.</summary>
 /// <param name="Client">Whose sign-in this is.</param>
 /// <param name="Providers">The external providers wired here, in the order the page draws them.</param>

@@ -192,10 +192,13 @@ public sealed class StandaloneAnchorTests : IDisposable
         KgsmUser owner = (await store.FindByUsernameAsync(username))!;
         Assert.True((await store.LoadAsync()).IsOwner(owner.UserId));
 
-        // A client, registered by hand: with no cluster nothing announces one.
-        var (outcome, _, problem) = await Service<ClientRegistry>().RegisterAsync(
-            new ClientRegistration(Client, "Standalone app", [Redirect], []), DateTimeOffset.UtcNow, CancellationToken.None);
-        Assert.True(outcome == ClientRegistry.RegisterOutcome.Registered, problem);
+        // A client of an application, registered by hand: with no cluster nothing announces one.
+        ApplicationResult registered = await Service<ApplicationRegistry>().AddAsync(
+            new ApplicationRequest("standalone-app", "Standalone app", Audience: null, ManifestUrl: null,
+                AccessLifetimeMinutes: null, DiscordApplications: null, ActForDiscord: null,
+                [new ApplicationClientRequest(Client, [Redirect], [], Confidential: false)]),
+            "local:test", origin: null, CancellationToken.None);
+        Assert.True(registered.Outcome == ApplicationOutcome.Done, registered.Problem);
 
         // The authorization-code flow with PKCE, as a browser and a client library drive it.
         string verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
@@ -256,9 +259,8 @@ public sealed class StandaloneAnchorTests : IDisposable
 
         Assert.Equal(Issuer, Claims(access).GetProperty("iss").GetString());
 
-        using var userinfo = new HttpRequestMessage(HttpMethod.Get, "/userinfo");
-        userinfo.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
-        Assert.Equal(HttpStatusCode.OK, (await _factory.CreateClient().SendAsync(userinfo)).StatusCode);
+        Assert.True(await Service<ISessionValidator>().IsValidAsync(
+            Claims(access).GetProperty("sid").GetString()!, CancellationToken.None));
 
         // Signing in is what the one-time password was for.
         Assert.False(File.Exists(passwordFile));

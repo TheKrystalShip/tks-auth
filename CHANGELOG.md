@@ -7,6 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — 6.0.0
+
+- **KGSM is an ordinary stored application.** `Application.IsKgsm` and `KgsmId` are gone, and with them
+  every gate on them: token exchange, the device grant, the refresh token's expected audience (always the
+  issuer now), the application listing and the client lookups. A token for the `kgsm` application is minted
+  by the application path: `at+jwt`, ES256, audienced to the application, with `name` and `tks_actions`
+  across the application's namespaces. A client with no application signs nobody in, and a session with no
+  client has no holder.
+- **`tks-auth app add kgsm` is allowed.** The `kgsm` application's own components are exempt from the
+  refusal of a namespace a member declares; no other application may take one.
+- **`tks-auth app adopt <application>`** moves every stored client with no application under the named
+  one, as clients registered by hand, so the membership sync no longer removes a surface a member stops
+  announcing. A panel declared in `Anchor__PanelOrigins` is a client of the `kgsm` application.
+- **`/auth/cluster/clients` is gone.** A client is registered with its application.
+
 ### Added — 5.4.0
 
 - **An application can own several namespaces.** Its manifest document may carry a `manifests` list, one

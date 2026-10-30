@@ -36,7 +36,7 @@ internal sealed record ManifestState(DateTimeOffset At, string? Problem, int Act
 /// actions span several namespaces; it then owns its id and each of those components. A component that is
 /// <c>auth</c>, a KGSM component's, or another application's is refused whole: an application declaring
 /// <c>kgsm:server.stop</c> would otherwise be a way to put a KGSM action under somebody else's name. A
-/// manifest declaring requirements is refused too, since an application outside KGSM has no service
+/// manifest declaring requirements is refused too, since an application has no service
 /// account here, and so is one declaring an action at a node or an instance, which an application has
 /// none of.
 /// </para>
@@ -95,12 +95,24 @@ internal sealed class ApplicationCatalog(
     }
 
     /// <summary>
+    /// The application that owns KGSM's components: its manifest names the namespaces KGSM's members declare
+    /// as well, and the panels this anchor's configuration declares are its clients.
+    /// </summary>
+    internal const string KgsmApplication = "kgsm";
+
+    /// <summary>
+    /// Whether <paramref name="applicationId"/> is the application that owns KGSM's components, whose
+    /// manifest may name a namespace a member also declares.
+    /// </summary>
+    public bool OwnsKgsmComponents(string applicationId) => applicationId == KgsmApplication;
+
+    /// <summary>
     /// Whether <paramref name="component"/> is a namespace a KGSM component declares actions in: one a
     /// member's report, rather than an application's, carries.
     /// </summary>
     public async Task<bool> IsKgsmNamespaceAsync(string component, CancellationToken ct)
     {
-        if (component is Application.KgsmId or ActionIds.AuthComponent)
+        if (component is KgsmApplication or ActionIds.AuthComponent)
             return true;
         if (authority.Store is not { } store)
             return false;
@@ -204,7 +216,7 @@ internal sealed class ApplicationCatalog(
                        + $"'{application.Id}'.";
             }
 
-            if (await IsKgsmNamespaceAsync(manifest.Component, ct).ConfigureAwait(false))
+            if (!OwnsKgsmComponents(application.Id) && await IsKgsmNamespaceAsync(manifest.Component, ct).ConfigureAwait(false))
                 return $"'{manifest.Component}' is a KGSM component's namespace.";
         }
         else
@@ -217,7 +229,7 @@ internal sealed class ApplicationCatalog(
                     return $"'{component}' is declared more than once.";
                 if (component == ActionIds.AuthComponent)
                     return $"'{component}' is this provider's own namespace.";
-                if (await IsKgsmNamespaceAsync(component, ct).ConfigureAwait(false))
+                if (!OwnsKgsmComponents(application.Id) && await IsKgsmNamespaceAsync(component, ct).ConfigureAwait(false))
                     return $"'{component}' is a KGSM component's namespace.";
                 if (await OwnerOfAsync(component, ct).ConfigureAwait(false) is { } owner && owner != application.Id)
                     return $"'{component}' is the namespace of the application '{owner}'.";

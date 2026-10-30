@@ -19,12 +19,7 @@ internal static class SignInPage
 
     public static async Task RegisterClientAsync(AnchorFixture anchor)
     {
-        var registry = anchor.Service<ClientRegistry>();
-        if (registry.Find(Client) is null)
-        {
-            await registry.RegisterAsync(new ClientRegistration(Client, "Door client", [Redirect], []),
-                DateTimeOffset.UtcNow, CancellationToken.None);
-        }
+        await anchor.ClientAsync(Client, "Door client", [Redirect], []);
     }
 
     /// <summary>A browser with a request in flight: it has opened the provider's sign-in page for the client.</summary>

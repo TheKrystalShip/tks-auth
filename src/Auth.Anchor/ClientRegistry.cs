@@ -26,14 +26,13 @@ namespace TheKrystalShip.Auth.Anchor;
 /// says another process — the host command — has written since.
 /// </para>
 /// <para>
-/// <b>Every client belongs to an application.</b> KGSM's clients come from three sources: a member
-/// announces the panel it serves; anything else is registered here by hand; and a panel on a static
-/// host, which no member can announce, is declared in this anchor's configuration. A declared panel is
-/// never stored — it is what the deploy said this process should serve, so it comes back with every
-/// start and goes when the setting does, and it wins over a stored client of the same id. An
-/// application outside KGSM has the clients registered for it, and only those
-/// (<see cref="ApplicationRegistry"/>). tks-auth's own admin pages are one more declared client, on the
-/// issuer's origin.
+/// <b>Every client belongs to an application,</b> and a client with none signs nobody in. An application's
+/// clients are the ones registered for it (<see cref="ApplicationRegistry"/>). Two kinds are declared
+/// instead of stored: a panel on a static host, named in this anchor's configuration, which is a client of
+/// the application that owns KGSM's components, and tks-auth's own admin pages, on the issuer's origin. A
+/// declared client is what the deploy said this process should serve, so it comes back with every start
+/// and goes when the setting does, and it wins over a stored client of the same id. The clients members
+/// announce are moved under an application by <see cref="SqliteSessionRegistry.AdoptClientsAsync"/>.
 /// </para>
 /// </remarks>
 internal sealed partial class ClientRegistry
@@ -155,7 +154,7 @@ internal sealed partial class ClientRegistry
             string address = uri.GetLeftPart(UriPartial.Authority);
             declared.Add(new RegisteredClient(
                 id, panel.Name, [.. Join(address, panel.RedirectPaths)], [.. Join(address, panel.PostLogoutRedirectPaths)],
-                ClientSources.Config, MemberId: null, now));
+                ClientSources.Config, MemberId: null, now, ApplicationCatalog.KgsmApplication));
         }
 
         return (declared, refused);
@@ -164,10 +163,7 @@ internal sealed partial class ClientRegistry
     /// <summary>Every registered client, of every application.</summary>
     public IReadOnlyList<RegisteredClient> All => [.. Current.ById.Values.OrderBy(c => c.ClientId, StringComparer.Ordinal)];
 
-    /// <summary>KGSM's clients: announced, declared and registered for the cluster.</summary>
-    public IReadOnlyList<RegisteredClient> Kgsm => [.. All.Where(c => c.ApplicationId is null)];
-
-    /// <summary>The clients of one application outside KGSM.</summary>
+    /// <summary>The clients of one application.</summary>
     public IReadOnlyList<RegisteredClient> Of(string applicationId) =>
         [.. All.Where(c => string.Equals(c.ApplicationId, applicationId, StringComparison.Ordinal))];
 
@@ -175,11 +171,11 @@ internal sealed partial class ClientRegistry
     public RegisteredClient? Find(string? clientId) =>
         clientId is { Length: > 0 } && Current.ById.TryGetValue(clientId, out RegisteredClient? client) ? client : null;
 
-    /// <summary>Every application registered here, KGSM's aside.</summary>
+    /// <summary>Every application registered here.</summary>
     public IReadOnlyList<Application> Applications =>
         [.. Current.Applications.Values.OrderBy(a => a.Id, StringComparer.Ordinal)];
 
-    /// <summary>The registered application with this id, or null. KGSM's is never stored.</summary>
+    /// <summary>The registered application with this id, or null.</summary>
     public Application? FindApplication(string? applicationId) =>
         applicationId is { Length: > 0 } && Current.Applications.TryGetValue(applicationId, out Application? a) ? a : null;
 
@@ -191,11 +187,11 @@ internal sealed partial class ClientRegistry
     public bool IsClientOrigin(string origin) => Current.Origins.Contains(origin);
 
     /// <summary>
-    /// Every origin one of KGSM's clients lives at — what members admit across origins. An application
-    /// outside KGSM is nothing a member serves, so none of its origins is published to one.
+    /// Every origin one of an application's clients lives at: what the members of a cluster admit across
+    /// origins when the application is KGSM's.
     /// </summary>
-    public IReadOnlyCollection<string> Origins =>
-        [.. Kgsm.SelectMany(c => c.RedirectUris.Concat(c.PostLogoutRedirectUris))
+    public IReadOnlyCollection<string> OriginsOf(string applicationId) =>
+        [.. Of(applicationId).SelectMany(c => c.RedirectUris.Concat(c.PostLogoutRedirectUris))
             .Where(u => Uri.TryCreate(u, UriKind.Absolute, out _))
             .Select(OriginOf)
             .Distinct(StringComparer.OrdinalIgnoreCase)];
@@ -210,33 +206,6 @@ internal sealed partial class ClientRegistry
 
     /// <summary>The origin of a URI a client is registered with.</summary>
     public static string OriginOf(string uri) => new Uri(uri).GetLeftPart(UriPartial.Authority);
-
-    /// <summary>What registering a client did.</summary>
-    internal enum RegisterOutcome { Registered, Invalid, Taken }
-
-    /// <summary>Register a public client of KGSM's by hand.</summary>
-    public async Task<(RegisterOutcome Outcome, RegisteredClient? Client, string? Problem)> RegisterAsync(
-        ClientRegistration request, DateTimeOffset now, CancellationToken ct)
-    {
-        string name = request.Name?.Trim() ?? "";
-        if (name.Length is 0 or > 80)
-            return (RegisterOutcome.Invalid, null, "A client needs a name of at most 80 characters.");
-
-        (RegisteredClient? client, string? problem) = Shape(
-            request.ClientId, name, request.RedirectUris, request.PostLogoutRedirectUris,
-            applicationId: null, secretHash: null, now);
-        if (client is null)
-            return (RegisterOutcome.Invalid, null, problem);
-
-        if (IsTaken(client.ClientId))
-            return (RegisterOutcome.Taken, null, $"'{client.ClientId}' is already a client.");
-
-        if (!await _store.AddClientAsync(client, ct).ConfigureAwait(false))
-            return (RegisterOutcome.Taken, null, $"'{client.ClientId}' is already a client.");
-
-        await ReloadAsync(ct).ConfigureAwait(false);
-        return (RegisterOutcome.Registered, client, null);
-    }
 
     /// <summary>
     /// A client registered by hand, or why the request cannot be one.
@@ -283,28 +252,6 @@ internal sealed partial class ClientRegistry
     /// and the declaration would then hide the row it wrote.
     /// </summary>
     internal bool IsTaken(string clientId) => Find(clientId) is not null;
-
-    /// <summary>What removing a client did.</summary>
-    internal enum RemoveOutcome { Removed, NotFound, Announced, Declared }
-
-    /// <summary>
-    /// Remove a client registered by hand. A member's leaves when the member stops announcing it, and a
-    /// declared panel when the configuration stops declaring it.
-    /// </summary>
-    public async Task<RemoveOutcome> RemoveAsync(string clientId, CancellationToken ct)
-    {
-        // An application's client is removed through its application, never through KGSM's list.
-        if (Find(clientId) is not { ApplicationId: null } client)
-            return RemoveOutcome.NotFound;
-        if (client.Source == ClientSources.Config)
-            return RemoveOutcome.Declared;
-        if (client.Source != ClientSources.Admin)
-            return RemoveOutcome.Announced;
-
-        bool removed = await _store.RemoveAdminClientAsync(clientId, ct).ConfigureAwait(false);
-        await ReloadAsync(ct).ConfigureAwait(false);
-        return removed ? RemoveOutcome.Removed : RemoveOutcome.NotFound;
-    }
 
     /// <summary>
     /// Make the members' clients what the roster currently announces.

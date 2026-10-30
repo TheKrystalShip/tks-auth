@@ -208,6 +208,23 @@ public sealed class AnchorFixture : IDisposable
     }
 
     /// <summary>
+    /// A public client registered once under <paramref name="clientId"/>, as the only client of an
+    /// application of the same name, so a sign-in through it ends in an application's token.
+    /// </summary>
+    public async Task ClientAsync(string clientId, string name, string[] redirects, string[] logouts)
+    {
+        if (Service<ClientRegistry>().Find(clientId) is not null)
+            return;
+
+        ApplicationResult result = await Service<ApplicationRegistry>().AddAsync(
+            new ApplicationRequest("t-" + clientId, name, Audience: null, ManifestUrl: null,
+                AccessLifetimeMinutes: null, DiscordApplications: null, ActForDiscord: null,
+                [new ApplicationClientRequest(clientId, redirects, logouts, Confidential: false)]),
+            "local:test", origin: null, CancellationToken.None);
+        Assert.Equal(ApplicationOutcome.Done, result.Outcome);
+    }
+
+    /// <summary>
     /// A session as a surface holds one — its bearer, its refresh token, and the ids behind them — and
     /// the provider cookie the browser that signed in holds.
     /// </summary>

@@ -189,7 +189,9 @@ internal sealed class ClusterMembershipWorker(
     {
         try
         {
-            publications.Publish(ClusterAuthFacts.ClientOrigins, ClusterClientOrigins.ToJson(clients.Origins));
+            publications.Publish(
+                ClusterAuthFacts.ClientOrigins,
+                ClusterClientOrigins.ToJson(clients.OriginsOf(ApplicationCatalog.KgsmApplication)));
         }
         catch (ArgumentException ex)
         {

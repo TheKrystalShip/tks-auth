@@ -10,7 +10,7 @@ namespace TheKrystalShip.Auth.Anchor;
 /// Beside the clients rather than in the account store, because an application is what a client mints
 /// for — its audience, its lifetime, the actions its tokens list — and a client is read on every
 /// authorization. The account store is replicated to every KGSM member; nothing about an application
-/// outside KGSM belongs there.
+/// belongs there.
 /// </para>
 /// <para>
 /// Every write that changes a client or an application advances one generation, in the transaction that
@@ -25,8 +25,8 @@ internal sealed partial class SqliteSessionRegistry
     private static void InitializeApplications(SqliteConnection connection)
     {
         // Additive and nullable, like every column this file has gained: a client registered before an
-        // application could be named is KGSM's and public, a session minted before one was recorded is
-        // KGSM's, and a client with no device grant recorded signs in through a browser, which null says.
+        // application could be named belongs to none and is public, a session minted before one was recorded
+        // is no application's, and a client with no device grant recorded signs in through a browser, which null says.
         foreach ((string table, string column) in (ReadOnlySpan<(string, string)>)
         [
             ("clients", "application_id TEXT NULL"),
@@ -93,7 +93,7 @@ internal sealed partial class SqliteSessionRegistry
 
     // ── Applications ──────────────────────────────────────────────────────────
 
-    /// <summary>Every application registered here. KGSM's is built in and never stored.</summary>
+    /// <summary>Every application registered here.</summary>
     internal Task<IReadOnlyList<Application>> ListApplicationsAsync(CancellationToken ct = default)
     {
         using SqliteConnection connection = Open();
@@ -230,8 +230,19 @@ internal sealed partial class SqliteSessionRegistry
     }
 
     /// <summary>Add a client to an application. False when the id is already a client's.</summary>
-    internal Task<bool> AddApplicationClientAsync(RegisteredClient client, CancellationToken ct = default) =>
-        AddClientAsync(client, ct);
+    internal Task<bool> AddApplicationClientAsync(RegisteredClient client, CancellationToken ct = default)
+    {
+        lock (_writeGate)
+        {
+            using SqliteConnection connection = Open();
+            using SqliteTransaction tx = connection.BeginTransaction();
+            bool added = InsertClient(connection, tx, client);
+            if (added)
+                BumpGeneration(connection, tx);
+            tx.Commit();
+            return Task.FromResult(added);
+        }
+    }
 
     /// <summary>
     /// Remove one client of an application, and end every session minted through it.
