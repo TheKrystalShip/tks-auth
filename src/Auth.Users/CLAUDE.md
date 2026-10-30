@@ -75,6 +75,15 @@ The account store: one file per host, holding the accounts and the authority ove
 
 ## Schema version 2 — the access model
 
+- **A column added after a file was written is added when the file is opened** (`EnsureAdditiveColumns`),
+  nullable, so the version stays a floor and an older build still reads the file. `roles.holds_all_of`
+  is the application whose every action a role holds.
+- **`ApplicationRolesMigration` plans, and `MigrateToApplicationRolesAsync` applies, the move from scoped
+  grants to an application's roles.** Roles belong to no application, so a custom role and its cluster-wide
+  holders are kept as they are; the administrator role holds every action of the application and goes to
+  every Owner; assignments at a node or an instance are removed. The plan applied is the plan of the
+  transaction's own snapshot, and a second run finds nothing to do.
+
 - **One reader, `SqliteAuthorityStore`, for version 2.** Accounts carry `origin` and `kind`, and the
   file also holds permissions, roles, assignments, service accounts, requirements, the catalog, member
   reports and the authority version. A file at any other version is refused.

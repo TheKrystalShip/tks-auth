@@ -326,6 +326,7 @@ internal static class AuthorityEndpoints
             "role.delete" when r.RoleId is { } id => new DeleteRole(id),
             "role.rank" when r is { RoleId: { } id, Rank: { } rank } => new RankRole(id, rank),
             "role.permissions" when r.RoleId is { } id && Set(r.PermissionIds) is { } permissions => new SetRolePermissions(id, permissions),
+            "role.every-action" when r.RoleId is { } id => new SetRoleEveryAction(id, string.IsNullOrWhiteSpace(r.Application) ? null : r.Application.Trim()),
             "permission.create" when r.Name is { } name => new CreatePermission(name),
             "permission.rename" when r is { PermissionId: { } id, Name: { } name } => new RenamePermission(id, name),
             "permission.delete" when r.PermissionId is { } id => new DeletePermission(id),
@@ -351,7 +352,7 @@ internal static class AuthorityEndpoints
 
         return new AuthorityView(
             s.Version,
-            [.. s.Roles.Select(r => new AuthorityRoleView(r.RoleId, r.Name, r.Kind, r.Rank, r.Permissions))],
+            [.. s.Roles.Select(r => new AuthorityRoleView(r.RoleId, r.Name, r.Kind, r.Rank, r.Permissions, r.HoldsEveryActionOf))],
             [.. s.Permissions.Select(p => new AuthorityPermissionView(p.PermissionId, p.Name, p.Actions,
                 [.. s.Roles.Where(r => r.Permissions.Contains(p.PermissionId)).Select(r => r.RoleId)]))],
             [.. s.Catalog.Actions.Select(a => new AuthorityCatalogView(

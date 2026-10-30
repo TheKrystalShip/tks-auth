@@ -207,7 +207,18 @@ public sealed partial class SqliteAuthorityStore
                 $"version {AuthoritySchema.Version} and nothing else.");
         }
 
+        EnsureAdditiveColumns(connection, transaction);
         transaction.Commit();
+    }
+
+    /// <summary>
+    /// Add the nullable columns a file written by an earlier build lacks. The schema version is a floor and
+    /// a column is only ever added, so an older build still reads the file.
+    /// </summary>
+    private static void EnsureAdditiveColumns(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        if (Scalar(connection, transaction, "SELECT count(*) FROM pragma_table_info('roles') WHERE name = 'holds_all_of';") is 0L)
+            Execute(connection, transaction, "ALTER TABLE roles ADD COLUMN holds_all_of TEXT NULL;");
     }
 
     /// <summary>Create the two built-in roles and the authority version, where they are not already.</summary>
@@ -293,10 +304,11 @@ public sealed partial class SqliteAuthorityStore
             r => Bucket(rolePermissions, r.GetString(0)).Add(r.GetString(1)));
 
         List<Role> roles = [];
-        Read(connection, transaction, "SELECT role_id, name, kind, rank FROM roles;",
+        Read(connection, transaction, "SELECT role_id, name, kind, rank, holds_all_of FROM roles;",
             r => roles.Add(new Role(
                 r.GetString(0), r.GetString(1), RoleKinds.Parse(r.GetString(2)), r.GetInt32(3),
-                rolePermissions.GetValueOrDefault(r.GetString(0)) ?? [])));
+                rolePermissions.GetValueOrDefault(r.GetString(0)) ?? [],
+                r.IsDBNull(4) ? null : r.GetString(4))));
 
         // A scope that does not parse grants nothing: the row is left out rather than guessed at.
         List<Assignment> assignments = [];
@@ -422,6 +434,10 @@ public sealed partial class SqliteAuthorityStore
                 return null;
             }
 
+            case SetRoleEveryAction e:
+                SetEveryAction(w, s, e.RoleId, e.Application);
+                return null;
+
             case CreatePermission e:
             {
                 string id = AuthorityIds.NewPermissionId();
@@ -509,6 +525,13 @@ public sealed partial class SqliteAuthorityStore
         }
     }
 
+    private static void SetEveryAction(Writer w, AuthoritySnapshot s, string roleId, string? application)
+    {
+        w.Execute("UPDATE roles SET holds_all_of = $all, version = $v, updated_utc = $now WHERE role_id = $id;",
+            ("$id", roleId), ("$all", (object?)application ?? DBNull.Value));
+        w.Changed(AuthorityChangeKind.RoleChanged, roleId, s.Roles[roleId].Name);
+    }
+
     private static void ShiftCustomRanks(Writer w, AuthoritySnapshot s, int from, int by)
     {
         foreach (Role role in s.Roles.Values.Where(r => r.Kind == RoleKind.Custom && r.Rank >= from))
@@ -582,6 +605,58 @@ public sealed partial class SqliteAuthorityStore
             return s.IsOwner(account.AccountId)
                 ? null
                 : InsertAssignment(w, account.AccountId, BuiltInRoles.OwnerId, AccessScope.Cluster, actor, BuiltInRoles.OwnerName);
+        });
+
+    /// <summary>
+    /// Carry the authority to <paramref name="application"/>'s roles from the host's shell, with none of the
+    /// rules: see <see cref="ApplicationRolesMigration"/>.
+    /// </summary>
+    /// <remarks>
+    /// The administrator role is made, or an existing role of that name is taken, to hold every action of the
+    /// application; every Owner is given it at cluster scope; every assignment at a node or an instance is
+    /// removed. Each change is reported on its own, so the journal carries every grant and every removal.
+    /// Planned and applied in one transaction, so the plan applied is the plan of the store as it stands.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The administrator role's name is a built-in role's.</exception>
+    public Task<AuthorityWrite> MigrateToApplicationRolesAsync(
+        string application, string administratorName, string actor, DateTimeOffset now, CancellationToken ct = default) =>
+        WriteAsync(expectedVersion: null, now, ct, (w, s) =>
+        {
+            ApplicationRolesPlan plan = ApplicationRolesMigration.Plan(s, application, administratorName);
+
+            string roleId;
+            if (plan.AdministratorRoleId is { } existing)
+            {
+                roleId = existing;
+                if (plan.FlagsAdministrator)
+                    SetEveryAction(w, s, roleId, application);
+            }
+            else
+            {
+                roleId = AuthorityIds.NewRoleId();
+                ShiftCustomRanks(w, s, from: RoleRanks.FirstCustom, by: 1);
+                w.Execute(
+                    """
+                    INSERT INTO roles (role_id, name, name_key, kind, rank, holds_all_of, version, updated_utc)
+                    VALUES ($id, $name, $key, 'custom', $rank, $all, $v, $now);
+                    """,
+                    ("$id", roleId), ("$name", plan.AdministratorName), ("$key", AuthorityRules.NameKey(plan.AdministratorName)),
+                    ("$rank", RoleRanks.FirstCustom), ("$all", application));
+                w.Changed(AuthorityChangeKind.RoleChanged, roleId, plan.AdministratorName);
+            }
+
+            foreach (AdministratorGrant grant in plan.Administrators)
+                InsertAssignment(w, grant.AccountId, roleId, AccessScope.Cluster, actor, plan.AdministratorName);
+
+            foreach (DroppedAssignment dropped in plan.Dropped)
+            {
+                Assignment held = s.Assignments.Single(a => a.AssignmentId == dropped.AssignmentId);
+                w.Execute("DELETE FROM assignments WHERE assignment_id = $id;", ("$id", held.AssignmentId));
+                w.Changed(AuthorityChangeKind.AssignmentRevoked, held.AssignmentId, dropped.Role, held.AccountId, held.RoleId,
+                    held.Scope.ToString());
+            }
+
+            return roleId;
         });
 
     /// <summary>

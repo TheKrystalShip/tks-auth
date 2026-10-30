@@ -379,6 +379,7 @@ tks-auth app set cinema --lifetime 5
 tks-auth app rotate-secret cinema cinema-api
 tks-auth app list
 tks-auth app remove cinema
+tks-auth migrate kgsm                  # prints the roles it would make and the grants it would drop; --apply does it
 ```
 
 The command and `/auth/cluster/applications` (`GET`/`POST`, `PATCH`/`DELETE …/{id}`,

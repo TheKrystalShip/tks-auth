@@ -15,6 +15,15 @@ const peoplesRoles = (view) => (view ? view.roles.filter((r) => PEOPLES.has(r.ki
 // "N permissions", singular where it is one.
 const countOf = (n, unit) => n + " " + unit + (n === 1 ? "" : "s");
 
+// What a role holds, in a line: "Every action of kgsm" for one that holds an application's whole catalog, and
+// its permissions besides when it files any.
+const holdsText = (role) => {
+  const permissions = role.permissions.length ? countOf(role.permissions.length, "permission") : null;
+  if (!role.holdsEveryActionOf) return permissions || countOf(0, "permission");
+  const every = "Every action of " + role.holdsEveryActionOf;
+  return permissions ? every + " · " + permissions : every;
+};
+
 // The probe that asks whether a role's permissions may be set to what they are.
 const probeOf = (role) => ({ kind: "role.permissions", roleId: role.id, permissionIds: role.permissions });
 
@@ -38,4 +47,4 @@ function NameDialog({ kind = "role", title, icon, initial, submit, onSubmit, onC
   );
 }
 
-export { NameDialog, OWNER_VERDICT, PEOPLES, countOf, peoplesRoles, probeOf };
+export { NameDialog, OWNER_VERDICT, PEOPLES, countOf, holdsText, peoplesRoles, probeOf };

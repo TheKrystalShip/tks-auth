@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — 5.3.0
+
+- **A role can hold every action of an application.** On a role's page, "Every action of an application"
+  names the application; the role then holds each action the catalog has in that application's namespace,
+  those declared later included, and a token for the application lists them. Giving the role to someone,
+  or making a role one, needs the caller to hold every action it grants. `Auth.Access` 2.2.0 carries it as
+  `Role.HoldsEveryActionOf` and the `role.every-action` edit; `Auth.Users` 3.1.0 stores it in a nullable
+  `roles.holds_all_of` column that an existing file gains when it is opened, and replicates it in
+  `RoleRecord`.
+- **`tks-auth migrate kgsm`.** Carries the authority to an application's roles: a role that holds every
+  action of the application goes to every Owner, node- and instance-scoped assignments are removed, and
+  custom roles with their cluster-wide holders are kept. It is a dry run that prints every grant it would
+  drop unless `--apply` is given; applied, it is one transaction, journaled under the local user.
+
 ### Added — 5.2.0
 
 - **The Android app, from the footer.** The account and admin pages end with the footer every site

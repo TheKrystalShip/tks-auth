@@ -120,7 +120,14 @@ public static class RoleKinds
 /// <param name="Kind">Custom, or one of the built-ins.</param>
 /// <param name="Rank">Its place in the total order: lower ranks higher. See <see cref="RoleRanks"/>.</param>
 /// <param name="Permissions">The permission ids it holds.</param>
-public sealed record Role(string RoleId, string Name, RoleKind Kind, int Rank, IReadOnlySet<string> Permissions);
+/// <param name="HoldsEveryActionOf">
+/// The id of an application whose every action this role holds, or null. The role holds each action
+/// the catalog has in that application's namespace, those declared later included, besides what its
+/// permissions file.
+/// </param>
+public sealed record Role(
+    string RoleId, string Name, RoleKind Kind, int Rank, IReadOnlySet<string> Permissions,
+    string? HoldsEveryActionOf = null);
 
 /// <summary>
 /// The fixed ends of the role order. Custom roles take the dense ranks between them.

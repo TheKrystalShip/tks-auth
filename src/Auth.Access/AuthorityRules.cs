@@ -64,6 +64,7 @@ public static class AuthorityRules
             DeleteRole e => CheckRoleChange(c, e.RoleId, out _),
             RankRole e => CheckRankRole(c, e),
             SetRolePermissions e => CheckSetRolePermissions(c, e),
+            SetRoleEveryAction e => CheckSetRoleEveryAction(c, e),
             CreatePermission e => CheckCreatePermission(c, e),
             RenamePermission e => CheckRenamePermission(c, e),
             DeletePermission e => CheckPermissionChange(c, e.PermissionId, out _),
@@ -180,6 +181,25 @@ public static class AuthorityRules
         IEnumerable<string> added = e.PermissionIds
             .Where(p => !role!.Permissions.Contains(p))
             .SelectMany(p => c.Snapshot.Permissions[p].Actions);
+
+        return c.Subset(added, AccessScope.Cluster);
+    }
+
+    private static AuthorityRefusal? CheckSetRoleEveryAction(Context c, SetRoleEveryAction e)
+    {
+        if (CheckRoleChange(c, e.RoleId, out Role? role) is { } refused)
+            return refused;
+
+        if (e.Application is null)
+            return null;
+
+        if (!ActionIds.IsValid(e.Application + ":x"))
+            return new AuthorityRefusal(RefusalCode.NotFound, $"'{e.Application}' is not an application id.");
+
+        // Granting is bounded by holding, so a role that gains an application's every action is one the
+        // caller holds every action of already.
+        IEnumerable<string> added = AuthoritySnapshot.EveryActionOf(e.Application, c.Snapshot.Catalog.Keys)
+            .Where(a => !c.Snapshot.ActionsOf(role!.RoleId).Contains(a));
 
         return c.Subset(added, AccessScope.Cluster);
     }

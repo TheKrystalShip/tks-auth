@@ -10,10 +10,11 @@
 import React from "react";
 
 import {
-  Breadcrumbs, Button, Checkbox, ConfirmDialog, PageHeader, SettingsRow, SettingsSection,
+  Breadcrumbs, Button, Checkbox, ConfirmDialog, PageHeader, Select, SettingsRow, SettingsSection,
 } from "@thekrystalship/krystal";
+import { useApplications } from "./applicationsStore.js";
 import { Brief, Locked, RefusalNote, authorityGate, confirmed, useAuthority, useChecks, useScopeText } from "./kit.jsx";
-import { NameDialog, OWNER_VERDICT, countOf, probeOf } from "./roleParts.jsx";
+import { NameDialog, OWNER_VERDICT, countOf, holdsText, probeOf } from "./roleParts.jsx";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
 
@@ -21,6 +22,7 @@ function RolePage({ id }) {
   const state = useAuthority();
   const view = state.view;
   const scopeText = useScopeText();
+  const applications = useApplications();
   const role = view ? view.roles.find((r) => r.id === id) : null;
   const canEdit = !editRefusal("role.create");
   const isOwnerRole = !!role && role.kind === "owner";
@@ -72,7 +74,7 @@ function RolePage({ id }) {
     <>
       <Breadcrumbs items={[{ label: "Roles", href: "#/roles" }, { label: role.name }]} onNavigate={() => go("roles")} />
       <PageHeader title={role.name}
-        sub={isOwnerRole ? "Every action" : countOf(role.permissions.length, "permission")}
+        sub={isOwnerRole ? "Every action" : holdsText(role)}
         actions={custom && !closed ? (
           <>
             <Button variant="outline" icon="pencil" disabled={busy} onClick={() => setRenaming(true)}>Rename</Button>
@@ -98,6 +100,19 @@ function RolePage({ id }) {
         ))}
         {closed && verdict && !isOwnerRole && <div className="admin-quiet">{verdict.message}</div>}
       </SettingsSection>
+
+      {custom && (
+        <SettingsSection icon="app-window" title="Every action of an application">
+          <SettingsRow icon="app-window" title="Application">
+            <Select value={role.holdsEveryActionOf || ""} aria-label="Application whose every action this role holds"
+              disabled={closed || busy || !applications.list}
+              onChange={(e) => run({ kind: "role.every-action", roleId: role.id, application: e.target.value || null })}>
+              <option value="">None</option>
+              {(applications.list || []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </Select>
+          </SettingsRow>
+        </SettingsSection>
+      )}
 
       <SettingsSection icon="users" title="Held by">
         {role.kind === "everyone" && <SettingsRow icon="users" title="Every active person" />}

@@ -52,6 +52,9 @@ public sealed record EditKind(string? Name, string Action, bool ScopedByRequest 
     /// <summary>Set a role's permissions.</summary>
     public static readonly EditKind RolePermissions = new("role.permissions", AuthActions.RolesEdit);
 
+    /// <summary>Make a role hold every action of an application, or stop.</summary>
+    public static readonly EditKind RoleEveryAction = new("role.every-action", AuthActions.RolesEdit);
+
     /// <summary>Create a permission.</summary>
     public static readonly EditKind PermissionCreate = new("permission.create", AuthActions.PermissionsEdit);
 
@@ -88,7 +91,7 @@ public sealed record EditKind(string? Name, string Action, bool ScopedByRequest 
     /// <summary>Every kind a request to the edits endpoint may name.</summary>
     public static readonly IReadOnlyList<EditKind> Wire =
     [
-        RoleCreate, RoleRename, RoleDelete, RoleRank, RolePermissions,
+        RoleCreate, RoleRename, RoleDelete, RoleRank, RolePermissions, RoleEveryAction,
         PermissionCreate, PermissionRename, PermissionDelete, PermissionActions,
         AssignRole, RevokeAssignment,
         RequirementApprove, RequirementNarrow, RequirementRevoke,
@@ -131,6 +134,16 @@ public sealed record SetRolePermissions(string RoleId, IReadOnlySet<string> Perm
 {
     /// <inheritdoc />
     public override EditKind Kind => EditKind.RolePermissions;
+}
+
+/// <summary>
+/// Make a role hold every action of <paramref name="Application"/>, those declared later included, or
+/// with a null application stop doing so.
+/// </summary>
+public sealed record SetRoleEveryAction(string RoleId, string? Application) : AuthorityEdit
+{
+    /// <inheritdoc />
+    public override EditKind Kind => EditKind.RoleEveryAction;
 }
 
 /// <summary>Create an empty permission.</summary>

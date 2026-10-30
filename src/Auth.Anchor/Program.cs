@@ -35,6 +35,10 @@ AnchorOptions options = AnchorOptions.FromSettings(settings);
 if (args is [OwnerCommand.Verb, ..])
     return await OwnerCommand.RunAsync(args, options);
 
+// `tks-auth migrate kgsm` — carry the authority to an application's roles; a dry run unless told to apply.
+if (args is [MigrateCommand.Verb, ..])
+    return await MigrateCommand.RunAsync(args, options);
+
 // `tks-auth app …` — register and administer the applications this provider signs people in to, by the
 // same code path the admin surface takes, over the same files.
 if (args is [ApplicationCommand.Verb, ..])

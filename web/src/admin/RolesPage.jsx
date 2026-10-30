@@ -13,7 +13,7 @@ import React from "react";
 
 import { Button, Icon, IconButton, ListPage, ListRow } from "@thekrystalship/krystal";
 import { Locked, RefusalNote, authorityGate, useAuthority, useChecks } from "./kit.jsx";
-import { NameDialog, OWNER_VERDICT, countOf, peoplesRoles, probeOf } from "./roleParts.jsx";
+import { NameDialog, OWNER_VERDICT, holdsText, peoplesRoles, probeOf } from "./roleParts.jsx";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
 
@@ -81,7 +81,7 @@ function RolesPage() {
             lead={<Icon name={draggable ? "grip-vertical" : role.kind === "owner" ? "crown" : "shield"} size={16} />}
             title={role.name}
             sub={<>
-              {role.kind === "owner" ? "Every action" : countOf(role.permissions.length, "permission")}
+              {role.kind === "owner" ? "Every action" : holdsText(role)}
               {reason && role.kind !== "owner" && <> · {reason}</>}
             </>}
             meta={role.kind === "owner" || (canEdit && verdict && !verdict.allowed) ? <Locked result={verdict} /> : null}

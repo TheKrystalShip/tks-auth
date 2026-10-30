@@ -19,6 +19,12 @@ extend them before the code.
   grant reaches it), an unknown effect as `write` (a stale member refuses it), an unknown role kind as
   `custom`, an unknown requirement state as `revoked`, a malformed scope as no scope at all. Never add a
   permissive fallback.
+- **A role may hold every action of an application** (`Role.HoldsEveryActionOf`, the application's id).
+  `AuthoritySnapshot` expands it from the catalog it is built with, so `ActionsOf`, the evaluator and the
+  subset rule see one set and an action declared later is held at the next snapshot. The edit
+  (`SetRoleEveryAction`) is bounded by holding: a caller makes a role hold an application's every action only
+  when they hold them. An application's actions are the catalog's in the namespace of its id
+  (`AuthoritySnapshot.EveryActionOf`), the same set `ApplicationCatalog.HeldAsync` lists.
 - **An action the snapshot does not know is an Owner's alone.** A newer build's action has no effect
   anybody vouched for and no permission anybody filed it into.
 - **`AuthorityRules` is pure and is the only place the administration rules live.** Subset, ranking,

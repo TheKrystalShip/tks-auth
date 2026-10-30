@@ -352,14 +352,16 @@ public sealed partial class SqliteAuthorityStore
     {
         Execute(c, t,
             """
-            INSERT INTO roles (role_id, name, name_key, kind, rank, version, updated_utc)
-            VALUES ($id, $name, $key, $kind, $rank, $v, $now)
+            INSERT INTO roles (role_id, name, name_key, kind, rank, holds_all_of, version, updated_utc)
+            VALUES ($id, $name, $key, $kind, $rank, $all, $v, $now)
             ON CONFLICT(role_id) DO UPDATE SET
                 name = excluded.name, name_key = excluded.name_key, kind = excluded.kind,
-                rank = excluded.rank, version = excluded.version, updated_utc = excluded.updated_utc;
+                rank = excluded.rank, holds_all_of = excluded.holds_all_of, version = excluded.version,
+                updated_utc = excluded.updated_utc;
             """,
             ("$id", r.RoleId), ("$name", r.Name), ("$key", AuthorityRules.NameKey(r.Name)),
-            ("$kind", RoleKinds.ToWire(RoleKinds.Parse(r.Kind))), ("$rank", r.Rank), ("$v", r.Version),
+            ("$kind", RoleKinds.ToWire(RoleKinds.Parse(r.Kind))), ("$rank", r.Rank),
+            ("$all", (object?)r.HoldsEveryActionOf ?? DBNull.Value), ("$v", r.Version),
             ("$now", UserWire.ToWire(now)));
 
         Execute(c, t, "DELETE FROM role_permissions WHERE role_id = $id;", ("$id", r.RoleId));

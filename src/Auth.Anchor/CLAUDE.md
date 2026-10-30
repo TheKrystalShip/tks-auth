@@ -84,6 +84,12 @@ this repo's `README.md` documents the doors. Minting is `Minting/CLAUDE.md`.
   anchor's service account. It reads the daemon's own settings, bypasses the administration rules (whoever
   can run it already holds the file), journals `auth.assignment.granted` with `local:<user>` as the actor,
   and refuses a store at any other schema version.
+- **`tks-auth migrate kgsm` moves the authority to an application's roles** (`MigrateCommand`,
+  `ApplicationRolesMigration`). Without `--apply` it prints the administrator role it would make, the Owners
+  it would give it to, the roles it keeps and every node- or instance-scoped assignment it would remove
+  (account, role, scope), and writes nothing. `--apply` does it in one transaction and journals each grant
+  and removal with `local:<user>` as the actor. It touches roles and assignments only: accounts, Discord
+  links and the signing key stay as they are.
 
 ## Its journal
 

@@ -64,9 +64,19 @@ public sealed class AuthoritySnapshot
             r => r.Permissions
                 .Where(Permissions.ContainsKey)
                 .SelectMany(p => Permissions[p].Actions)
+                .Concat(EveryActionOf(r.HoldsEveryActionOf, Catalog.Keys))
                 .ToFrozenSet(StringComparer.Ordinal),
             StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// The catalog's actions in <paramref name="application"/>'s namespace: what a role that holds every
+    /// action of an application holds.
+    /// </summary>
+    public static IEnumerable<string> EveryActionOf(string? application, IEnumerable<string> catalog) =>
+        application is null
+            ? []
+            : catalog.Where(id => ActionIds.TryParse(id, out string component, out _) && component == application);
 
     private AuthoritySnapshot(AuthoritySnapshot from, AuthorityFreshness freshness, int minimumContractVersion)
     {

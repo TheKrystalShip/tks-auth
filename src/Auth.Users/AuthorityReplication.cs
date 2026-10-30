@@ -148,8 +148,10 @@ public sealed record AccountRecord(
     IReadOnlyList<RequirementRecord> Requirements,
     long Version);
 
-/// <summary>A role: its name, kind, rank and the permissions it holds.</summary>
-public sealed record RoleRecord(string RoleId, string Name, string Kind, int Rank, IReadOnlyList<string> Permissions, long Version);
+/// <summary>A role: its name, kind, rank, the permissions it holds and the application whose every action it holds.</summary>
+public sealed record RoleRecord(
+    string RoleId, string Name, string Kind, int Rank, IReadOnlyList<string> Permissions, long Version,
+    string? HoldsEveryActionOf = null);
 
 /// <summary>A permission: its name and the actions filed into it.</summary>
 public sealed record PermissionRecord(string PermissionId, string Name, IReadOnlyList<string> Actions, long Version);

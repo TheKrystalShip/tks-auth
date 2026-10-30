@@ -155,10 +155,11 @@ public sealed partial class SqliteAuthorityStore
             r => Bucket(links, r.GetString(0)).Add(r.GetString(1)), args);
 
         List<RoleRecord> roles = [];
-        Read(connection, transaction, "SELECT role_id, name, kind, rank, version FROM roles" + where + " ORDER BY rank, role_id;",
+        Read(connection, transaction, "SELECT role_id, name, kind, rank, version, holds_all_of FROM roles" + where + " ORDER BY rank, role_id;",
             r => roles.Add(new RoleRecord(
                 r.GetString(0), r.GetString(1), r.GetString(2), r.GetInt32(3),
-                links.GetValueOrDefault(r.GetString(0)) ?? [], r.GetInt64(4))),
+                links.GetValueOrDefault(r.GetString(0)) ?? [], r.GetInt64(4),
+                r.IsDBNull(5) ? null : r.GetString(5))),
             args);
 
         return roles;

@@ -97,6 +97,14 @@ internal sealed class World
         return id;
     }
 
+    /// <summary>A custom role at <paramref name="rank"/> that holds every action of <paramref name="application"/>.</summary>
+    public string EveryActionRole(string name, int rank, string application)
+    {
+        string id = "role_" + name.Replace(' ', '_');
+        _roles.Add(new Role(id, name, RoleKind.Custom, rank, new HashSet<string>(), application));
+        return id;
+    }
+
     public void Everyone(params string[] actions)
     {
         string permission = Permission("everyone actions", actions);

@@ -128,6 +128,7 @@ public static class AuthoritySchema
             name_key    TEXT NOT NULL UNIQUE,
             kind        TEXT NOT NULL,
             rank        INTEGER NOT NULL,
+            holds_all_of TEXT NULL,
             version     INTEGER NOT NULL,
             updated_utc TEXT NOT NULL
         );

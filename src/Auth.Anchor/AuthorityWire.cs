@@ -21,7 +21,8 @@ internal sealed record AuthorityView(
     IReadOnlyList<AuthorityAccountView> Accounts);
 
 /// <summary>A role, in rank order, with the permissions it holds.</summary>
-internal sealed record AuthorityRoleView(string Id, string Name, string Kind, int Rank, IReadOnlyList<string> Permissions);
+internal sealed record AuthorityRoleView(
+    string Id, string Name, string Kind, int Rank, IReadOnlyList<string> Permissions, string? HoldsEveryActionOf = null);
 
 /// <summary>A permission, the actions filed into it and the roles holding it.</summary>
 internal sealed record AuthorityPermissionView(string Id, string Name, IReadOnlyList<string> Actions, IReadOnlyList<string> HeldBy);
@@ -69,7 +70,8 @@ internal sealed record AuthorityEditRequest(
     IReadOnlyList<string>? PermissionIds = null,
     IReadOnlyList<string>? Actions = null,
     string? Scope = null,
-    string? Action = null);
+    string? Action = null,
+    string? Application = null);
 
 /// <summary>What an edit did.</summary>
 /// <param name="Version">The authority version it produced.</param>
