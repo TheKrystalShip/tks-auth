@@ -5,6 +5,11 @@ Auth for Android phones, the app in this directory. Its version clock is its own
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-30
+
+### Added
+- On the TKS shell 1.6.0: a page's vibration is run by the shell (`TksShell.vibrate`), so the first long press of a freshly opened app buzzes.
+
 ## [1.1.2] - 2026-10-30
 
 ### Fixed

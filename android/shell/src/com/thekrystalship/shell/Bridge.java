@@ -1,8 +1,12 @@
 package com.thekrystalship.shell;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.VibrationAttributes;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.webkit.JavascriptInterface;
 
 import org.json.JSONArray;
@@ -28,6 +32,9 @@ import org.json.JSONObject;
  *       the shell's own page script says it.</li>
  *   <li>{@code icon(palette)}: the palette the page shows (its {@code data-theme}), which the launcher's
  *       icon takes ({@link LauncherIcon}); the shell's own page script says it.</li>
+ *   <li>{@code vibrate(pattern)}: runs the phone's motor for a pattern of run and pause lengths in
+ *       milliseconds, as {@code "10"} or {@code "15,40,15"}; a browser holds {@code navigator.vibrate}
+ *       back until the page has been tapped, and this does not wait for that.</li>
  *   <li>{@code saveFile(name, type, base64)}: saves bytes the page made into the phone's Downloads
  *       ({@link SavedFiles}); the shell's own page script calls it for a {@code download} link to a
  *       {@code blob:} or {@code data:} address.</li>
@@ -41,7 +48,7 @@ final class Bridge {
     /** The name the page finds the bridge under. */
     static final String NAME = "TksShell";
     /** The shell's own version, which moves when what a page can ask of it does. */
-    static final String VERSION = "4";
+    static final String VERSION = "5";
 
     private final ShellActivity activity;
     private final Origin origin;
@@ -151,6 +158,39 @@ final class Bridge {
     @JavascriptInterface
     public void icon(String palette) {
         if (activity.onSite()) activity.palette(palette);
+    }
+
+    /** The longest a single run or pause may be, and the most of them, in a pattern a page asks for. */
+    private static final long MAX_STEP_MS = 2000;
+    private static final int MAX_STEPS = 12;
+
+    /** Runs the motor for {@code pattern}, comma-separated run and pause lengths in milliseconds. */
+    @JavascriptInterface
+    public void vibrate(String pattern) {
+        if (!activity.onSite() || pattern == null) return;
+        String[] parts = pattern.split(",");
+        if (parts.length == 0 || parts.length > MAX_STEPS) return;
+        long[] timings = new long[parts.length + 1];
+        try {
+            for (int i = 0; i < parts.length; i++) {
+                long step = Long.parseLong(parts[i].trim());
+                if (step < 0 || step > MAX_STEP_MS) return;
+                timings[i + 1] = step;
+            }
+        } catch (NumberFormatException malformed) {
+            return;
+        }
+        Vibrator motor = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+        if (motor == null || !motor.hasVibrator()) return;
+        // A pattern starts with a pause, so the leading zero makes the first number a run.
+        VibrationEffect effect = parts.length == 1
+            ? VibrationEffect.createOneShot(timings[1], VibrationEffect.DEFAULT_AMPLITUDE)
+            : VibrationEffect.createWaveform(timings, -1);
+        if (Build.VERSION.SDK_INT >= 33) {
+            motor.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_TOUCH));
+        } else {
+            motor.vibrate(effect);
+        }
     }
 
     /** {@code rgb(r, g, b)}, {@code rgba(r, g, b, a)} or {@code #rrggbb}, as an opaque colour, or null. */
