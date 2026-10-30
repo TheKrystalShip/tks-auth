@@ -115,6 +115,7 @@ fi
     package="com.thekrystalship.shell">
   <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
   <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.VIBRATE" />
 EOF
   if $downloads; then cat <<'EOF'
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
