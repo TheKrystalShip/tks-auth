@@ -37,6 +37,36 @@ public sealed record ActionManifest(
 }
 
 /// <summary>One action a manifest declares.</summary>
+/// <summary>
+/// The document an application serves at its manifest address: one component's manifest, or several.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The single form is an <see cref="ActionManifest"/> read as it stands: the application's actions in its
+/// own namespace. The plural form carries <see cref="Manifests"/>, one manifest per component, for an
+/// application whose actions span several namespaces; its own top-level component and actions are then
+/// not read.
+/// </para>
+/// <para>
+/// The namespaces an application owns are the components its manifests declare, and its id.
+/// </para>
+/// </remarks>
+public sealed record ApplicationManifestDocument(
+    [property: JsonPropertyName("schemaVersion")] int SchemaVersion,
+    [property: JsonPropertyName("component")] string? Component,
+    [property: JsonPropertyName("version")] string? Version,
+    [property: JsonPropertyName("actions")] IReadOnlyList<ManifestAction>? Actions,
+    [property: JsonPropertyName("requires")] IReadOnlyList<ManifestRequirement>? Requires,
+    [property: JsonPropertyName("manifests")] IReadOnlyList<ActionManifest>? Manifests)
+{
+    /// <summary>Whether this is the plural form.</summary>
+    public bool IsPlural => Manifests is not null;
+
+    /// <summary>The manifests the document carries: its entries, or itself as the one.</summary>
+    public IReadOnlyList<ActionManifest> Parts() =>
+        Manifests ?? (Component is null ? [] : [new ActionManifest(SchemaVersion, Component, Version, Actions, Requires)]);
+}
+
 public sealed record ManifestAction(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("title")] string Title,
@@ -80,6 +110,17 @@ public sealed record MemberCatalogReport(
 public sealed record InstanceUninstalledReport(
     [property: JsonPropertyName("instance")] string Instance,
     [property: JsonPropertyName("nonce")] string Nonce);
+
+/// <summary>How the catalog names the member an application's report is held under.</summary>
+public static class ApplicationNamespaces
+{
+    /// <summary>What an application's report is held under in the catalog, before its id.</summary>
+    public const string MemberPrefix = "application:";
+
+    /// <summary>The application a catalog member names, or null when the member is not an application's.</summary>
+    public static string? ApplicationOf(string member) =>
+        member.StartsWith(MemberPrefix, StringComparison.Ordinal) ? member[MemberPrefix.Length..] : null;
+}
 
 /// <summary>The bus message types the catalog and instance lifetimes travel as.</summary>
 public static class AuthorityMessages
@@ -127,6 +168,7 @@ public static class ActionManifests
 /// <summary>Source-generated JSON for everything a member reports about actions, and what it answers about a caller's.</summary>
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = false)]
 [JsonSerializable(typeof(ActionManifest))]
+[JsonSerializable(typeof(ApplicationManifestDocument))]
 [JsonSerializable(typeof(MemberCatalogReport))]
 [JsonSerializable(typeof(InstanceUninstalledReport))]
 [JsonSerializable(typeof(AccessReport))]

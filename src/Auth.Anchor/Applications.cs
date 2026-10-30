@@ -62,7 +62,7 @@ internal sealed record Application(
     public const string ProviderPagesPath = "/admin/";
 
     /// <summary>What the catalog records an application's report under, before its id.</summary>
-    public const string CatalogMemberPrefix = "application:";
+    public const string CatalogMemberPrefix = ApplicationNamespaces.MemberPrefix;
 
     /// <summary>Whether this is KGSM, whose tokens carry no actions and whose members evaluate from a replica.</summary>
     public bool IsKgsm => Source == ApplicationSources.Builtin && Id == KgsmId;
@@ -254,6 +254,9 @@ internal sealed partial class ApplicationRegistry(
 
         if (clients.FindApplication(id) is not null)
             return ApplicationResult.Refused(ApplicationOutcome.Taken, $"'{id}' is already an application.");
+
+        if (await catalog.OwnerOfAsync(id, ct).ConfigureAwait(false) is { } owner)
+            return ApplicationResult.Refused(ApplicationOutcome.Taken, $"'{id}' is a namespace of the application '{owner}'.");
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
         (Application? application, string? problem) = Shape(

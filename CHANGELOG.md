@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — 5.4.0
+
+- **An application can own several namespaces.** Its manifest document may carry a `manifests` list, one
+  manifest per component, besides the single-manifest form. The application owns its id and each listed
+  component: its tokens list their actions, and a role that holds every action of it holds all of them.
+  A listed component that is `auth`, a KGSM component's or another application's refuses the document, and
+  an application id that is another application's component is refused. `Auth.Access` 2.3.0 carries
+  `ApplicationManifestDocument` and `AuthoritySnapshot.NamespacesOf`/`ActionsOfApplication`; `Auth.Users`
+  3.1.1 feeds the snapshot the namespaces from the applications' held reports.
+
 ### Added — 5.3.0
 
 - **A role can hold every action of an application.** On a role's page, "Every action of an application"

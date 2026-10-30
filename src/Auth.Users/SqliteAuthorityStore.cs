@@ -330,7 +330,34 @@ public sealed partial class SqliteAuthorityStore
                 r.IsDBNull(6) ? null : r.GetString(6),
                 r.GetInt64(7) != 0)));
 
-        return new AuthoritySnapshot(version, accounts, catalog, permissions, roles, assignments, requirements, freshness);
+        return new AuthoritySnapshot(
+            version, accounts, catalog, permissions, roles, assignments, requirements, freshness,
+            applicationNamespaces: ApplicationNamespacesOf(connection, transaction));
+    }
+
+    /// <summary>
+    /// The components each application's manifests declare, from the reports held under the applications'
+    /// catalog members. A report that no longer parses declares none.
+    /// </summary>
+    private static Dictionary<string, IReadOnlySet<string>> ApplicationNamespacesOf(SqliteConnection connection, SqliteTransaction? transaction)
+    {
+        Dictionary<string, IReadOnlySet<string>> owned = new(StringComparer.Ordinal);
+        Read(connection, transaction, "SELECT member, report FROM member_reports WHERE member LIKE 'application:%';", r =>
+        {
+            if (ApplicationNamespaces.ApplicationOf(r.GetString(0)) is not { } application)
+                return;
+
+            try
+            {
+                if (JsonSerializer.Deserialize(r.GetString(1), AccessJsonContext.Default.MemberCatalogReport) is { } report)
+                    owned[application] = report.Manifests.Select(m => m.Component).ToHashSet(StringComparer.Ordinal);
+            }
+            catch (JsonException)
+            {
+            }
+        });
+
+        return owned;
     }
 
     private static AccountStatus ToAccessStatus(UserStatus status) => status switch

@@ -23,8 +23,9 @@ extend them before the code.
   `AuthoritySnapshot` expands it from the catalog it is built with, so `ActionsOf`, the evaluator and the
   subset rule see one set and an action declared later is held at the next snapshot. The edit
   (`SetRoleEveryAction`) is bounded by holding: a caller makes a role hold an application's every action only
-  when they hold them. An application's actions are the catalog's in the namespace of its id
-  (`AuthoritySnapshot.EveryActionOf`), the same set `ApplicationCatalog.HeldAsync` lists.
+  when they hold them. An application's actions are the catalog's in the namespaces it owns, its id and each
+  component its manifest document lists (`AuthoritySnapshot.ActionsOfApplication`, fed the namespaces by
+  whoever builds the snapshot), the same set `ApplicationCatalog.HeldAsync` lists.
 - **An action the snapshot does not know is an Owner's alone.** A newer build's action has no effect
   anybody vouched for and no permission anybody filed it into.
 - **`AuthorityRules` is pure and is the only place the administration rules live.** Subset, ranking,

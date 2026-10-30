@@ -164,6 +164,11 @@ this repo's `README.md` documents the doors. Minting is `Minting/CLAUDE.md`.
 - **An application's audience is its own,** never the cluster id, the issuer, `tks-auth` or another
   application's; its id is its action namespace and is never `kgsm`, `auth` or a namespace a KGSM member
   declares.
+- **An application owns its id and every component its manifest document lists** (`manifests`), read from
+  the report held under `application:<id>` (`AuthoritySnapshot.NamespacesOf`). `HeldAsync` and a role that
+  holds every action of the application both resolve its actions through that set. A listed component is
+  refused when it is `auth`, a KGSM component's, declared twice or another application's, and an id that is
+  another application's component is refused at registration.
 - **`MintPairAsync` evaluates `tks_actions` at every mint,** the code exchange and every refresh alike, so the
   lifetime bounds how long a removed role keeps working there.
 - **A confidential client proves its secret before any grant is read** (`ClientAuthentication`), so a code is

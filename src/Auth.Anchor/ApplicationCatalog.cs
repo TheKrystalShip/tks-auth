@@ -31,8 +31,10 @@ internal sealed record ManifestState(DateTimeOffset At, string? Problem, int Act
 /// unmapped, as a KGSM component's does, and is grantable only once somebody files it into a permission.
 /// </para>
 /// <para>
-/// <b>An application speaks only for its own namespace.</b> A manifest whose namespace is not the
-/// application's id, or is a KGSM component's, is refused whole: an application declaring
+/// <b>An application speaks only for namespaces it owns.</b> The document it serves is one manifest, in the
+/// namespace of its id, or a <c>manifests</c> list with one manifest per component, for an application whose
+/// actions span several namespaces; it then owns its id and each of those components. A component that is
+/// <c>auth</c>, a KGSM component's, or another application's is refused whole: an application declaring
 /// <c>kgsm:server.stop</c> would otherwise be a way to put a KGSM action under somebody else's name. A
 /// manifest declaring requirements is refused too, since an application outside KGSM has no service
 /// account here, and so is one declaring an action at a node or an instance, which an application has
@@ -69,19 +71,20 @@ internal sealed class ApplicationCatalog(
         if (application.ManifestUrl is not { } address)
             return Record(application, new ManifestState(now, "The application has no manifest address.", 0));
 
-        (ActionManifest? manifest, string? problem) = await ReadAsync(address, ct).ConfigureAwait(false);
-        if (manifest is null)
+        (ApplicationManifestDocument? document, string? problem) = await ReadAsync(address, ct).ConfigureAwait(false);
+        if (document is null)
             return Record(application, new ManifestState(now, problem, 0));
 
-        if (await RefusalAsync(application, manifest, ct).ConfigureAwait(false) is { } refused)
+        IReadOnlyList<ActionManifest> manifests = document.Parts();
+        if (await RefusalAsync(application, document, manifests, ct).ConfigureAwait(false) is { } refused)
             return Record(application, new ManifestState(now, refused, 0));
 
         await intake.CatalogDeclaredAsync(
             application.CatalogMember,
-            new MemberCatalogReport(Anchor: false, [manifest], Sequence: now.ToUnixTimeMilliseconds()),
+            new MemberCatalogReport(Anchor: false, manifests, Sequence: now.ToUnixTimeMilliseconds()),
             ct).ConfigureAwait(false);
 
-        return Record(application, new ManifestState(now, null, manifest.CatalogActions().Count()));
+        return Record(application, new ManifestState(now, null, manifests.Sum(m => m.CatalogActions().Count())));
     }
 
     /// <summary>Take everything an application declared out of the catalog and every permission.</summary>
@@ -118,9 +121,10 @@ internal sealed class ApplicationCatalog(
     /// lists.
     /// </summary>
     /// <remarks>
-    /// Every action in the catalog in the application's namespace, asked of the one evaluator at the
-    /// whole organization's scope, which the store records as <c>cluster</c>. Self actions are held by
-    /// every active person and are listed with the rest; an Owner holds every one.
+    /// Every action in the catalog in a namespace the application owns (its id, and each component its
+    /// manifests declare), asked of the one evaluator at the whole organization's scope, which the store
+    /// records as <c>cluster</c>. Self actions are held by every active person and are listed with the
+    /// rest; an Owner holds every one.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The store holds no authority.</exception>
     public async Task<IReadOnlyList<string>> HeldAsync(Application application, string accountId, CancellationToken ct)
@@ -129,13 +133,12 @@ internal sealed class ApplicationCatalog(
             ?? throw new InvalidOperationException(authority.UnavailableReason ?? "The account store holds no authority.");
 
         var evaluator = new AccessEvaluator(await source.CurrentAsync(ct).ConfigureAwait(false), clock);
-        return [.. evaluator.Snapshot.Catalog.Keys
-            .Where(id => ActionIds.TryParse(id, out string component, out _) && component == application.Id)
+        return [.. evaluator.Snapshot.ActionsOfApplication(application.Id)
             .Where(id => evaluator.Allows(accountId, id, AccessScope.Cluster).Allowed)
             .Order(StringComparer.Ordinal)];
     }
 
-    private async Task<(ActionManifest? Manifest, string? Problem)> ReadAsync(string address, CancellationToken ct)
+    private async Task<(ApplicationManifestDocument? Document, string? Problem)> ReadAsync(string address, CancellationToken ct)
     {
         try
         {
@@ -159,17 +162,20 @@ internal sealed class ApplicationCatalog(
             if (read > MaxManifestBytes)
                 return (null, $"{address} is larger than a manifest can be.");
 
-            ActionManifest? manifest = JsonSerializer.Deserialize(
-                bytes.AsSpan(0, read), AccessJsonContext.Default.ActionManifest);
-            if (manifest is null)
+            ApplicationManifestDocument? document = JsonSerializer.Deserialize(
+                bytes.AsSpan(0, read), AccessJsonContext.Default.ApplicationManifestDocument);
+            if (document is null)
                 return (null, $"{address} served no manifest.");
-            if (manifest.SchemaVersion != ActionManifest.SupportedSchemaVersion)
+
+            int stale = new[] { document.SchemaVersion }.Concat((document.Manifests ?? []).Select(m => m.SchemaVersion))
+                .FirstOrDefault(v => v != ActionManifest.SupportedSchemaVersion, ActionManifest.SupportedSchemaVersion);
+            if (stale != ActionManifest.SupportedSchemaVersion)
             {
-                return (null, $"{address} is schema version {manifest.SchemaVersion}, and this build reads "
+                return (null, $"{address} is schema version {stale}, and this build reads "
                               + $"{ActionManifest.SupportedSchemaVersion}.");
             }
 
-            return (manifest, null);
+            return (document, null);
         }
         catch (JsonException e)
         {
@@ -181,22 +187,74 @@ internal sealed class ApplicationCatalog(
         }
     }
 
-    private async Task<string?> RefusalAsync(Application application, ActionManifest manifest, CancellationToken ct)
+    private async Task<string?> RefusalAsync(
+        Application application, ApplicationManifestDocument document, IReadOnlyList<ActionManifest> manifests, CancellationToken ct)
     {
-        if (manifest.Component != application.Id)
+        if (manifests.Count == 0)
+            return "The document declares no component.";
+
+        // One manifest speaks for the application's own namespace. Several each speak for a namespace of
+        // their own, which no other application and no KGSM component holds.
+        if (!document.IsPlural)
         {
-            return $"The manifest declares actions in '{manifest.Component}', and this application's namespace is "
-                   + $"'{application.Id}'.";
+            ActionManifest manifest = manifests[0];
+            if (manifest.Component != application.Id)
+            {
+                return $"The manifest declares actions in '{manifest.Component}', and this application's namespace is "
+                       + $"'{application.Id}'.";
+            }
+
+            if (await IsKgsmNamespaceAsync(manifest.Component, ct).ConfigureAwait(false))
+                return $"'{manifest.Component}' is a KGSM component's namespace.";
+        }
+        else
+        {
+            foreach (string component in manifests.Select(m => m.Component))
+            {
+                if (!ActionIds.IsValid(component + ":x"))
+                    return $"'{component}' is not a component namespace.";
+                if (manifests.Count(m => m.Component == component) > 1)
+                    return $"'{component}' is declared more than once.";
+                if (component == ActionIds.AuthComponent)
+                    return $"'{component}' is this provider's own namespace.";
+                if (await IsKgsmNamespaceAsync(component, ct).ConfigureAwait(false))
+                    return $"'{component}' is a KGSM component's namespace.";
+                if (await OwnerOfAsync(component, ct).ConfigureAwait(false) is { } owner && owner != application.Id)
+                    return $"'{component}' is the namespace of the application '{owner}'.";
+            }
         }
 
-        if (await IsKgsmNamespaceAsync(manifest.Component, ct).ConfigureAwait(false))
-            return $"'{manifest.Component}' is a KGSM component's namespace.";
-
-        if (manifest.Requires is { Count: > 0 })
+        if (manifests.Any(m => m.Requires is { Count: > 0 }))
             return "An application's manifest declares no requirements: it has no service account here.";
 
-        if ((manifest.Actions ?? []).FirstOrDefault(a => ScopeKinds.Parse(a.Scope) != ScopeKind.Cluster) is { } narrow)
-            return $"'{narrow.Id}' declares scope '{narrow.Scope}', and an application has one scope, cluster.";
+        if (manifests.SelectMany(m => (m.Actions ?? []).Select(a => (m.Component, Action: a)))
+                .FirstOrDefault(x => ScopeKinds.Parse(x.Action.Scope) != ScopeKind.Cluster) is { Action: not null } narrow)
+        {
+            return $"'{narrow.Component}:{narrow.Action.Id}' declares scope '{narrow.Action.Scope}', and an application has one scope, cluster.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The application whose manifests declare <paramref name="component"/>, or null when none does.
+    /// </summary>
+    public async Task<string?> OwnerOfAsync(string component, CancellationToken ct)
+    {
+        if (authority.Store is not { } store)
+            return null;
+
+        foreach (CatalogEntry entry in await store.CatalogAsync(ct).ConfigureAwait(false))
+        {
+            if (!ActionIds.TryParse(entry.Action.Id, out string declaredIn, out _) || declaredIn != component)
+                continue;
+
+            foreach (ActionDeclaration declaration in entry.DeclaredBy)
+            {
+                if (ApplicationNamespaces.ApplicationOf(declaration.Member) is { } owner)
+                    return owner;
+            }
+        }
 
         return null;
     }

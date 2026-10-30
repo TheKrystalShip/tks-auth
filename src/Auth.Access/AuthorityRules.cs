@@ -198,7 +198,7 @@ public static class AuthorityRules
 
         // Granting is bounded by holding, so a role that gains an application's every action is one the
         // caller holds every action of already.
-        IEnumerable<string> added = AuthoritySnapshot.EveryActionOf(e.Application, c.Snapshot.Catalog.Keys)
+        IEnumerable<string> added = c.Snapshot.ActionsOfApplication(e.Application)
             .Where(a => !c.Snapshot.ActionsOf(role!.RoleId).Contains(a));
 
         return c.Subset(added, AccessScope.Cluster);

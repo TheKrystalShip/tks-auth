@@ -403,9 +403,12 @@ it.
 
 **The catalog pulls each application's manifest** — the format KGSM's components ship — from its address
 when it is registered, when the address changes and every `Anchor__ManifestRefreshMinutes`. Its actions
-are held under `application:<id>` beside every member's report and arrive unmapped. A manifest in another
-namespace, in a KGSM component's, or declaring requirements is refused whole, and one that cannot be read
-changes nothing.
+are held under `application:<id>` beside every member's report and arrive unmapped. The document is one
+manifest in the application's own namespace, or a `manifests` list with one per component for an application
+whose actions span several namespaces; the application then owns its id and each of those components, its
+tokens list their actions, and a role that holds every action of it holds them all. A manifest in another
+namespace (an unlisted one, `auth`, a KGSM component's or another application's) or declaring requirements
+is refused whole, and one that cannot be read changes nothing.
 
 ### Exchanging a Discord credential
 

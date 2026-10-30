@@ -21,10 +21,13 @@ public sealed class AuthoritySnapshot
 {
     private static readonly IReadOnlyList<Assignment> NoAssignments = [];
     private static readonly IReadOnlyList<ServiceRequirement> NoRequirements = [];
+    private static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> NoNamespaces =
+        new Dictionary<string, IReadOnlySet<string>>();
 
     private readonly FrozenDictionary<string, IReadOnlyList<Assignment>> _assignmentsByAccount;
     private readonly FrozenDictionary<string, IReadOnlyList<ServiceRequirement>> _requirementsByAccount;
     private readonly FrozenDictionary<string, FrozenSet<string>> _roleActions;
+    private readonly IReadOnlyDictionary<string, IReadOnlySet<string>> _applicationNamespaces;
 
     /// <summary>Build a snapshot, and the indexes an evaluation walks.</summary>
     public AuthoritySnapshot(
@@ -36,8 +39,10 @@ public sealed class AuthoritySnapshot
         IEnumerable<Assignment> assignments,
         IEnumerable<ServiceRequirement> requirements,
         AuthorityFreshness freshness,
-        int minimumContractVersion = AccessContract.Version)
+        int minimumContractVersion = AccessContract.Version,
+        IReadOnlyDictionary<string, IReadOnlySet<string>>? applicationNamespaces = null)
     {
+        _applicationNamespaces = applicationNamespaces ?? NoNamespaces;
         Version = version;
         Freshness = freshness;
         MinimumContractVersion = minimumContractVersion;
@@ -64,19 +69,32 @@ public sealed class AuthoritySnapshot
             r => r.Permissions
                 .Where(Permissions.ContainsKey)
                 .SelectMany(p => Permissions[p].Actions)
-                .Concat(EveryActionOf(r.HoldsEveryActionOf, Catalog.Keys))
+                .Concat(r.HoldsEveryActionOf is { } application ? ActionsOfApplication(application) : [])
                 .ToFrozenSet(StringComparer.Ordinal),
             StringComparer.Ordinal);
     }
 
     /// <summary>
-    /// The catalog's actions in <paramref name="application"/>'s namespace: what a role that holds every
-    /// action of an application holds.
+    /// The namespaces <paramref name="application"/> owns: its id, and each component its manifests declare.
     /// </summary>
-    public static IEnumerable<string> EveryActionOf(string? application, IEnumerable<string> catalog) =>
-        application is null
-            ? []
-            : catalog.Where(id => ActionIds.TryParse(id, out string component, out _) && component == application);
+    public IReadOnlySet<string> NamespacesOf(string application)
+    {
+        HashSet<string> owned = new(StringComparer.Ordinal) { application };
+        if (_applicationNamespaces.TryGetValue(application, out IReadOnlySet<string>? declared))
+            owned.UnionWith(declared);
+
+        return owned;
+    }
+
+    /// <summary>
+    /// The catalog's actions in the namespaces <paramref name="application"/> owns: what a token for it can
+    /// list, and what a role that holds every action of it holds.
+    /// </summary>
+    public IReadOnlyList<string> ActionsOfApplication(string application)
+    {
+        IReadOnlySet<string> owned = NamespacesOf(application);
+        return [.. Catalog.Keys.Where(id => ActionIds.TryParse(id, out string component, out _) && owned.Contains(component))];
+    }
 
     private AuthoritySnapshot(AuthoritySnapshot from, AuthorityFreshness freshness, int minimumContractVersion)
     {
@@ -92,6 +110,7 @@ public sealed class AuthoritySnapshot
         _assignmentsByAccount = from._assignmentsByAccount;
         _requirementsByAccount = from._requirementsByAccount;
         _roleActions = from._roleActions;
+        _applicationNamespaces = from._applicationNamespaces;
     }
 
     /// <summary>
