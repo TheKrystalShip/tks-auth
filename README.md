@@ -247,7 +247,7 @@ issues the name's certificate and renders its vhost. The design is `kgsm-docs/sy
 | `GET /authorize/{provider}` | an external provider's round trip for the request in flight |
 | `POST /token` | `authorization_code` or `refresh_token`; access, refresh and `id_token`. A confidential client authenticates by `client_secret_basic` or `client_secret_post`, and may exchange a Discord credential for an access token (see [Exchanging a Discord credential](#exchanging-a-discord-credential)) |
 | `POST /revoke` | end the session a refresh token belongs to (RFC 7009), on behalf of the client it was minted for; `200` for any token that ends nothing (see [Signing a device out](#signing-a-device-out)) |
-| `GET /userinfo` | the account behind a bearer |
+| `GET /userinfo` | the account behind a bearer issued for the provider's own audience (`tks-auth`); an application's access token is that application's alone and is refused |
 | `GET /sign-out`, `POST /sign-out` | end a browser's sign-in and everything minted under it; asks without a hint |
 | `/auth/admin/applications` | the applications and their clients and secrets, on `auth:applications.manage` (see [Applications](#applications)) |
 
