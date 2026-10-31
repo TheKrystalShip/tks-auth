@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — 7.0.1
+
+- **The Assignments page offers its accounts.** The account picker kept only accounts of kind `person`,
+  a field the authority read no longer carries, so it listed none and no role could be assigned from the
+  page. It offers every active account.
+
 ### Changed — 7.0.0 (breaking)
 
 - **tks-auth is a standalone OpenID Connect provider.** It joins no cluster, publishes no gossip fact,

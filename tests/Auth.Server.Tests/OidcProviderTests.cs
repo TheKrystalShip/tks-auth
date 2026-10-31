@@ -818,7 +818,7 @@ public sealed class OidcProviderTests(ServerFixture anchor)
     }
 
     [Fact]
-    public void A_session_under_no_browser_s_sign_in_is_gone_when_the_registry_opens()
+    public async Task A_session_under_no_browser_s_sign_in_is_gone_when_the_registry_opens()
     {
         string root = Path.Combine(Path.GetTempPath(), "kgsm-anchor-orphans", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -826,17 +826,14 @@ public sealed class OidcProviderTests(ServerFixture anchor)
 
         var first = new SqliteSessionRegistry(path);
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        first.CreateAsync(new SessionRegistration("sid_orphan", "local:usr_x", "c", now, now.AddDays(1), null, "j1"))
-            .GetAwaiter().GetResult();
-        first.CreateProviderSessionAsync("sid_browser", "local:usr_x", "{}", "hash", "c", now, now.AddDays(1), null)
-            .GetAwaiter().GetResult();
-        first.CreateAsync(new SessionRegistration("sid_minted", "local:usr_x", "c", now, now.AddDays(1), null, "j2"), "sid_browser")
-            .GetAwaiter().GetResult();
+        await first.CreateAsync(new SessionRegistration("sid_orphan", "local:usr_x", "c", now, now.AddDays(1), null, "j1"));
+        await first.CreateProviderSessionAsync("sid_browser", "local:usr_x", "{}", "hash", "c", now, now.AddDays(1), null);
+        await first.CreateAsync(new SessionRegistration("sid_minted", "local:usr_x", "c", now, now.AddDays(1), null, "j2"), "sid_browser");
 
         // Nothing ends a session on a sign-out, or lists it with its sign-in, unless it lives under one.
         var reopened = new SqliteSessionRegistry(path);
         IReadOnlyList<SqliteSessionRegistry.LiveSession> live =
-            reopened.ListAsync(["local:usr_x"]).GetAwaiter().GetResult();
+            await reopened.ListAsync(["local:usr_x"]);
 
         Assert.Equal(["sid_browser", "sid_minted"], live.Select(s => s.SessionId).Order());
         SqliteConnection.ClearAllPools();

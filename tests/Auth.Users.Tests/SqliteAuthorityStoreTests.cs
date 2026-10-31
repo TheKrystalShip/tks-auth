@@ -101,7 +101,8 @@ public sealed class SqliteAuthorityStoreTests : IDisposable
 
         Assert.Equal(1, snapshot.Version);
         Assert.Equal([BuiltInRoles.EveryoneId, BuiltInRoles.OwnerId], snapshot.Roles.Keys.Order());
-        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(_options.Path));
+        if (OperatingSystem.IsLinux())
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(_options.Path));
     }
 
     [Fact]

@@ -23,7 +23,7 @@ function Assignments({ view, accountId }) {
 
   const held = view.assignments.filter((a) => !accountId || a.accountId === accountId);
 
-  const people = view.accounts.filter((a) => a.kind === "person" && a.status === "active")
+  const people = view.accounts.filter((a) => a.status === "active")
     .sort((a, b) => a.username.localeCompare(b.username));
   const roles = view.roles.filter((r) => r.kind === "custom" || r.kind === "owner")
     .sort((a, b) => a.rank - b.rank);
