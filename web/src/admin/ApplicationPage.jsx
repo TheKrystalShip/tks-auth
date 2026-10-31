@@ -4,7 +4,7 @@
 // saved together with only what changed; a client is added in a dialog, and removing a client or the
 // application is asked for first. A secret the provider has just made (registering, a new secret) stands
 // in a notice with a way to copy it until it is dismissed or the page is left, and is held nowhere else.
-// KGSM and tks-auth are built in and read-only.
+// tks-auth itself is built in and read-only.
 
 import React from "react";
 

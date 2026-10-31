@@ -18,7 +18,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_FILE="${HERE}/../src/Auth.Anchor/Anchor.csproj"
+SOURCE_FILE="${HERE}/../src/Auth.Server/Server.csproj"
 
 read_version() {
     grep -oP '<Version>\K[0-9][^<]*(?=</Version>)' "$SOURCE_FILE" | head -1

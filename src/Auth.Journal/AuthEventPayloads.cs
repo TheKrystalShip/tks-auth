@@ -3,21 +3,16 @@ using System.Text.Json;
 namespace TheKrystalShip.Auth.Journal;
 
 /// <summary>
-/// The bytes a KGSM account event carries.
+/// The bytes an account event carries.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>One implementation, because two would fail silently.</b> Two components write these — a host's
-/// own API when it holds its accounts, and a cluster's auth anchor when one does — and one reads them
-/// back by deserializing into a fixed shape. A field spelled differently by one writer does not throw:
-/// it deserializes to null, and the row renders with a name missing and nothing reported. So the shape
-/// lives here and both call it, rather than being described twice and trusted to stay agreed.
+/// <b>One implementation.</b> Every audit line the provider writes takes its payload from here, so a
+/// field is spelled one way on every line of one type.
 /// </para>
 /// <para>
-/// <b>Facts, not sentences.</b> No summary, no severity, no formatted value — those belong to a reader
-/// and are built at read time. It is what lets one fact be worded one way in a Control Panel and
-/// another in a chat surface, and what keeps a wording improvement from applying only to the rows
-/// written after it.
+/// <b>Facts, not sentences.</b> No summary, no severity, no formatted value: wording belongs to the
+/// reader.
 /// </para>
 /// <para>
 /// <b>An absent value is written as a real null.</b> Never an empty string: "nobody looked this up" and
@@ -171,18 +166,17 @@ public static class AuthEventPayloads
         };
 
     /// <summary>
-    /// An account given a role within a scope, or losing one.
+    /// An account given a role, or losing one.
     /// </summary>
     /// <param name="assignmentId">The assignment.</param>
     /// <param name="userId">The account holding it.</param>
     /// <param name="username">What the account was called.</param>
     /// <param name="roleId">The role.</param>
     /// <param name="role">What the role was called.</param>
-    /// <param name="scope">Where it applies, in its wire form.</param>
     /// <param name="authorityVersion">The authority version the change produced.</param>
     /// <returns>The payload writer.</returns>
     public static Action<Utf8JsonWriter> Assignment(
-        string assignmentId, string userId, string? username, string roleId, string? role, string scope,
+        string assignmentId, string userId, string? username, string roleId, string? role,
         long authorityVersion) =>
         w =>
         {
@@ -191,45 +185,24 @@ public static class AuthEventPayloads
             Nullable(w, "Username", username);
             w.WriteString("RoleId", roleId ?? string.Empty);
             Nullable(w, "Role", role);
-            w.WriteString("Scope", scope ?? string.Empty);
             w.WriteNumber("AuthorityVersion", authorityVersion);
         };
 
     /// <summary>
     /// The catalog of declared actions changing: which actions arrived and which left.
     /// </summary>
-    /// <param name="member">The member whose report, or removal, changed it.</param>
+    /// <param name="source">The source whose report changed it.</param>
     /// <param name="added">Action ids that arrived, unmapped.</param>
-    /// <param name="removed">Action ids no member declares any more, gone from every permission.</param>
+    /// <param name="removed">Action ids nothing declares any more, gone from every permission.</param>
     /// <param name="authorityVersion">The authority version the change produced.</param>
     /// <returns>The payload writer.</returns>
     public static Action<Utf8JsonWriter> Catalog(
-        string member, IReadOnlyList<string> added, IReadOnlyList<string> removed, long authorityVersion) =>
+        string source, IReadOnlyList<string> added, IReadOnlyList<string> removed, long authorityVersion) =>
         w =>
         {
-            w.WriteString("Member", member ?? string.Empty);
+            w.WriteString("Source", source ?? string.Empty);
             Strings(w, "Added", added);
             Strings(w, "Removed", removed);
-            w.WriteNumber("AuthorityVersion", authorityVersion);
-        };
-
-    /// <summary>A service's requirement approved, narrowed or revoked.</summary>
-    /// <param name="accountId">The service account.</param>
-    /// <param name="service">The service, as <c>svc:&lt;component&gt;@&lt;member&gt;</c>, when known.</param>
-    /// <param name="action">The action it requires.</param>
-    /// <param name="scope">Where it is approved, or null when revoked.</param>
-    /// <param name="automatic">Whether nobody decided it: approved because it was never held before.</param>
-    /// <param name="authorityVersion">The authority version the change produced.</param>
-    /// <returns>The payload writer.</returns>
-    public static Action<Utf8JsonWriter> Requirement(
-        string accountId, string? service, string action, string? scope, bool automatic, long authorityVersion) =>
-        w =>
-        {
-            w.WriteString("AccountId", accountId ?? string.Empty);
-            Nullable(w, "Service", service);
-            w.WriteString("Action", action ?? string.Empty);
-            Nullable(w, "Scope", scope);
-            w.WriteBoolean("Automatic", automatic);
             w.WriteNumber("AuthorityVersion", authorityVersion);
         };
 

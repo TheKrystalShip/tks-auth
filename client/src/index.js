@@ -14,7 +14,7 @@ import { startDevice } from "./device.js";
 export { DeviceSignInError } from "./device.js";
 export { claimsOf } from "./claims.js";
 
-/** Every request to the anchor is bounded: a token endpoint that never answers holds every renewal. */
+/** Every request to the provider is bounded: a token endpoint that never answers holds every renewal. */
 const PROVIDER_TIMEOUT_S = 10;
 const RETRY_FIRST_MS = 15000;
 /** How soon a second failed sign-in callback counts as a loop. */
@@ -57,7 +57,7 @@ function sameAccount(a, b) {
 }
 
 /**
- * A browser's sign-in with the tks-auth anchor, as one session object: who is signed in, the token
+ * A browser's sign-in with the tks-auth provider, as one session object: who is signed in, the token
  * that proves it, and the machinery that keeps it alive without being seen.
  * @param {SessionConfig} [config]
  * @returns {Session}
@@ -82,7 +82,7 @@ export function createSession(config = {}) {
   /** @type {{ renew: () => Promise<AdoptedTokens | null | undefined> } | null} */
   let adopted = null;
 
-  // The anchor connection, built on first use.
+  // The provider connection, built on first use.
   /** @type {Promise<{ manager: UserManager, clientId: string, prefix: string }> | null} */
   let readyPromise = null;
   /** @type {UserManager | null} */
@@ -209,7 +209,7 @@ export function createSession(config = {}) {
     publish("ended", reason);
   }
 
-  // ---------------------------------------------------------------- the anchor
+  // ---------------------------------------------------------------- the provider
 
   function init() {
     readyPromise ??= (async () => {
@@ -520,7 +520,7 @@ export function createSession(config = {}) {
     }
   }
 
-  /** @returns {Promise<boolean>} Whether the browser was sent to the anchor. */
+  /** @returns {Promise<boolean>} Whether the browser was sent to the provider. */
   async function signIn(options = {}) {
     const loc = globalThis.location;
     const returnTo = options.returnTo ?? loc.pathname + loc.search + loc.hash;
@@ -543,7 +543,7 @@ export function createSession(config = {}) {
       try {
         await init();
         user = await manager.getUser();
-      } catch { /* nothing stored, or no anchor to ask */ }
+      } catch { /* nothing stored, or no provider to ask */ }
     }
     recovered();
     clearTokens();

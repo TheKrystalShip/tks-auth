@@ -116,20 +116,6 @@ if [[ ! -f "$PROVIDERS_FILE" ]]; then
     $SUDO install -m 0600 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" "$PROVIDERS_EXAMPLE" "$PROVIDERS_FILE"
 fi
 
-# ── 2b. The shared leaf-descriptor directory ──────────────────────────────────
-# Where this component declares its configurable surface. Two directories, because a leaf and an
-# anchor are different things: a leaf is one this node runs and kgsm-api scans for, an anchor serves
-# one capability to the whole cluster and merely happens to be here. Only the one this project's
-# descriptor belongs in is created, and it is created once by whichever project's setup.sh runs first
-# and owned by the deploying user — deploy.sh then writes the descriptor with no privilege. Skipped
-# entirely for a project that ships no descriptor.
-if [[ -n "${LEAF_DESCRIPTOR:-}" && -f "$LEAF_DESCRIPTOR" ]]; then
-    if descriptor_dir="$(descriptor_dir_for "$LEAF_DESCRIPTOR")" && [[ ! -d "$descriptor_dir" ]]; then
-        log "creating ${descriptor_dir} (owned by ${DEPLOY_USER}) — the config descriptors"
-        $SUDO install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" "$descriptor_dir"
-    fi
-fi
-
 # ── 3. The user-owned unit directory ──────────────────────────────────────────
 if [[ ! -d "$UNIT_DIR" ]]; then
     log "creating ${UNIT_DIR} (owned by ${DEPLOY_USER} — this is what makes deploys sudo-free)"
@@ -192,41 +178,6 @@ else
     $SUDO install -D -m 0644 "$POLKIT_RENDERED" "$POLKIT_DST"
 fi
 rm -f "$POLKIT_RENDERED"
-
-# ── 5b. The anchor's own configuration surface ────────────────────────────────
-# The drop-in that feeds a change back to this daemon, and the grant that lets it bounce itself to
-# pick one up. Both are static and installed once; what changes at runtime is the override file's
-# contents, which the daemon writes unprivileged in its own state directory.
-#
-# Ordered after the unit symlink above, so the drop-in directory belongs to a unit systemd already
-# knows about, and before the daemon-reload check below picks up either.
-CONFIG_CHANGED=0
-
-CONFIG_DROPIN_RENDERED="$(mktemp)"
-render_config_dropin > "$CONFIG_DROPIN_RENDERED"
-if $SUDO cmp -s "$CONFIG_DROPIN_RENDERED" "$CONFIG_DROPIN_DST" 2>/dev/null; then
-    : # already current
-else
-    log "installing config drop-in → ${CONFIG_DROPIN_DST}"
-    $SUDO install -D -m 0644 "$CONFIG_DROPIN_RENDERED" "$CONFIG_DROPIN_DST"
-    CONFIG_CHANGED=1
-fi
-rm -f "$CONFIG_DROPIN_RENDERED"
-
-CONFIG_POLKIT_RENDERED="$(mktemp)"
-render_config_polkit > "$CONFIG_POLKIT_RENDERED"
-if $SUDO cmp -s "$CONFIG_POLKIT_RENDERED" "$CONFIG_POLKIT_DST" 2>/dev/null; then
-    : # already current
-else
-    log "installing self-restart grant → ${CONFIG_POLKIT_DST}"
-    $SUDO install -D -m 0644 "$CONFIG_POLKIT_RENDERED" "$CONFIG_POLKIT_DST"
-fi
-rm -f "$CONFIG_POLKIT_RENDERED"
-
-if [[ "$CONFIG_CHANGED" -eq 1 ]]; then
-    log "reloading systemd (the config drop-in changed)"
-    $SUDO systemctl daemon-reload
-fi
 
 # ── 6. Enable, and start what can start ───────────────────────────────────────
 # Enablement is unconditional — wiring the unit into boot is the whole point of this script.

@@ -14,7 +14,7 @@ namespace TheKrystalShip.Auth.Users;
 /// somewhere that is not a browser. It is created on the first start that finds the account store
 /// empty, and its password — generated, never chosen — is written to the path the caller names for
 /// whoever has a shell on the host to read. The account holds nothing until whoever made it grants it
-/// Owner, which the anchor does in the same start from the store that holds the authority.
+/// Owner, which the provider does in the same start from the store that holds the authority.
 /// </para>
 /// <para>
 /// <b>The file is written once and never rewritten.</b> It is removed the first time the account it
@@ -52,7 +52,7 @@ public static class FirstAdmin
 
         string password = GeneratePassword();
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        KgsmUser user = new(
+        UserAccount user = new(
             UserIds.NewUserId(), username, "Administrator",
             // The host itself decided this, at the only moment it could — as deliberate as admitting
             // somebody gets, and the origin that spares the account from the pending-account expiry.
@@ -95,7 +95,7 @@ public static class FirstAdmin
                 File.SetUnixFileMode(file.SafeFileHandle, OwnerOnly);
             file.Write(Encoding.UTF8.GetBytes(
                 $"""
-                # The KGSM Owner account this host was created with.
+                # The Owner account this host was created with.
                 # Sign in, change the password, then delete this file. Nothing rewrites it.
                 {UsernameField} {username}
                 {PasswordField} {password}

@@ -1,51 +1,44 @@
 namespace TheKrystalShip.Auth.Users;
 
 /// <summary>
-/// Schema version 2 of the account store: accounts, and everything that decides access beside them.
+/// The account store's schema: accounts, and everything that decides access beside them.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Version 2 is where the store holds permissions, roles, assignments, service accounts and their
-/// requirements, the catalog of declared actions, each member's last report and the authority version.
-/// What an account may do is its assignments. <c>origin</c> says whether it arrived
-/// by itself or was admitted by somebody, and <c>kind</c> whether it is a person or a service.
+/// The store holds permissions, roles, assignments, the catalog of declared actions, the report each
+/// source of actions last made and the authority version. What an account may do is its assignments.
+/// <c>origin</c> says whether an account arrived by itself or was admitted by somebody.
 /// <see cref="SqliteAuthorityStore"/> reads and writes it.
 /// </para>
 /// <para>
 /// Every authority row, and every account, carries the authority version it was written at, which is
-/// what orders a change against a later one when the rows are replicated. The anchor's
-/// <c>authority_outbox</c> holds what it owes the cluster; a replica's <c>authority_tombstones</c>
-/// holds the version each removed record was removed at.
+/// what a change made against an older version is refused by.
 /// </para>
 /// </remarks>
 public static class AuthoritySchema
 {
     /// <summary>The schema version this layout is.</summary>
-    public const int Version = 2;
+    public const int Version = 3;
+
+    /// <summary>The version a file is upgraded from when it is opened.</summary>
+    public const int PreviousVersion = 2;
+
+    /// <summary>What is appended to the file's name for the copy taken before the upgrade.</summary>
+    public const string PreviousVersionBackupSuffix = ".pre-7.0.0";
 
     /// <summary>The key the authority version is filed under in <c>authority_meta</c>.</summary>
-    /// <remarks>On the anchor, the version of the last write. On a replica, the highest version applied.</remarks>
     public const string AuthorityVersionKey = "authority_version";
 
     /// <summary>
-    /// The key of a counter every change to what this file holds advances, the anchor's writes and a
-    /// replica's applied changes alike: what a cached snapshot is compared against.
+    /// The key of a counter every change to what this file holds advances: what a cached snapshot is
+    /// compared against.
     /// </summary>
     public const string GenerationKey = "generation";
 
     /// <summary>The version the catalog was last replaced at.</summary>
     public const string CatalogVersionKey = "catalog_version";
 
-    /// <summary>On a replica: when it was last confirmed current, as a UTC timestamp.</summary>
-    public const string ConfirmedKey = "confirmed_utc";
-
-    /// <summary>On a replica: how long it stays current after a confirmation, in seconds.</summary>
-    public const string BoundKey = "bound_seconds";
-
-    /// <summary>On a replica: the lowest evaluation contract the cluster accepts.</summary>
-    public const string MinimumContractKey = "minimum_contract";
-
-    /// <summary>The accounts, credentials and lockouts at version 2.</summary>
+    /// <summary>The accounts, credentials and lockouts.</summary>
     public const string CreateAccounts = """
         CREATE TABLE IF NOT EXISTS schema_meta (
             key   TEXT PRIMARY KEY,
@@ -90,17 +83,10 @@ public static class AuthoritySchema
     /// Everything that decides access, created with the accounts in a fresh file.
     /// </summary>
     /// <remarks>
-    /// <para>
     /// Deleting a role, a permission or an account takes what hangs off it with it through the foreign
-    /// keys: a role's assignments and permission links, a permission's links, an account's assignments,
-    /// service identity and requirements. The store reads what a cascade will take before it deletes, so
-    /// each removal is still reported one change at a time.
-    /// </para>
-    /// <para>
-    /// A requirement is keyed by account and action: a service needs an action once, at one scope.
-    /// <c>decided_by</c> is null while the requirement stands as it was approved automatically, and
-    /// names the person who revoked, narrowed or approved it otherwise.
-    /// </para>
+    /// keys: a role's assignments and permission links, a permission's links, an account's assignments.
+    /// The store reads what a cascade will take before it deletes, so each removal is still reported one
+    /// change at a time.
     /// </remarks>
     public const string CreateAuthority = """
         CREATE TABLE IF NOT EXISTS authority_meta (
@@ -143,60 +129,26 @@ public static class AuthoritySchema
             assignment_id TEXT PRIMARY KEY,
             user_id       TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
             role_id       TEXT NOT NULL REFERENCES roles(role_id) ON DELETE CASCADE,
-            scope         TEXT NOT NULL,
             granted_by    TEXT NULL,
             version       INTEGER NOT NULL,
             created_utc   TEXT NOT NULL,
-            UNIQUE (user_id, role_id, scope)
+            UNIQUE (user_id, role_id)
         );
 
         CREATE INDEX IF NOT EXISTS ix_assignments_role ON assignments(role_id);
 
-        CREATE TABLE IF NOT EXISTS service_accounts (
-            user_id   TEXT PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-            component TEXT NOT NULL,
-            member    TEXT NOT NULL,
-            UNIQUE (component, member)
-        );
-
-        CREATE TABLE IF NOT EXISTS service_requirements (
-            user_id     TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-            action      TEXT NOT NULL,
-            scope_kind  TEXT NOT NULL,
-            why         TEXT NULL,
-            state       TEXT NOT NULL,
-            grant_scope TEXT NULL,
-            decided_by  TEXT NULL,
-            declared    INTEGER NOT NULL,
-            version     INTEGER NOT NULL,
-            updated_utc TEXT NOT NULL,
-            PRIMARY KEY (user_id, action)
-        );
-
         CREATE TABLE IF NOT EXISTS catalog_actions (
-            action     TEXT PRIMARY KEY,
-            title      TEXT NOT NULL,
-            effect     TEXT NOT NULL,
-            scope_kind TEXT NOT NULL,
-            self       INTEGER NOT NULL,
-            version    INTEGER NOT NULL
+            action  TEXT PRIMARY KEY,
+            title   TEXT NOT NULL,
+            effect  TEXT NOT NULL,
+            self    INTEGER NOT NULL,
+            version INTEGER NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS member_reports (
-            member       TEXT PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS catalog_reports (
+            source       TEXT PRIMARY KEY,
             report       TEXT NOT NULL,
             received_utc TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS authority_outbox (
-            record  TEXT PRIMARY KEY,
-            version INTEGER NOT NULL,
-            removed INTEGER NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS authority_tombstones (
-            record  TEXT PRIMARY KEY,
-            version INTEGER NOT NULL
         );
         """;
 
@@ -231,7 +183,6 @@ public static class AccountWire
     public const string Arrived = "arrived";
     public const string Admitted = "admitted";
     public const string Person = "person";
-    public const string Service = "service";
 
     /// <summary>The storage form of an origin.</summary>
     public static string ToWire(AccountOrigin origin) => origin == AccountOrigin.Admitted ? Admitted : Arrived;
@@ -242,14 +193,4 @@ public static class AccountWire
     /// </summary>
     public static AccountOrigin ParseOrigin(string? wire) =>
         wire?.Trim().ToLowerInvariant() == Admitted ? AccountOrigin.Admitted : AccountOrigin.Arrived;
-
-    /// <summary>The storage form of an account kind.</summary>
-    public static string ToWire(Access.AccountKind kind) => kind == Access.AccountKind.Service ? Service : Person;
-
-    /// <summary>
-    /// The kind a string names, with anything unrecognised read as a service — the kind that holds no
-    /// <c>everyone</c>, no self actions and cannot hold Owner.
-    /// </summary>
-    public static Access.AccountKind ParseKind(string? wire) =>
-        wire?.Trim().ToLowerInvariant() == Person ? Access.AccountKind.Person : Access.AccountKind.Service;
 }

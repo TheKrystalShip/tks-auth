@@ -1,20 +1,17 @@
 // operations.js — which action a request needs, as the member serving it publishes.
 //
-// A client names no action. Every member publishes its operations — each gated route, the action it
-// requires and the scope it is checked at — built from the metadata it enforces with (kgsm-api's
-// `GET /api/v1/operations`, the auth anchor's `GET /auth/cluster/operations`, the DNS anchor's and the
-// assistant's `GET /operations`). A control asks about the request it is about to make; this module
-// finds the entries that request matches. Whether the caller holds them is `access.js`'s, from the same
-// member's `/me/access`.
+// A client names no action. The provider publishes its operations — each gated route and the action it
+// requires — built from the metadata it enforces with (`GET /auth/admin/operations`). A control asks
+// about the request it is about to make; this module finds the entries that request matches. Whether the
+// caller holds them is `access.js`'s, from `/me/access`.
 //
-// The document: `{ schemaVersion, base, operations: [{ method, route, action, scope, target?, field?,
-// value? }] }`. A route is a template (`/servers/{id}/backups`); a literal segment is more specific than
-// a parameter, so `/hosts/{id}/services/kgsm/config` answers for the engine where `{leaf}` answers for
-// every other leaf. An entry with a `field` applies when the body carries that field — with that `value`
-// when it names one — and every entry a request matches must be held. An `action` may name a route
-// parameter (`{leaf}:config.write`), filled from the path.
+// The document: `{ schemaVersion, base, operations: [{ method, route, action, field?, value? }] }`. A
+// route is a template (`/users/{userId}`); a literal segment is more specific than a parameter. An
+// entry with a `field` applies when the body carries that field — with that `value` when it names one —
+// and every entry a request matches must be held. An `action` may name a route parameter, filled from
+// the path.
 //
-// Imports nothing, so the standalone assistant gates with it too.
+// Imports nothing, so a script can load it outside a browser.
 
 const SCHEMA = 1;
 
@@ -69,7 +66,7 @@ function requirementOf(manifest, method, path, body) {
     .filter((op) => op.method === verb && op.route === best.route)
     .filter((op) => !op.field
       || (op.value == null ? b[op.field] !== undefined : String(b[op.field]) === op.value))
-    .map((op) => ({ action: fill(op.action, best.params), scope: op.scope, target: op.target || null }));
+    .map((op) => ({ action: fill(op.action, best.params) }));
 
   return { published: entries.length > 0, route: best.route, params: best.params, entries };
 }

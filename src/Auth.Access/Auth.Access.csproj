@@ -6,36 +6,25 @@
     <Nullable>enable</Nullable>
     <RootNamespace>TheKrystalShip.Auth.Access</RootNamespace>
     <AssemblyName>TheKrystalShip.Auth.Access</AssemblyName>
+    <IsPackable>false</IsPackable>
 
     <!--
-      Zero package dependencies and AOT-safe, for the same reason as TheKrystalShip.Auth: every
-      member evaluates access with this, and so do the Native AOT leaves (the reactor, the scheduler)
-      that check their own service accounts before acting. Reading the replica off disk is the
-      account store's job, in Auth.Users; this package is the rules over what was read.
+      Zero package dependencies and AOT-safe: the rules over what the account store read. Reading the
+      store is Auth.Users' job.
     -->
     <IsAotCompatible>true</IsAotCompatible>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
-    <PackageId>TheKrystalShip.Auth.Access</PackageId>
-    <Authors>Heisenberg</Authors>
-    <Version>2.3.0</Version>
     <Description>
-      The KGSM access model and its evaluator: actions declared by components, permissions bundling
-      them, ranked roles, assignments scoped to a cluster, a node or an instance, service accounts and
-      the automations people author for them. Allows(account, action, target) answers every access
-      question on every member from that member's replica, and the administration rules decide which
-      changes to it a caller may make. Dependency-free and AOT-safe.
+      The provider's access model and its evaluator: actions declared by applications, permissions
+      bundling them, ranked roles and the assignments that give a person a role. Allows(account, action)
+      answers every access question, and the administration rules decide which changes to it a caller
+      may make. Dependency-free and AOT-safe.
     </Description>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="TheKrystalShip.Auth.Access.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

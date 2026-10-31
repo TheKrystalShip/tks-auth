@@ -12,8 +12,7 @@ server {
     ssl_certificate     /etc/letsencrypt/live/@HOST@/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/@HOST@/privkey.pem;
 
-    # A sign-in is a username and a password, and the member-to-member wire is capped by the cluster package
-    # itself. Nothing legitimate arrives here large.
+    # A sign-in is a username and a password. Nothing legitimate arrives here large.
     client_max_body_size 1m;
 
     location / {

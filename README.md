@@ -1,103 +1,100 @@
 # tks-auth
 
-The shared authorization model for the KGSM ecosystem: **one definition of who may do what**, used by
-every surface onto a host, so the same person gets the same authority through the Control Panel, the
-assistant and the Discord bot alike.
+An OpenID Connect provider: it holds the **accounts**, the **applications** that sign people in through it
+and each application's **roles**, and signs people in. An application checks a token against the
+provider's published keys and reads the actions the person holds in it from the token's `tks_actions`
+claim; nothing about a person is copied to the application.
 
-Five libraries, a test package and one daemon. The daemon — **`tks-auth`** — is an OpenID Connect
-provider: it holds the accounts, signs people in, and mints every session. It runs with no KGSM on
-the machine at all; configuring a KGSM cluster switches on its KGSM module, which makes it the
-cluster's account authority, and every KGSM install runs one. The libraries are what every other
-component compiles against to verify those sessions and decide what the person holding one may do.
-None of them can mint a session.
+One daemon, **`tks-auth`**, and the libraries it is built from by project reference. Nothing is published
+to NuGet: minting, the session registry, the Discord round trip and the OAuth handshake are the daemon's
+own code.
 
-## Packages
+## Layout
 
-| package | contents | taken by |
-|---|---|---|
-| **`TheKrystalShip.Auth`** | the identity, the failure of an identity or account source, the session claim names, the actor convention. **No dependencies, AOT-safe.** | every surface |
-| **`TheKrystalShip.Auth.Access`** | the access model — actions, permissions, ranked roles, assignments scoped to the cluster, a node or an instance, service accounts and their requirements — the evaluator every access question goes through (`AccessEvaluator.Allows`), the rules deciding who may change any of it (`AuthorityRules`), and what `/me/access` answers (`AccessReport`). **No dependencies, AOT-safe.** | every member |
-| **`TheKrystalShip.Auth.Users`** | KGSM's own accounts — local passwords, the credentials that prove an account — and the authority over them, in one SQLite file (`SqliteAuthorityStore`): the anchor's authoritative copy and every member's replica. | kgsm-api, kgsm-assistant, kgsm-bot, kgsm-dns |
-| **`TheKrystalShip.Auth.Journal`** | the account events, named and written in one place for every writer. | the anchor, kgsm-api |
-| **`TheKrystalShip.Auth.Cluster`** | everything a member or a leaf does about identity as a resource server of the anchor: verify a session it cannot mint (`ClusterSessionValidation`) and read who holds it (`SessionClaims`), read the published key set (`SessionKeys`), admit the provider's registered clients (`IClientOrigins`), honour a session somebody ended (`SessionRevokeHandler`, `ClusterSessionRevocations`), replicate the authority (`AddAuthorityReplica`) and answer for a person from it (`MemberAccess`), write and read the host file a machine's leaves verify against (`HostProviderFile`, `HostSessionKeys`), and name the sign-in provider (`ProtectedResourceMetadata`). | kgsm-api, kgsm-assistant, kgsm-bot, kgsm-dns |
-| **`TheKrystalShip.Auth.Testing`** | the anchor's session minter and signer, compiled from the anchor's own source, so a test presents a session exactly as the anchor would mint it. | test projects only |
+| project | contents |
+|---|---|
+| `src/Auth` | the identity (`AccountIdentity`), the failure of an identity or account source, the token claim names, the `provider:name` actor convention. No dependencies, AOT-safe. |
+| `src/Auth.Access` | the access model: actions, permissions, ranked roles and the assignments that give a person a role; the evaluator every access question goes through (`AccessEvaluator.Allows`); the rules deciding who may change any of it (`AuthorityRules`); and what `/me/access` answers (`AccessReport`). No dependencies, AOT-safe. |
+| `src/Auth.Users` | the account store: local passwords and the credentials that prove an account, and the authority over them, in one SQLite file (`SqliteAuthorityStore`). |
+| `src/Auth.Journal` | the audit events: their names and the payloads written for each. |
+| `src/Auth.Server` | the `tks-auth` daemon. |
+| `web/` | the sign-in, wait, account, device and admin pages (Vite + React on krystal-ui), built into `ui/` beside the binary. |
+| `client/` | `@thekrystalship/auth-client`, the browser sign-in package a site configures. |
 
-The deployable is **`tks-auth`** (`src/Auth.Anchor`), built from those libraries and shipped
-as a pacman package and a systemd unit, with its pages (`web/`) built into `ui/` beside the binary. It
-publishes nothing to NuGet: minting, the session registry, the Discord round trip and the OAuth
-handshake are its own code, so no other component can compile them.
+The daemon ships as a pacman package and a systemd unit, running as the `tks-auth` system user, with its
+pages built into `ui/` beside the binary.
 
 ## The model
 
-Components declare the **actions** they perform (`kgsm:server.start`, `auth:roles.edit`); actions are
-filed into **permissions**, permissions into ranked **roles**, and a role is **assigned** to an account
-at a scope — the cluster, a node, or one server. Owner holds everything; `everyone` is what every active
-person holds. The full model and its rules are `kgsm-docs/systems/authorization/`.
+Applications declare the **actions** they perform (`cinema:watch`, `auth:roles.edit`); actions are filed
+into **permissions**, permissions into ranked **roles**, and a role is **assigned** to an account. Owner
+holds everything; `everyone` is what every active person holds. A role may hold every action of an
+application, those declared later included.
 
-One function decides every request, on the anchor and on every member from its own replica:
+One function decides every request:
 
 ```csharp
-AccessDecision decision = evaluator.Allows(accountId, "kgsm:server.start", AccessScope.ForInstance(node, id, nonce));
+AccessDecision decision = evaluator.Allows(accountId, "auth:roles.edit");
 if (!decision.Allowed)
     return Deny(decision.Reason);
 ```
 
-**A KGSM session proves who, never what.** The token names an identity; a member finds the account that
-identity is a credential of in its replica and evaluates it there, so a change of access lands on the
-next request with no session ended. An application outside KGSM holds no replica, so its token lists its
-actions the account holds, evaluated by the same function when it is minted (see
-[Applications](#applications)).
-
-**Every surface answers it the same way, including kgsm-bot.** The bot has no login of its own, so the
-Discord account the gateway hands it *is* the identity — resolved to whatever KGSM account it is
-attached to, exactly as for a browser that signed in with a password. An identity attached to no
-account holds nothing. A group or a guild role is a fact about somewhere else and is not consulted
-anywhere. A store that cannot be read **throws** rather than answering: "we could not ask" is not "the
-answer is no", and reporting the first as the second locks an Owner out mid-incident.
+A token proves who and, for an application, lists the application's actions the account holds, evaluated by
+the same function when the token is minted (see [Applications](#applications)). A store that cannot be read
+**throws** rather than answering: "we could not ask" is not "the answer is no", and reporting the first as
+the second locks an Owner out mid-incident.
 
 ## Configuration
 
-The anchor reads the external providers it offers from the `KgsmAuth` section, keyed by provider name:
+The daemon is configured by the `Auth` section of `tks-auth.settings.json`, which declares every key with
+its default; an environment variable overrides one by spelling its path with `__`
+(`Auth__ListenAddress`). A variable naming a key the file does not declare binds to nothing. Operator
+overrides live in `/etc/tks-auth/tks-auth.env`; the issuer is that file's alone.
+
+| key | meaning |
+|---|---|
+| `Auth__Issuer` | the provider's one address, the `iss` of every token |
+| `Auth__ListenAddress` | where Kestrel listens |
+| `Auth__UserStorePath`, `Auth__SessionStorePath`, `Auth__SigningKeyPath` | the account store, the session registry and the signing key |
+| `Auth__UiPath` | where the pages are installed |
+| `Auth__AccessLifetimeMinutes`, `Auth__RefreshLifetimeDays` | how long a bearer lasts, and how long somebody stays signed in |
+| `Auth__AllowSelfRegistration`, `Auth__PendingCap`, `Auth__PendingTtlDays` | who may make an account, and how many may wait for approval |
+| `Auth__ReauthWindowMinutes` | how long a proved credential lets somebody change how they sign in |
+| `Auth__SessionCleanupMinutes` | how often dead session rows are swept |
+| `Auth__ManifestRefreshMinutes` | how often every application's manifest is read again |
+| `Auth__DiscordTokenCacheMinutes` | how long what Discord says about a token is remembered |
+
+The external providers it offers come from `Auth:Providers`, keyed by provider name
+(`/etc/tks-auth/providers.env`):
 
 ```
-KgsmAuth__Providers__discord__ClientId=…        # one OAuth application, at one provider
-KgsmAuth__Providers__discord__ClientSecret=…    # environment only
-KgsmAuth__Providers__github__ClientId=…         # a second provider is two more keys
-KgsmAuth__Providers__github__ClientSecret=…
+Auth__Providers__discord__ClientId=…        # one OAuth application, at one provider
+Auth__Providers__discord__ClientSecret=…    # environment only
+Auth__Providers__github__ClientId=…         # a second provider is two more keys
+Auth__Providers__github__ClientSecret=…
 ```
 
 A provider with both keys set is offered on the sign-in page; one with either missing, and one nobody
-has heard of, are the same answer — not offered. No other component holds an application: they
-authorize, and the account store answers that.
-
-## Why it is dependency-free
-
-Every surface takes this assembly, including the Discord bot, whose deploy is tuned for footprint.
-Anything referenced here would reach all of them, so it stays a pure library: no HTTP, no
-configuration binder, no ORM. Transports that need those live in sibling packages that only the
-surfaces needing them take.
+has heard of, are the same answer — not offered.
 
 ## Development
 
 ```bash
 dotnet build tks-auth.slnx
 dotnet test tks-auth.slnx
-../scripts/publish-packages.sh tks-auth     # pack + push to the org's GitHub Packages feed
+dotnet publish src/Auth.Server/Server.csproj -c Release -r linux-x64 -o artifacts/publish   # 0 ILC warnings
+(cd web && npm ci && npm run build && npm run check && npm run lint)
 ```
-
-A consumer pins a version from that feed, so a change here needs a version bump, a publish, and then
-the pin moved on the consumer. A published version is immutable — pushing one again is a `409` the
-script reports as already published — so the change a consumer restores is always the one you built.
 
 ## An external provider's round trip
 
-When the anchor sends a browser to Discord, one handshake carries both halves of the defence, in one
+When the provider sends a browser to Discord, one handshake carries both halves of the defence, in one
 HttpOnly cookie:
 
 ```csharp
 // /auth/start
 var handshake = OAuthHandshake.Create();
-Response.Cookies.Append("kgsm_oauth_state", handshake.ToCookieValue(), new CookieOptions
+Response.Cookies.Append("tks_auth_oauth_state", handshake.ToCookieValue(), new CookieOptions
 {
     HttpOnly = true,
     Secure = Request.IsHttps,
@@ -107,11 +104,11 @@ Response.Cookies.Append("kgsm_oauth_state", handshake.ToCookieValue(), new Cooki
 return Redirect(directory.BuildAuthorizeUrl(handshake.State, handshake.CodeChallenge, "none"));
 
 // /auth/callback
-if (!OAuthHandshake.TryParse(Request.Cookies["kgsm_oauth_state"], out var handshake)
+if (!OAuthHandshake.TryParse(Request.Cookies["tks_auth_oauth_state"], out var handshake)
     || !handshake.MatchesState(state))
     return BadRequest();   // forged, expired, or another browser's login
 
-KgsmIdentity? identity = await directory.VerifyAsync(code, handshake.CodeVerifier, ct);
+AccountIdentity? identity = await directory.VerifyAsync(code, handshake.CodeVerifier, ct);
 ```
 
 **`state` and PKCE are not alternatives.** `state` stops login CSRF — without it an attacker starts
@@ -124,7 +121,7 @@ against a server-side set of issued states proves that *some* login started here
 true of the attacker's login too, so it admits the exact request it was meant to refuse. Single-use
 consumption stops replay, not CSRF.
 
-Carrying the verifier in the same cookie is what lets the anchor run PKCE with **no server-side
+Carrying the verifier in the same cookie is what lets the provider run PKCE with **no server-side
 pending store**, so a round trip survives a restart.
 
 ## Honest failure
@@ -148,39 +145,31 @@ resolving to `none`.
 
 ## Sessions
 
-The anchor mints every session. A stateless JWT can say who someone is; it cannot say whether their
-session is still alive, and that one fact is what the anchor's session registry holds.
+The provider mints every session. A stateless JWT can say who someone is; it cannot say whether their
+session is still alive, and that one fact is what the session registry holds.
 
 ```csharp
 var tokens = new SessionTokenService(
     new SessionTokenOptions(
-        Audience: clusterId,
+        BearerAudience: "tks-auth",
         AccessLifetime: TimeSpan.FromMinutes(15),
         RefreshLifetime: TimeSpan.FromDays(30),
         Issuer: "https://auth.example.com"),
     signer);
 
-MintedToken access  = tokens.MintAccess(identity, sid);
-MintedToken refresh = tokens.MintRefresh(identity, sid);
+MintedToken access  = tokens.MintApplicationAccess(access);
+MintedToken refresh = tokens.MintApplicationRefresh(identity, sid);
 ```
 
 **`RefreshLifetime` is written once and used twice** — the token's expiry and the registry row's. It
 is a setting rather than a constant precisely so there is no second copy to drift, because the drift
 is invisible until a token outlives its own row or the reverse.
 
-**The audience and the issuer are validated everywhere.** Changing either on a running cluster makes
-every member refuse every session already issued, and everybody signs in again.
+**The audience and the issuer are validated everywhere.** Changing the issuer makes every application
+refuse every token already issued, and everybody signs in again.
 
-**A member verifies and never mints.** `ClusterSessionValidation.Accepting` takes what the anchor
-publishes — its key set, its audience, its issuer — and pins ES256, so the public key a member holds
-can never be offered back to it as an HMAC secret. A member that has not heard from the anchor accepts
-nothing. A session somebody ended arrives as `session.revoke` over the cluster bus and is held on the
-member's own deny-list until its bearer could no longer be presented.
-
-**A test mints through `Auth.Testing`.** A test project that needs a signed-in caller takes the anchor's
-`SessionTokenService` and `EcdsaSessionSigner` from that package, and hands the member under test the
-signer's public half in place of what gossip would have delivered. The member then verifies exactly as
-it does in production.
+**An application verifies and never mints.** It checks ES256 against the published key set, with the
+algorithm pinned so the public key can never be offered back as an HMAC secret.
 
 ### Rotation and reuse
 
@@ -191,84 +180,57 @@ holder authenticate again.
 
 ### The cache is the revocation bound
 
-The anchor's `SessionValidator` caches the registry's answer, so the hot path does not query per request. A revoke
+The `SessionValidator` caches the registry's answer, so the hot path does not query per request. A revoke
 evicts, making the kill immediate; the TTL is the backstop for what cannot evict. Expiration is
 **absolute, never sliding** — a sliding window is extended by every hit, so the busiest session, the
 one most worth revoking, would be the one that never re-checks. A "no" is cached too, because a
 revoked session still presenting its token is exactly what a stolen one does.
 
-## The auth anchor
+## The provider
 
-`tks-auth` holds the accounts. One store, one writer, one address a person signs in at — an OpenID
-Connect provider every browser surface is a client of. In a KGSM cluster it is the member that holds
-the cluster's accounts, and a session it mints is valid on **every** member, because its audience is
-the cluster rather than a machine. The identity design is `kgsm-docs/systems/identity/` (the anchor in a
-cluster in `cluster.md`, the sign-in in `sign-in.md`); this is what the daemon serves.
+One store, one writer, one address a person signs in at — an OpenID Connect provider every browser surface
+is a client of. The design is `kgsm-docs/systems/identity/`; this is what the daemon serves.
 
 | | |
 |---|---|
-| `GET /health` | the ecosystem's liveness probe |
+| `GET /health` | the liveness probe |
 | `GET /authorize`, `POST /token`, `POST /revoke`, `GET /sign-out` | the OpenID Connect doors; the only way a session is minted, renewed or ended by its holder |
-| `GET /.well-known/jwks.json` | the verification key set |
-| `GET /auth/cluster/users` | every account, to a caller holding any `auth:*` action |
-| `GET /auth/cluster/users/{id}/sessions` | an account's live sessions, on `auth:accounts.disable` |
-| `GET /auth/cluster/public-key` | the verification key set, for members (KGSM module) |
+| `GET /.well-known/openid-configuration`, `GET /.well-known/jwks.json` | discovery, and the verification key set |
+| `GET /auth/admin/users` | every account, to a caller holding any `auth:*` action |
+| `GET /auth/admin/users/{id}/sessions` | an account's live sessions, on `auth:accounts.disable` |
+| `GET /auth/admin/authority`, `POST /auth/admin/authority/edits`, `POST /auth/admin/authority/checks` | who may do what, and the rules' answer to a change |
+| `GET /auth/admin/operations` | every gated route and the action it requires |
+| `/auth/admin/applications` | the applications, their clients and secrets, on `auth:applications.manage` |
+| `GET /me/access` | the caller's own `auth:*` actions |
 
-### The core, and the KGSM module
-
-`Program.cs` composes two halves. **The core** (`TksAuthCore`) is the provider: accounts, sessions,
-the OpenID Connect doors, registered clients, the account page, the admin and authority routes, and
-the journal. **The KGSM module** (`KgsmModule`) is composed beside it only when a KGSM cluster is
-configured — the cluster secret is set, the one switch, read once at start: cluster membership and the
-bus, the standing and the founding claim, the `auth.*` facts members read, replication
-of the account store, members' catalog reports and uninstalls, forgetting a removed member, session
-revocations members hear, and this anchor's own component surface (`/auth/config`, `/auth/logs`, …)
-read from KGSM's descriptor.
-
-With no cluster, tks-auth **founds itself**: an empty store gets the Owner account and its one-time
-password, it holds its own accounts and serves every core door, and it reads and writes nothing under
-`/etc/kgsm` or `/var/lib/kgsm`. Its own `auth:*` actions enter its catalog from the declarations the
-binary carries (`AuthActions.Declared`, which a test holds equal to the manifest the build writes), so
-they are grantable with no manifest on disk. What a write owes other members is settled at once, since
-there are none: a machine that later joins a cluster hands its members a snapshot.
-
-**Sessions are signed asymmetrically, and that is the whole point.** The anchor holds the private
-key; every member verifies with the published public one. A member that could mint what it verifies
-could mint itself an Owner's session, so it holds only what checks a signature.
+**Sessions are signed asymmetrically.** The provider holds the private key; applications verify with the
+published public one.
 
 ```
-GET /auth/cluster/public-key
+GET /.well-known/jwks.json
 {"keys":[{"kty":"EC","crv":"P-256","x":"…","y":"…","alg":"ES256","use":"sig","kid":"…"}]}
 ```
 
-The key is a set so rotation has somewhere to go: publish the incoming key beside the outgoing one,
-let every verifier pick up both, then move the signer. `kid` is the key's own RFC 7638 thumbprint,
-so two holders of one key compute one id.
+The key is a set so rotation has somewhere to go: publish the incoming key beside the outgoing one, let
+every verifier pick up both, then move the signer. `kid` is the key's own RFC 7638 thumbprint.
 
 **The private key is generated once and never replaced by accident.** It lives at
 `/var/lib/tks-auth/session-signing.pem`, `0600`, created with that mode rather than chmod'd
 after — the gap between the two is the window the whole mode exists to close. A file that exists and
-cannot be read stops the daemon: replacing it invalidates every session in the cluster and leaves
-every member checking against a key nothing signs with, so "this anchor has no key yet" and "this
-anchor's key is unreadable" must not take the same path. The public half is served at
-`/.well-known/jwks.json` and, with the KGSM module, at `/auth/cluster/public-key` and gossiped to every
-member.
+cannot be read stops the daemon: replacing it invalidates every session and leaves every application
+checking against a key nothing signs with, so "no key yet" and "the key is unreadable" must not take the
+same path.
 
-**KGSM's access is evaluated on every request, never read off the token.** A KGSM session carries no
-claim about it, so a change of access lands at the caller's next request. The account's standing is
-re-read on refresh too, and a withdrawn account has its session ended there rather than being left to
-run out its bearer.
-
-**Nothing on the serving path leaves the machine.** Signature checks are local and the standing read
-is a local point query, which is what lets a member keep serving and keep refreshing while the
-anchor is unreachable.
+**An application's access is evaluated at every mint, never read off an old token.** The account's
+standing is re-read on refresh too, and a withdrawn account has its session ended there rather than being
+left to run out its bearer.
 
 ### The OpenID Connect provider
 
-The anchor is also the cluster's OpenID Connect provider — authorization code with PKCE (S256), public
-and confidential clients, no consent screen — served at its issuer. `Anchor__Issuer` is the provider's one address, set by the deployment in
-`/etc/tks-auth/tks-auth.env` and never from a configuration surface (`https://auth.example.com`): browsers
-sign in at it, every provider callback is built on it, and members reach it there. With anything but a URL
+The provider speaks authorization code with PKCE (S256), public and confidential clients, no consent
+screen, at its issuer. `Auth__Issuer` is the provider's one address, set by the deployment in
+`/etc/tks-auth/tks-auth.env` (`https://auth.example.com`): browsers sign in at it and every provider
+callback is built on it. With anything but a URL
 every door below answers `no_issuer` and mints nothing. An https issuer is served by `tks-auth-serve`, which
 issues the name's certificate and renders its vhost. The design is `kgsm-docs/systems/identity/sign-in.md`, the wire
 `kgsm-docs/reference/oidc-provider.md`.
@@ -285,13 +247,13 @@ issues the name's certificate and renders its vhost. The design is `kgsm-docs/sy
 | `GET /authorize/{provider}` | an external provider's round trip for the request in flight |
 | `POST /token` | `authorization_code` or `refresh_token`; access, refresh and `id_token`. A confidential client authenticates by `client_secret_basic` or `client_secret_post`, and may exchange a Discord credential for an access token (see [Exchanging a Discord credential](#exchanging-a-discord-credential)) |
 | `POST /revoke` | end the session a refresh token belongs to (RFC 7009), on behalf of the client it was minted for; `200` for any token that ends nothing (see [Signing a device out](#signing-a-device-out)) |
-| `GET /userinfo` | the account behind a KGSM bearer |
+| `GET /userinfo` | the account behind a bearer |
 | `GET /sign-out`, `POST /sign-out` | end a browser's sign-in and everything minted under it; asks without a hint |
-| `/auth/cluster/applications` | the applications and their clients and secrets, on `auth:applications.manage` (see [Applications](#applications)) |
+| `/auth/admin/applications` | the applications and their clients and secrets, on `auth:applications.manage` (see [Applications](#applications)) |
 
-**Two cookies on the anchor's own origin, both `HttpOnly; SameSite=Lax; Path=/`.** `kgsm_authz` names
+**Two cookies on the provider's own origin, both `HttpOnly; SameSite=Lax; Path=/`.** `tks_auth_authz` names
 the request in flight, held here for ten minutes so the page and its form carry no request field.
-`kgsm_anchor` names the browser's provider session, a row in the session registry beside the sessions
+`tks_auth_session` names the browser's provider session, a row in the session registry beside the sessions
 minted under it; a second surface comes back signed in on the strength of it. Each holds a random
 secret and the row is found by its hash.
 
@@ -301,16 +263,12 @@ keeps them. The sessions page lists the provider session with `kind: provider`; 
 signing out.
 
 **Every client belongs to an application,** and a client with none signs nobody in. An application has the
-clients registered with it. A Control Panel on a static host is declared in `Anchor__PanelOrigins`: one
-client per origin of the `kgsm` application, id the origin's host, at the paths every panel lands on
-(`ClusterClientAnnouncement.ControlPanel`), never stored and never removable through the registry. A
-surface a member announces through the `auth.client` fact is stored with no application until
-`tks-auth app adopt <application>` moves it, and every client with no application, under that
-application as a client registered by hand. Redirects are matched exactly and must be HTTPS, or HTTP where
-the cluster itself accepts plaintext — this machine, a private network or a local name — so a cluster of
-one on a LAN has somewhere to send a code. A registered client's origin may read discovery, the key set,
-`/token`, `/revoke`, `/device_authorization`, `/userinfo` and the account API across origins, without credentials; nothing that reads the
-anchor's cookie answers another origin.
+clients registered with it, by the Applications admin page or `tks-auth app client add`. tks-auth's own
+admin pages are the one declared client: public, built in, redirecting to `/admin/` on the issuer's own
+origin. Redirects are matched exactly and must be HTTPS, or HTTP on this machine, a private network or a
+local name. A registered client's origin may read discovery, the key set, `/token`, `/revoke`,
+`/device_authorization`, `/userinfo` and the account API across origins, without credentials; nothing that
+reads the provider's cookie answers another origin.
 
 **The floor.** The sign-in page is a plain document with a working form and the provider links, under a
 content security policy with no inline script or style and `form-action` naming the one client the
@@ -319,25 +277,23 @@ request returns to. It signs somebody in with scripting off.
 ### The pages, the account page and the admin pages
 
 The pages people see are this repo's `web/`, shipped in the package beside the binary and read from
-`Anchor__UiPath` (`/opt/tks-auth/ui`) on every request, their assets served at `/ui/`. Each is a
+`Auth__UiPath` (`/opt/tks-auth/ui`) on every request, their assets served at `/ui/`. Each is a
 document with its own floor — the sign-in form, a wait that refreshes only with scripting off — which
-the application replaces on mount; the anchor fills in the provider links and nothing else. Absent,
-the anchor renders the floor itself and says the pages are not installed, and a plain form post that
+the application replaces on mount; the provider fills in the provider links and nothing else. Absent,
+the provider renders the floor itself and says the pages are not installed, and a plain form post that
 fails is always answered on that built-in page with the reason.
 
 **The admin pages** are `/admin/`: accounts and their approval, roles, permissions, the catalog grouped
-by application, assignments, service requests and applications. They are an OpenID Connect client of
+by application, assignments and applications. They are an OpenID Connect client of
 this provider — the built-in public client `tks-auth`, redirecting to `/admin/` on the issuer's own
 origin — and call the admin routes below with a token for tks-auth's own application (audience
-`tks-auth`), which those routes accept beside a KGSM session and no other application's token is. A
-page's parameters ride in its address, so another surface opens it at a scope:
-`/admin/#/assignments?scope=instance:<node>/<id>%23<nonce>&label=<name>`.
+`tks-auth`), which those routes accept and no other application's token is.
 
 | | |
 |---|---|
 | `GET /` | a redirect to the account page |
 | `GET /account` | the account page, or its sign-in when this browser holds none |
-| `GET /account/sign-in` | sign in at the anchor to reach the account page; no code is minted |
+| `GET /account/sign-in` | sign in at the provider to reach the account page; no code is minted |
 | `GET /account/me` | the account, its identities, its sessions and until when the last proof is recent |
 | `POST /account/reauth` | the password again; `GET /account/reauth/{provider}` for an account with none |
 | `POST /account/password` | set its own password |
@@ -345,9 +301,9 @@ page's parameters ride in its address, so another surface opens it at a scope:
 | `POST /account/sessions/revoke`, `POST /account/sign-out` | end a session, all of them, or this browser's sign-in |
 | `POST /account/sessions/name` | rename a device signed in to the account, `{sid, name}`; empty takes the name away, and anything not a device is `not_a_device` |
 
-Every call is authenticated by `kgsm_anchor` and every write is same-origin only. **Changing how
+Every call is authenticated by `tks_auth_session` and every write is same-origin only. **Changing how
 somebody signs in needs a recent proof** — the provider session's last credential inside
-`Anchor__ReauthWindowMinutes` — and the page asks for the password (or a round trip to a provider the
+`Auth__ReauthWindowMinutes` — and the page asks for the password (or a round trip to a provider the
 account already holds) when it is older. A provider round trip for that purpose accepts only an identity
 already attached to the same account; it never signs anybody in and never makes an account.
 
@@ -355,8 +311,7 @@ already attached to the same account; it never signs anybody in and never makes 
 origin reads the discovery document, exchanges its code and drives the administration with the bearer
 it holds, so every registered client's origin is answered on those paths — without credentials, and
 never on anything that reads the provider's cookie. There is deliberately no wildcard: this surface
-mints credentials. The `kgsm` application's clients' origins are published as `auth.origins` for every member to admit;
-any other application is nothing a member serves, and none of its origins is published.
+mints credentials.
 
 ### Applications
 
@@ -365,10 +320,8 @@ actions are declared in (`cinema` declares `cinema:*`), a name, an **audience**,
 its action manifest at, an access lifetime, the Discord applications its clients may present, whether
 it may act for linked Discord users, and the clients it signs people in through. **One is built in:**
 tks-auth itself (`auth`), whose audience is `tks-auth`, whose one client is the admin pages', and whose
-tokens list the `auth:*` actions the account holds. Every other application, KGSM's (`kgsm`) included,
-is registered on `auth:applications.manage`, by the Applications admin page or on the host, and is stored
-beside the clients in the session store. The `kgsm` application is the one whose manifest may name the
-components KGSM's members declare as well.
+tokens list the `auth:*` actions the account holds. Every other application is registered on `auth:applications.manage`, by the Applications admin page or on
+the host, and is stored beside the clients in the session store.
 
 ```bash
 tks-auth app add cinema --name "Krystal Cinema" --manifest https://movies.example.com/.well-known/tks-actions.json \
@@ -376,13 +329,12 @@ tks-auth app add cinema --name "Krystal Cinema" --manifest https://movies.exampl
 tks-auth app client add cinema --client-id cinema-api --confidential     # the secret is printed once
 tks-auth app set cinema --lifetime 5
 tks-auth app rotate-secret cinema cinema-api
-tks-auth app adopt kgsm                # every client with no application becomes a client of kgsm
+tks-auth app adopt cinema              # every client with no application becomes a client of cinema
 tks-auth app list
 tks-auth app remove cinema
-tks-auth migrate kgsm                  # prints the roles it would make and the grants it would drop; --apply does it
 ```
 
-The command and `/auth/cluster/applications` (`GET`/`POST`, `PATCH`/`DELETE …/{id}`,
+The command and `/auth/admin/applications` (`GET`/`POST`, `PATCH`/`DELETE …/{id}`,
 `POST …/{id}/clients`, `DELETE …/{id}/clients/{client}`, `POST …/{id}/clients/{client}/secret`) are one
 code path, `ApplicationRegistry`, journaled as `auth.application.*`. The command runs as the provider's
 service account over the daemon's own files, and the daemon picks the change up within a second.
@@ -390,30 +342,28 @@ service account over the daemon's own files, and the daemon picks the change up 
 **An application's token is its own.** Its access token is audienced to the application, typed
 `at+jwt`, names the account in `sub` exactly as the `id_token` does, carries `client_id`, and lives the
 application's lifetime — five minutes unless set. It lists the application's actions the account holds in
-**`tks_actions`**, an array, evaluated by `AccessEvaluator` across the whole organization (the stored scope
-`cluster`) at every mint and every refresh, so a role taken away reaches the application within one
+**`tks_actions`**, an array, evaluated by `AccessEvaluator` at every mint and every refresh, so a role taken away reaches the application within one
 lifetime. Its refresh token is audienced to the issuer and is accepted nowhere but `/token`. Every resource
-server refuses a token that is not audienced to it; this provider's own doors take the cluster's
-sessions and its admin pages', and no application's.
+server refuses a token that is not audienced to it.
 
 **Confidential clients authenticate with a secret** the provider makes, shows once and keeps as a hash:
 `client_secret_basic` or `client_secret_post`, one at a time, and a wrong one is `invalid_client` with
 `401`. They are held to PKCE like every client, and only the client a session was minted for continues
 it.
 
-**The catalog pulls each application's manifest** — the format KGSM's components ship — from its address
-when it is registered, when the address changes and every `Anchor__ManifestRefreshMinutes`. Its actions
-are held under `application:<id>` beside every member's report and arrive unmapped. The document is one
+**The catalog pulls each application's manifest** (`kgsm-docs/reference/action-manifest.md`) from its address
+when it is registered, when the address changes and every `Auth__ManifestRefreshMinutes`. Its actions
+are held under `application:<id>` beside the provider's own and arrive unmapped. The document is one
 manifest in the application's own namespace, or a `manifests` list with one per component for an application
 whose actions span several namespaces; the application then owns its id and each of those components, its
 tokens list their actions, and a role that holds every action of it holds them all. A manifest in another
-namespace (an unlisted one, `auth`, a KGSM component's or another application's) or declaring requirements
-is refused whole, and one that cannot be read changes nothing.
+namespace (an unlisted one, `auth` or another application's) is refused whole, and one that cannot be read
+changes nothing.
 
 ### Exchanging a Discord credential
 
 An application whose surfaces live in Discord gets its tokens by **token exchange** (RFC 8693) at
-`/token`, from one of its confidential clients — never from a public one, and never for KGSM:
+`/token`, from one of its confidential clients — never from a public one:
 
 ```http
 POST /token
@@ -458,7 +408,7 @@ Discord sign-in here does. A Discord id alone makes nothing — learning who an 
 token — so it is `unknown` until the person signs in or links the identity.
 
 **What Discord says about a token is remembered for the token's life, at most
-`Anchor__DiscordTokenCacheMinutes` (10)**, under the token's SHA-256, so an Activity re-exchanging every
+`Auth__DiscordTokenCacheMinutes` (10)**, under the token's SHA-256, so an Activity re-exchanging every
 few minutes asks Discord once. A refusal or an outage is never remembered. A token revoked at Discord is
 still exchanged for up to that cap.
 
@@ -469,7 +419,50 @@ the account and the acting client.
 ### Signing a device in
 
 A screen with no browser to bounce — a television — signs in with the **device authorization grant**
-(RFC 8628), as a public client of an application outside KGSM registered for it:
+(RFC 8628), as a public client of an application registered for it:
+
+```bash
+tks-auth app client add cinema --client-id cinema-tv --device
+```
+
+The device asks for its codes, naming its client and, when it has one, the name its owner gave it:
+
+```http
+POST /device_authorization
+Content-Type: application/x-www-form-urlencoded
+
+client_id=cinema-tv&scope=openid&device_name=Living%20room%20TV
+```
+
+```json
+{ "device_code": "…", "user_code": "BKMR-QTFX",
+  "verification_uri": "https://auth.example/device",
+  "verification_uri_complete": "https://auth.example/device?user_code=BKMR-QTFX",
+  "expires_in": 600, "interval": 5 }
+```
+
+It shows the user code, and `verification_uri_complete` as a QR code, then asks `/token` every `interval`
+seconds with `grant_type=urn:ietf:params:oauth:grant-type:device_code`, its `device_code` and its
+`client_id`. Until somebody decides the answer is `authorization_pending`; asking sooner than the interval
+is `slow_down` and adds five seconds to it; a refusal is `access_denied` and a code nobody decided in ten
+minutes `expired_token`, each said once. An approval answers with an access token for the application and
+a refresh token, the code flow's pair without an `id_token`.
+
+The person opens `/device` on a phone or a computer, signs in if that browser is not signed in here, and
+is shown the application, their account, the code and what the device said it is before the two buttons,
+with the device's name in a field they may change. The name left there, cleaned and cut to 64 characters,
+is the device session's: listed with it and carried on its access tokens as `tks_device_name`.
+Only an active account approves, and the account is read again when the device collects. A browser that
+keeps entering codes that name no device is made to wait.
+
+**The device's session is a sign-in of its own.** It is listed on the account page as a device, renews
+with its refresh token like any other, and ends when it is ended there or the account is disabled — not
+when the browser that approved it signs out.
+
+### Signing a device in
+
+A screen with no browser to bounce — a television — signs in with the **device authorization grant**
+(RFC 8628), as a public client of an application registered for it:
 
 ```bash
 tks-auth app client add cinema --client-id cinema-tv --device
@@ -522,50 +515,15 @@ Content-Type: application/x-www-form-urlencoded
 token=<refresh token>&token_type_hint=refresh_token&client_id=cinema-tv
 ```
 
-The answer is `200` with no body. The session that refresh token belongs to ends here and on every
-member, and the line is `auth.session.revoked` with scope `self`. Any client ends its own sessions this
+The answer is `200` with no body. The session that refresh token belongs to ends, and the line is `auth.session.revoked` with scope `self`. Any client ends its own sessions this
 way; a session minted under a browser's sign-in ends alone and the browser stays signed in.
 
 - **Only the client the session was minted for.** A public client names its `client_id`; a confidential
   one authenticates as at `/token`, and without its secret is `invalid_client`. A token presented by, or
-  naming, another client is `unauthorized_client` and ends nothing. A KGSM session, recorded with no
-  client, ends for whoever presents its refresh token, as it continues for them.
+  naming, another client is `unauthorized_client` and ends nothing.
 - **Nothing is learned from the answer.** A token that does not verify, has expired, or belongs to a
   session already ended is `200`, the same as one that was revoked. An access token is `200` and ends
   nothing: it is a bearer resource servers hold, and it lives minutes. The hint is not read.
-
-### One member of a cluster
-
-With the KGSM module, the anchor joins a cluster **directly** — not through a node, not through an
-API — as a member of kind `anchor`. It needs the shared secret in `/etc/kgsm/kgsm-cluster.env` and
-nothing else; a machine with no secret is not part of a cluster, which is a state rather than a
-misconfiguration.
-
-**Which member holds the accounts is cluster state, not configuration.** When nobody holds them, the
-anchor on the machine that founded the cluster claims them — the machine whose founding record,
-`/etc/kgsm/cluster-founded`, names the secret it holds. An anchor anywhere else never claims: an empty
-assignment there means gossip has not reached it yet, and a claim made in that window competes with the
-real holder. Only a reassignment under `api:members.manage` moves the accounts afterwards. Nothing promotes itself — an
-anchor that did so during a partition would produce two members issuing conflicting statements about
-who may do what.
-
-That gives an anchor three standings, and the first is what leaves a standalone install alone:
-
-| standing | when | what it serves |
-|---|---|---|
-| **standalone** | no cluster secret | everything. Its accounts are this machine's and there is no assignment to read |
-| **holder** | the assignment names it | everything |
-| **standing by** | the assignment names somebody else, or nobody yet | `503 not_the_anchor`, naming the holder in the message and on an `X-Kgsm-Auth-Holder` header |
-
-A member standing by is a **promotion candidate, not a second authority**: the sessions it could mint
-would be signed with a key no member verifies against. Signing out stays open even then — it takes
-authority away rather than granting it, and refusing would strand whoever is signed in to a member
-that has since become a candidate.
-
-**The key reaches other members as a gossiped fact** the anchor publishes about itself, which a reader
-resolves *through the holder* — so a key stated by a member that does not hold the capability is never
-consulted. A leaf, which does not join the cluster, reads the host file the node on its machine writes
-from that same read (`Auth.Cluster`'s `HostProviderFile`).
 
 ### Running one
 
@@ -574,22 +532,17 @@ from that same read (`Auth.Cluster`'s `HostProviderFile`).
 ./deploy/deploy.sh         # every deploy, no sudo, no prompts — the binary and the pages (needs node)
 ```
 
-Its whole configurable surface is `src/Auth.Anchor/tks-auth.settings.json`, which the build
-generates `deploy/tks-auth.anchor.json` from — so the Control Panel renders the page from the
-same declaration the daemon binds. Edit the settings class, never the JSON.
-
-The pacman package installs it **switched off**. A cluster has one anchor and which machine holds it
-is a decision, so installing the package claims nothing: a second machine with it installed and
-stopped is a promotion candidate rather than a second authority.
+A checkout deploy runs the unit as the deploying user. The pacman package installs it **switched off**,
+as the `tks-auth` system user, with its state in `/var/lib/tks-auth`; enable it once `Auth__Issuer` is set.
 
 ## Accounts
 
-**KGSM owns users.** An account exists on its own — a local password is enough to sign in, with no
+**The provider owns users.** An account exists on its own — a local password is enough to sign in, with no
 external provider configured at all. A Discord, GitHub or Google identity is one *credential attached
 to* an account, never the source of one, and never a source of authority.
 
 ```csharp
-var store  = new SqliteAuthorityStore(new UserStoreOptions());     // the anchor's account store
+var store  = new SqliteAuthorityStore(new UserStoreOptions());     // the account store
 var signIn = new LocalSignInService(store, new IdentityPasswordHasher());
 
 LocalSignInResult result = await signIn.SignInAsync(username, password, DateTimeOffset.UtcNow);
@@ -601,21 +554,23 @@ if (result.Outcome == LocalSignInOutcome.Success)
 Nothing else contributes. That is what lets a provider be added with no access story of its own — the
 login path is the same shape whichever credential proved the account.
 
-**One writer, and a replica on every member.** The anchor's store is the authority; every other member
-holds a read-only replica in its own file, built from the anchor's snapshot and kept current by the
-changes it sends, and evaluates every request from that. A member's replica is a host *resource*, not a
-service, so nothing on the serving path can be down, and no leaf ends up authenticating through a
-sibling.
+**One writer.** The provider is the only process that writes the account store, and every request is
+evaluated from it, so a change of access lands on the next request.
 
-### The schema rule is the opposite of everywhere else
+### The schema rule
 
-Elsewhere in the ecosystem a schema change means wiping the database. **That cannot apply here**:
-wiping this one is every account, every password and every link, with nothing to re-derive them from.
-Two services also deploy separately, so at any moment one may be a version ahead of the other.
+Wiping this database is every account, every password and every link, with nothing to re-derive them
+from, so the ecosystem's `EnsureCreated`-and-wipe rule does not apply. A schema change is a migration
+that runs once, inside a transaction, when the file is opened: it keeps every account, credential, role,
+permission and assignment, and a copy of the file as it was is written beside it first
+(`accounts.db.pre-<version>`). A file at a version this build neither reads nor upgrades from is
+**refused outright** rather than half read.
 
-So changes are **additive only** — add tables, add nullable columns, add indexes; never drop, rename,
-or change what a stored value means. The file carries a `schema_version`, and a store written by a
-build newer than the one opening it is **refused outright** rather than half read.
+Opening a file written by schema version 2 upgrades it once: the replication tables, the service accounts
+and their requirements, and every assignment at a node or an instance are dropped (each assignment is
+logged with its account, role and scope, so it can be granted again), and the actions members of a KGSM
+cluster had reported stay in the catalog as the report of the application `kgsm`, until that application's
+own manifest replaces it.
 
 ### What a password costs
 
@@ -627,9 +582,6 @@ build newer than the one opening it is **refused outright** rather than half rea
   magnitude within a handful of attempts.
 - **The file is `0600`, and `-wal`/`-shm` with it.** SQLite gives those two the mode the database had
   when it created them, so the store sets the mode *before* enabling WAL.
-- **It lives in a directory the service user owns**, not directly under the root-owned
-  `/var/lib/kgsm/`. SQLite writes `-wal` and `-shm` *beside* the database, so WAL needs write
-  permission on the **directory**, not just the file — the same reason `events/` and `leaves/` are
-  their own directories.
-- **No SMTP, anywhere.** A reset is set by somebody holding `auth:accounts.create`. Adding a mail dependency to the thing whose
-  purpose is removing outside dependencies would be self-defeating.
+- **It lives in a directory the service user owns** (`/var/lib/tks-auth`). SQLite writes `-wal` and
+  `-shm` *beside* the database, so WAL needs write permission on the **directory**, not just the file.
+- **No SMTP, anywhere.** A reset is set by somebody holding `auth:accounts.create`.

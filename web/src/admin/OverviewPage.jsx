@@ -1,7 +1,6 @@
-// OverviewPage — what waits on somebody: accounts awaiting approval, services' requirements awaiting a
-// decision, engine actions no permission holds, and the applications this provider signs people in to.
+// OverviewPage — what waits on somebody: accounts awaiting approval, actions no permission holds, and the applications this provider signs people in to.
 //
-// The authority read carries the accounts, the service requirements and the catalog, so the first three
+// The authority read carries the accounts and the catalog, so the first two
 // cards are drawn from it whenever something is waiting; the applications card is drawn when the provider
 // offers the person the applications read (`callRefusal`). With nothing waiting the page says so.
 
@@ -46,18 +45,12 @@ function OverviewPage() {
 
   const view = state.view;
   const pending = view.accounts.filter((a) => a.status === "pending");
-  const waiting = view.accounts.filter((a) => (a.requirements || []).some((q) => q.state === "waiting"));
-  const waitingCount = waiting.reduce((n, a) => n + a.requirements.filter((q) => q.state === "waiting").length, 0);
   const unmapped = view.catalog.filter((a) => a.unmapped);
 
   const attention = [
     pending.length > 0 && (
       <Card key="accounts" id="accounts" icon="user-check" title="Waiting for approval" count={pending.length} tone="warn"
         page="accounts" items={pending.map((a) => a.displayName || a.username)} />
-    ),
-    waitingCount > 0 && (
-      <Card key="services" id="services" icon="bot" title="Service requests" count={waitingCount} tone="warn"
-        page="services" items={waiting.map((a) => a.username)} />
     ),
     unmapped.length > 0 && (
       <Card key="catalog" id="catalog" icon="list-tree" title="Unmapped actions" count={unmapped.length} tone="info"

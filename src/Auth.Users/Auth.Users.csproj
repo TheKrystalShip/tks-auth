@@ -7,19 +7,14 @@
     <RootNamespace>TheKrystalShip.Auth.Users</RootNamespace>
     <AssemblyName>TheKrystalShip.Auth.Users</AssemblyName>
 
-    <PackageId>TheKrystalShip.Auth.Users</PackageId>
-    <Authors>Heisenberg</Authors>
-    <Version>3.1.1</Version>
+    <IsPackable>false</IsPackable>
     <Description>
-      The KGSM account store: accounts, the credentials that prove them (a local password, a linked
-      external identity), and the access model beside them — permissions, roles, scoped assignments,
-      service accounts and the catalog — read into an Auth.Access snapshot and written only through its
-      rules. A user exists on its own: an external provider is one way to prove you are a user KGSM
-      already knows about, never the source of one. One SQLite file, held by the auth anchor and
-      replicated read-only to every member.
+      The provider's account store: accounts, the credentials that prove them (a local password, a linked
+      external identity), and the access model beside them (permissions, roles, assignments and the
+      catalog), read into an Auth.Access snapshot and written only through its rules. A user exists on
+      its own: an external provider is one way to prove you are a user already known, never the source
+      of one. One SQLite file.
     </Description>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,9 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Raw ADO, not EF: kgsm-api sits on EF and kgsm-assistant does not, and the store has to be the
-         same file read the same way from both. Microsoft.Data.Sqlite is what EF's provider itself
-         sits on, so the two surfaces share one native SQLite rather than stacking a second. -->
+    <!-- Raw ADO, not EF: the daemon is Native AOT, which an ORM would block. -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
     <!-- PasswordHasher<T> only: a versioned, reviewed PBKDF2 with rehash-on-upgrade built in. The
          UserManager/EF Identity stack above it is deliberately not taken — this package owns its
@@ -39,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Scoped NuGet-audit suppression, same advisory and same reasoning as kgsm-api's: a native
+    <!-- Scoped NuGet-audit suppression: a native
          SQLite lib (SQLitePCLRaw.lib.e_sqlite3 2.1.11) pulled transitively, where 2.1.11 is the
          latest published build and there is nothing to move to. This store holds no untrusted SQL
          and is never network-reachable — it is a local file on one host. Delete this the moment a
@@ -51,10 +44,6 @@
     <!-- The on-disk spelling of the store's enums and timestamps is internal — it is a file format,
          not a contract a consumer writes against — and the tests that pin it need to see it. -->
     <InternalsVisibleTo Include="TheKrystalShip.Auth.Users.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

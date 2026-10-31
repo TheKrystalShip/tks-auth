@@ -1,6 +1,6 @@
 // CatalogPage — every action declared to this provider, grouped by the application it belongs to:
-// tks-auth's own, KGSM's (each component a group of its own) and each registered application's, with
-// its effect, the scope kind it is granted at, and who declares it at which version.
+// tks-auth's own and each registered application's (each component a group of its own), with
+// its effect and who declares it at which version.
 //
 // *Unmapped* is an action filed into no permission: nobody but an Owner can perform it until it is. The
 // application and unmapped filters are in the address (`#/catalog?application=…&unmapped=1`), so a link
@@ -121,7 +121,6 @@ function CatalogPage({ params }) {
                       sub={a.action}
                       meta={<>
                         <Pill size="sm" tone={EFFECT_TONE[a.effect]}>{a.effect}</Pill>
-                        <Pill size="sm">{a.self ? "self" : a.scope}</Pill>
                         {a.unmapped && !(canFile && view.permissions.length > 0) && <Pill size="sm" tone="warn">unmapped</Pill>}
                       </>}
                       aside={a.declaredBy.map((d) => d.member + (d.version ? " " + d.version : "")).join(", ") || "—"}

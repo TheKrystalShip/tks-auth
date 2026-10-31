@@ -39,7 +39,7 @@ public enum UnlinkOutcome
 }
 
 /// <summary>The account an identity now proves, and how it came to.</summary>
-public readonly record struct LinkResult(LinkOutcome Outcome, KgsmUser? User)
+public readonly record struct LinkResult(LinkOutcome Outcome, UserAccount? User)
 {
     /// <summary>Whether an account came out of this at all.</summary>
     public bool Succeeded => User is not null;
@@ -104,11 +104,11 @@ public sealed class IdentityLinkService(IUserStore store)
     /// this is what a login path calls on every sign-in rather than only the first.
     /// </remarks>
     public async Task<LinkResult> ResolveOrProvisionAsync(
-        KgsmIdentity identity, DateTimeOffset now, PendingPolicy policy, CancellationToken ct = default)
+        AccountIdentity identity, DateTimeOffset now, PendingPolicy policy, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
 
-        KgsmUser? existing = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
+        UserAccount? existing = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
         if (existing is not null)
             return new LinkResult(LinkOutcome.Existing, existing);
 
@@ -131,14 +131,14 @@ public sealed class IdentityLinkService(IUserStore store)
     /// account.
     /// </remarks>
     public async Task<LinkResult> ProvisionAsync(
-        KgsmIdentity identity, AccountOrigin origin, UserStatus status,
+        AccountIdentity identity, AccountOrigin origin, UserStatus status,
         DateTimeOffset now, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
 
         string userId = UserIds.NewUserId();
         string username = await AvailableUsernameAsync(identity, ct).ConfigureAwait(false);
-        KgsmUser user = new(
+        UserAccount user = new(
             userId, username,
             // The provider's own rendering of their name, kept verbatim: it is displayed, never
             // matched, so none of the username charset applies to it.
@@ -168,7 +168,7 @@ public sealed class IdentityLinkService(IUserStore store)
             // Another caller provisioned this same identity first. Drop the account just created —
             // it has no credentials, so nothing can ever sign in to it — and answer with theirs.
             await store.DeleteAsync(userId, ct).ConfigureAwait(false);
-            KgsmUser? winner = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
+            UserAccount? winner = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
             return new LinkResult(LinkOutcome.Existing, winner);
         }
 
@@ -185,17 +185,17 @@ public sealed class IdentityLinkService(IUserStore store)
     /// an error.
     /// </remarks>
     public async Task<LinkResult> LinkAsync(
-        string userId, KgsmIdentity identity, DateTimeOffset now, CancellationToken ct = default)
+        string userId, AccountIdentity identity, DateTimeOffset now, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(identity);
 
-        KgsmUser? holder = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
+        UserAccount? holder = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
         if (holder is not null)
             return holder.UserId == userId
                 ? new LinkResult(LinkOutcome.Existing, holder)
                 : new LinkResult(LinkOutcome.AlreadyLinked, holder);
 
-        KgsmUser? user = await store.FindByIdAsync(userId, ct).ConfigureAwait(false);
+        UserAccount? user = await store.FindByIdAsync(userId, ct).ConfigureAwait(false);
         if (user is null)
             return new LinkResult(LinkOutcome.AlreadyLinked, null);
 
@@ -207,7 +207,7 @@ public sealed class IdentityLinkService(IUserStore store)
         }
         catch (DuplicateCredentialException)
         {
-            KgsmUser? winner = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
+            UserAccount? winner = await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
             return winner?.UserId == userId
                 ? new LinkResult(LinkOutcome.Existing, user)
                 : new LinkResult(LinkOutcome.AlreadyLinked, winner);
@@ -254,7 +254,7 @@ public sealed class IdentityLinkService(IUserStore store)
     public async Task<int> CountPendingAsync(CancellationToken ct = default)
     {
         int pending = 0;
-        foreach (KgsmUser user in await store.ListAsync(ct).ConfigureAwait(false))
+        foreach (UserAccount user in await store.ListAsync(ct).ConfigureAwait(false))
         {
             if (user.Status == UserStatus.Pending)
                 pending++;
@@ -292,7 +292,7 @@ public sealed class IdentityLinkService(IUserStore store)
         DateTimeOffset cutoff = now - policy.Ttl;
         int removed = 0;
 
-        foreach (KgsmUser user in await store.ListAsync(ct).ConfigureAwait(false))
+        foreach (UserAccount user in await store.ListAsync(ct).ConfigureAwait(false))
         {
             if (user.Status != UserStatus.Pending || user.Created > cutoff)
                 continue;
@@ -310,7 +310,7 @@ public sealed class IdentityLinkService(IUserStore store)
     // The name a provisioned account gets: the provider's, reduced to this charset, plus a numeric
     // suffix if it is taken. The check is advisory — the insert is what actually decides — so a lost
     // race falls back to the form nobody else can hold.
-    private async Task<string> AvailableUsernameAsync(KgsmIdentity identity, CancellationToken ct)
+    private async Task<string> AvailableUsernameAsync(AccountIdentity identity, CancellationToken ct)
     {
         string? preferred = Usernames.Sanitize(identity.Username) ?? Usernames.Sanitize(identity.Display);
         if (preferred is null)
@@ -337,7 +337,7 @@ public sealed class IdentityLinkService(IUserStore store)
 
     // Unique by construction, because a subject is unique within its provider and the handle is
     // unique across the store. Ugly on purpose: it is what somebody renames.
-    private static string FallbackUsername(KgsmIdentity identity)
+    private static string FallbackUsername(AccountIdentity identity)
     {
         string raw = $"{identity.Provider}-{identity.Subject}";
         return Usernames.Sanitize(raw) ?? raw[..Math.Min(raw.Length, Usernames.MaxLength)];

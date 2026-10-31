@@ -22,7 +22,6 @@ const PLACES = [
 
   { group: "people", id: "overview", label: "Overview", icon: "layout-dashboard", doc: "admin", hash: "#/overview" },
   { group: "people", id: "accounts", label: "Accounts", icon: "users", doc: "admin", hash: "#/accounts" },
-  { group: "people", id: "services", label: "Service requests", icon: "bot", doc: "admin", hash: "#/services" },
 
   { group: "access", id: "roles", label: "Roles", icon: "shield", doc: "admin", hash: "#/roles" },
   { group: "access", id: "permissions", label: "Permissions", icon: "key-round", doc: "admin", hash: "#/permissions" },

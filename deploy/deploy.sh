@@ -12,20 +12,19 @@
 #   * the binary, its dlopen'd native libs and its settings file go to /opt/tks-auth, and the pages
 #     built from web/ to /opt/tks-auth/ui beside them, where the settings file's UiPath points,
 #   * the systemd unit is refreshed only if it changed (a write to a file you own + daemon-reload),
-#   * the config descriptor is installed before the swap, so it never lags the binary,
 #   * deploy is verified by an actual 200 from GET /health.
 #
 # The private signing key is NOT touched. It lives in the unit's state directory, is generated once
-# on a machine that has none, and every session in the cluster is verified against its public half —
-# so a deploy that replaced it would invalidate every session at once.
+# on a machine that has none, and every token is verified against its public half — so a deploy that
+# replaced it would invalidate every session at once.
 #
-# Knobs: RID, ANCHOR_PORT, HEALTH_TRIES.
+# Knobs: RID, AUTH_PORT, HEALTH_TRIES.
 #
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/deploy-common.sh"
 
-PROJECT_CSPROJ="$REPO_DIR/src/Auth.Anchor/Anchor.csproj"
+PROJECT_CSPROJ="$REPO_DIR/src/Auth.Server/Server.csproj"
 RID="${RID:-linux-x64}"
 
 STOPPED=0
@@ -70,11 +69,6 @@ cp -a "$REPO_DIR/web/dist" "$PUBLISH_DIR/ui"
 # ── 2. Refresh the unit if it changed (we own the file; systemd reads it via the symlink) ──
 install_units_unprivileged
 
-# ── 2b. Publish the config descriptor ─────────────────────────────────────────
-# Before the swap, so the surface kgsm-api reads never lags the binary that implements it. The
-# publish above regenerated it from the source being deployed, not from whatever was last committed.
-install_leaf_descriptor
-
 # ── 3. The swap ───────────────────────────────────────────────────────────────
 log "stopping ${SERVICE}"
 sysctl_do stop "$SERVICE" || true
@@ -97,12 +91,12 @@ sysctl_do start "$SERVICE"
 STOPPED=0
 
 # ── 4. Verify (an actual 200 from /health) ────────────────────────────────────
-log "waiting for ${SERVICE} to report healthy on 127.0.0.1:${ANCHOR_PORT} ..."
+log "waiting for ${SERVICE} to report healthy on 127.0.0.1:${AUTH_PORT} ..."
 if wait_health; then
     log "tks-auth is up and healthy ✓"
     systemctl --no-pager --lines=0 status "$SERVICE" 2>/dev/null | head -n 4 || true
 else
-    err "service started but GET /health on 127.0.0.1:${ANCHOR_PORT} did not return 200 within ${HEALTH_TRIES}s. Recent logs:"
+    err "service started but GET /health on 127.0.0.1:${AUTH_PORT} did not return 200 within ${HEALTH_TRIES}s. Recent logs:"
     journalctl -u "$SERVICE" -n 30 --no-pager || true
     exit 1
 fi

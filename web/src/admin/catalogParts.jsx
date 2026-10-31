@@ -12,11 +12,11 @@ import { accessStore, callRefusal } from "./stores.js";
 const APPLICATION = "application:";
 
 // The application an action belongs to: the registered application whose manifest declares it, this
-// provider for its own, and KGSM for what a cluster's members declare.
+// provider for its own.
 function applicationOf(action) {
   const declarer = (action.declaredBy || []).find((d) => d.member.startsWith(APPLICATION));
   if (declarer) return declarer.member.slice(APPLICATION.length);
-  return componentOf(action.action) === "auth" ? "auth" : "kgsm";
+  return componentOf(action.action);
 }
 
 // An application id by the name a person reads. The registered applications are read when the
@@ -29,11 +29,11 @@ function useApplicationNames() {
   return React.useCallback((id) => {
     if (id === "auth") return "tks-auth";
     const a = (list || []).find((x) => x.id === id);
-    return a ? a.name : id === "kgsm" ? "KGSM" : id;
+    return a ? a.name : id;
   }, [list]);
 }
 
-// Applications in the order a catalog lists them: this provider's, KGSM's, then the registered ones by name.
-const applicationRank = (id) => (id === "auth" ? 0 : id === "kgsm" ? 1 : 2);
+// Applications in the order a catalog lists them: this provider's, then the registered ones by name.
+const applicationRank = (id) => (id === "auth" ? 0 : 1);
 
 export { applicationOf, applicationRank, useApplicationNames };

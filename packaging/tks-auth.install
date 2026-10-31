@@ -1,62 +1,30 @@
-# The preset policy in kgsm-base leaves this daemon off; applying it is symlink manipulation on disk,
-# so it works during the transaction and in a chroot alike. Starting it is the node's post-transaction
-# hook's job, which is where a running system is available.
-#
-# Every install is a cluster, and the machine that founded one runs its anchor. kgsm-base records
-# that in /etc/kgsm/cluster-founded — the SHA-256 of the secret it generated — and this hook switches
-# the anchor on only when that record matches the secret in /etc/kgsm/kgsm-cluster.env. A machine given
-# another cluster's secret has no record, or one that no longer matches, and its anchor stays off: a
-# fresh anchor there would claim the accounts before gossip told it somebody already holds them.
+# Installed and off: nothing starts the provider until it has an address to sign people in at.
 #
 # post_install only. An administrator who enabled or disabled this unit keeps that choice across every
-# later version — re-applying either decision on upgrade would quietly undo it.
-
-CLUSTER_ENV=/etc/kgsm/kgsm-cluster.env
-FOUNDED=/etc/kgsm/cluster-founded
-
-founded_here() {
-    [[ -r "$FOUNDED" && -r "$CLUSTER_ENV" ]] || return 1
-    local secret
-    secret="$(sed -n 's/^[[:space:]]*Cluster__Secret[[:space:]]*=[[:space:]]*//p' "$CLUSTER_ENV" | tail -n1)"
-    [[ -n "$secret" ]] || return 1
-    [[ "$(printf '%s\n' "$secret" | sha256sum | cut -d' ' -f1)" == "$(tr -d '[:space:]' < "$FOUNDED")" ]]
-}
+# later version.
 
 post_install() {
-    systemctl preset tks-auth.service > /dev/null 2>&1 || true
+    cat <<'MSG'
 
-    if founded_here; then
-        systemctl enable tks-auth.service > /dev/null 2>&1 || true
-        cat <<'MSG'
+  tks-auth is installed and OFF. Give it its one address in /etc/tks-auth/tks-auth.env:
 
-  tks-auth is ON: this machine founded its cluster, and its anchor holds the accounts and signs
-  people in. On its first start it generates the key every session in the cluster is signed with, at
-  /var/lib/tks-auth/session-signing.pem — never shipped by any package; back it up with the
-  account store — and leaves the first administrator's one-time password, readable by nobody else, in:
+      Auth__Issuer   the URL a browser signs in at, e.g. https://auth.example.com
+
+  then enable it:
+
+      systemctl enable --now tks-auth.service
+
+  On its first start it generates the key every token is signed with, at
+  /var/lib/tks-auth/session-signing.pem — never shipped by any package; back it up with the account
+  store — and leaves the first administrator's one-time password, readable by nobody else, in:
 
       /var/lib/tks-auth/initial-admin-password
 
-  What it needs from you is its one address, in /etc/tks-auth/tks-auth.env:
-
-      Anchor__Issuer   the URL a browser signs in at, e.g. https://auth.example.com
-
   An https issuer is served by tks-auth-serve.service, which issues the name's certificate through
-  nginx and certbot and renders its vhost: enable it once the name resolves to this machine.
-
-  The Control Panel the node serves becomes a client of it by itself, once the node names its own
-  browser address. Until the issuer is a URL the anchor signs nobody in through its OpenID Connect doors, and the node
-  names no sign-in provider. kgsm-meta/NODE-PROVISIONING.md §10·b has the rest.
+  nginx and certbot and renders its vhost: enable it once the name resolves to this machine. Until
+  the issuer is a URL the provider signs nobody in.
 
 MSG
-    else
-        cat <<'MSG'
-
-  tks-auth is installed and OFF: this machine joined a cluster somebody else runs, and that
-  cluster's anchor holds the accounts. Installed and stopped, it is a promotion candidate — an
-  administrator can reassign the accounts to it — and never a second authority.
-
-MSG
-    fi
 }
 
 post_upgrade() {
@@ -64,6 +32,9 @@ post_upgrade() {
 
   If pacman wrote a .pacnew beside /etc/tks-auth/tks-auth.env, merge it — new
   settings are declared there and a key the file never declares binds to nothing.
+
+  Opening an account store written by an earlier version upgrades it in place, after copying it to
+  accounts.db.pre-<version> beside it.
 
 MSG
 }

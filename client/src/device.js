@@ -16,7 +16,7 @@ export class DeviceSignInError extends Error {
 }
 
 /**
- * Posts a form to the anchor. Returns `{ status, body }`, or null when the anchor could not be asked
+ * Posts a form to the provider. Returns `{ status, body }`, or null when the provider could not be asked
  * or answered something that is not an OAuth document (a gateway page, a 5xx, a 429).
  */
 async function postForm(url, fields) {
@@ -55,7 +55,7 @@ export async function startDevice(ctx, options = {}) {
   } catch {
     throw new DeviceSignInError("unreachable");
   }
-  if (!endpoint || !tokenEndpoint) throw new DeviceSignInError("misconfigured", "The anchor serves no device sign-in.");
+  if (!endpoint || !tokenEndpoint) throw new DeviceSignInError("misconfigured", "The provider serves no device sign-in.");
 
   const clientId = manager.settings.client_id;
   const fields = { client_id: clientId, scope: "openid" };

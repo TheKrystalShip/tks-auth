@@ -1,7 +1,7 @@
 namespace TheKrystalShip.Auth.Users;
 
 /// <summary>
-/// Where KGSM accounts and their credentials live.
+/// Where accounts and their credentials live.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -23,35 +23,35 @@ namespace TheKrystalShip.Auth.Users;
 public interface IUserStore
 {
     /// <summary>The account with this id, or <see langword="null"/>.</summary>
-    Task<KgsmUser?> FindByIdAsync(string userId, CancellationToken ct = default);
+    Task<UserAccount?> FindByIdAsync(string userId, CancellationToken ct = default);
 
     /// <summary>
     /// The account with this username, matched case-insensitively through
     /// <see cref="Usernames.Key"/>, or <see langword="null"/>.
     /// </summary>
-    Task<KgsmUser?> FindByUsernameAsync(string username, CancellationToken ct = default);
+    Task<UserAccount?> FindByUsernameAsync(string username, CancellationToken ct = default);
 
     /// <summary>
     /// The account a credential handle proves, or <see langword="null"/> when no credential carries
     /// it. This is the whole of "does this external identity belong to anyone here": a subject that
     /// matches no row is a stranger, whatever group or guild they are in.
     /// </summary>
-    Task<KgsmUser?> FindByCredentialAsync(string handle, CancellationToken ct = default);
+    Task<UserAccount?> FindByCredentialAsync(string handle, CancellationToken ct = default);
 
     /// <summary>Every account, oldest first. The accounts page's list; there is no paging.</summary>
-    Task<IReadOnlyList<KgsmUser>> ListAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<UserAccount>> ListAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Add an account. Throws <see cref="DuplicateUsernameException"/> when the username is taken.
     /// </summary>
-    Task CreateAsync(KgsmUser user, CancellationToken ct = default);
+    Task CreateAsync(UserAccount user, CancellationToken ct = default);
 
     /// <summary>
     /// Overwrite an account's mutable fields — username, display name, origin and status.
     /// Returns <see langword="false"/> when no such account exists; throws
     /// <see cref="DuplicateUsernameException"/> when the new username is taken by another.
     /// </summary>
-    Task<bool> UpdateAsync(KgsmUser user, CancellationToken ct = default);
+    Task<bool> UpdateAsync(UserAccount user, CancellationToken ct = default);
 
     /// <summary>
     /// Erase an account and everything attached to it. Returns <see langword="false"/> when there

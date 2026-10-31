@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createSession } from "../src/index.js";
 import { useSession } from "../src/react.js";
-import { jwt } from "./anchor.js";
+import { jwt } from "./provider.js";
 
 describe("useSession", () => {
   it("renders the snapshot and re-renders when it changes", () => {

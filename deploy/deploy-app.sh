@@ -37,6 +37,6 @@ mv -f "$PREFIX/ui/.auth.apk.part" "$PREFIX/ui/auth.apk"
 
 # ── 3. Verify ─────────────────────────────────────────────────────────────────
 built="$(md5sum < "$apk")"
-served="$(curl -sf "http://127.0.0.1:${ANCHOR_PORT}/ui/auth.apk" | md5sum)"
+served="$(curl -sf "http://127.0.0.1:${AUTH_PORT}/ui/auth.apk" | md5sum)"
 [[ "$built" == "$served" ]] || { err "the daemon does not serve the release just published at /ui/auth.apk"; exit 1; }
 log "the app is live at /ui/auth.apk ✓"

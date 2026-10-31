@@ -6,8 +6,8 @@ namespace TheKrystalShip.Auth.Users.Tests;
 /// </summary>
 public class AccountResolverTests
 {
-    private static KgsmIdentity Discord(string id) =>
-        new(KgsmActorProvider.Discord, id, "haru", "Haru", null, []);
+    private static AccountIdentity Discord(string id) =>
+        new(ActorProvider.Discord, id, "haru", "Haru", null, []);
 
     [Fact]
     public async Task ALinkedIdentityResolvesToItsAccount()
@@ -15,7 +15,7 @@ public class AccountResolverTests
         using TempStore temp = new();
         AccountResolver accounts = new(temp.Store);
 
-        KgsmUser user = Make.User("haru");
+        UserAccount user = Make.User("haru");
         await temp.Store.CreateAsync(user);
         await temp.Store.AddCredentialAsync(Make.Identity(user.UserId, "discord:1234"));
 
@@ -44,7 +44,7 @@ public class AccountResolverTests
         using TempStore temp = new();
         AccountResolver accounts = new(temp.Store);
 
-        KgsmUser user = Make.User("haru");
+        UserAccount user = Make.User("haru");
         await temp.Store.CreateAsync(user);
 
         Assert.Equal(user.UserId, (await accounts.ResolveAsync(user.AsIdentity(), default)).User!.UserId);
@@ -56,12 +56,12 @@ public class AccountResolverTests
         using TempStore temp = new();
         AccountResolver accounts = new(temp.Store);
 
-        KgsmUser user = Make.User("haru");
+        UserAccount user = Make.User("haru");
         await temp.Store.CreateAsync(user);
         await temp.Store.AddCredentialAsync(Make.Identity(user.UserId, "discord:1234"));
 
-        KgsmIdentity discord = Discord("1234");
-        KgsmIdentity github = discord with { Provider = "github" };
+        AccountIdentity discord = Discord("1234");
+        AccountIdentity github = discord with { Provider = "github" };
 
         Assert.Equal(AccountOutcome.Ok, (await accounts.ResolveAsync(discord, default)).Outcome);
         Assert.Equal(AccountOutcome.NoAccount, (await accounts.ResolveAsync(github, default)).Outcome);
@@ -75,10 +75,10 @@ public class AccountResolverTests
         using TempStore temp = new();
         AccountResolver accounts = new(temp.Store);
 
-        KgsmUser active = Make.User("haru");
-        KgsmUser pending = Make.User("wout", UserStatus.Pending);
-        KgsmUser disabled = Make.User("dams", UserStatus.Disabled);
-        foreach (KgsmUser user in new[] { active, pending, disabled })
+        UserAccount active = Make.User("haru");
+        UserAccount pending = Make.User("wout", UserStatus.Pending);
+        UserAccount disabled = Make.User("dams", UserStatus.Disabled);
+        foreach (UserAccount user in new[] { active, pending, disabled })
             await temp.Store.CreateAsync(user);
 
         Assert.Equal(AccountOutcome.Ok, (await accounts.ResolveAsync(active.AsIdentity(), default)).Outcome);
@@ -93,7 +93,7 @@ public class AccountResolverTests
         // Reporting "we could not ask" as "there is no account" signs an Owner out mid-incident.
         AccountResolver accounts = new(new BrokenStore());
 
-        KgsmAuthProviderException e = await Assert.ThrowsAsync<KgsmAuthProviderException>(
+        AuthProviderException e = await Assert.ThrowsAsync<AuthProviderException>(
             () => accounts.ResolveAsync(Discord("1234"), default));
 
         Assert.IsType<IOException>(e.InnerException);
@@ -107,7 +107,7 @@ public class AccountResolverTests
         using TempStore temp = new();
         AccountResolver accounts = new(temp.Store, TimeSpan.FromMinutes(5));
 
-        KgsmUser user = Make.User("haru");
+        UserAccount user = Make.User("haru");
         await temp.Store.CreateAsync(user);
         Assert.Equal(AccountOutcome.Ok, (await accounts.ResolveAsync(user.AsIdentity(), default)).Outcome);
 
@@ -124,7 +124,7 @@ public class AccountResolverTests
         using TempStore temp = new();
         AccountResolver accounts = new(temp.Store, TimeSpan.FromMilliseconds(30));
 
-        KgsmUser user = Make.User("haru");
+        UserAccount user = Make.User("haru");
         await temp.Store.CreateAsync(user);
         await accounts.ResolveAsync(user.AsIdentity(), default);
 
@@ -140,8 +140,8 @@ public class AccountResolverTests
         // Caching a failure turns a moment of unavailability into a full-TTL lockout.
         AccountResolver accounts = new(new BrokenStore(), TimeSpan.FromMinutes(5));
 
-        await Assert.ThrowsAsync<KgsmAuthProviderException>(() => accounts.ResolveAsync(Discord("1234"), default));
-        await Assert.ThrowsAsync<KgsmAuthProviderException>(() => accounts.ResolveAsync(Discord("1234"), default));
+        await Assert.ThrowsAsync<AuthProviderException>(() => accounts.ResolveAsync(Discord("1234"), default));
+        await Assert.ThrowsAsync<AuthProviderException>(() => accounts.ResolveAsync(Discord("1234"), default));
     }
 
     /// <summary>A store whose file is gone.</summary>
@@ -149,12 +149,12 @@ public class AccountResolverTests
     {
         private static Exception Gone() => new IOException("The user store is unreadable.");
 
-        public Task<KgsmUser?> FindByIdAsync(string userId, CancellationToken ct = default) => throw Gone();
-        public Task<KgsmUser?> FindByUsernameAsync(string username, CancellationToken ct = default) => throw Gone();
-        public Task<KgsmUser?> FindByCredentialAsync(string handle, CancellationToken ct = default) => throw Gone();
-        public Task<IReadOnlyList<KgsmUser>> ListAsync(CancellationToken ct = default) => throw Gone();
-        public Task CreateAsync(KgsmUser user, CancellationToken ct = default) => throw Gone();
-        public Task<bool> UpdateAsync(KgsmUser user, CancellationToken ct = default) => throw Gone();
+        public Task<UserAccount?> FindByIdAsync(string userId, CancellationToken ct = default) => throw Gone();
+        public Task<UserAccount?> FindByUsernameAsync(string username, CancellationToken ct = default) => throw Gone();
+        public Task<UserAccount?> FindByCredentialAsync(string handle, CancellationToken ct = default) => throw Gone();
+        public Task<IReadOnlyList<UserAccount>> ListAsync(CancellationToken ct = default) => throw Gone();
+        public Task CreateAsync(UserAccount user, CancellationToken ct = default) => throw Gone();
+        public Task<bool> UpdateAsync(UserAccount user, CancellationToken ct = default) => throw Gone();
         public Task<bool> DeleteAsync(string userId, CancellationToken ct = default) => throw Gone();
         public Task<IReadOnlyList<UserCredential>> ListCredentialsAsync(string userId, CancellationToken ct = default) => throw Gone();
         public Task<UserCredential?> FindCredentialAsync(string handle, CancellationToken ct = default) => throw Gone();

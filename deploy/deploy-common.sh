@@ -27,8 +27,6 @@ DEPLOY_USER="${KGSM_DEPLOY_USER:-$(id -un)}"
 DEPLOY_GROUP="${KGSM_DEPLOY_GROUP:-$(id -gn)}"
 
 # ── PROJECT BLOCK — the only part that changes per repo ───────────────────────
-# The daemon is one thing built from this repo; its other output is a set of libraries every surface
-# compiles against.
 PROJECT="tks-auth"
 
 UNITS=("${PROJECT}.service")
@@ -46,41 +44,23 @@ ENV_EXAMPLE="${REPO_DIR}/deploy/${PROJECT}.env.example"
 
 HEALTH_TRIES="${HEALTH_TRIES:-30}"
 
-# The OAuth applications people sign in through, keyed by provider. The unit loads it before this
-# anchor's own env file; setup.sh seeds it blank from the committed example, as the package does.
-PROVIDERS_FILE="${KGSM_PROVIDERS_FILE:-${ENV_DIR}/providers.env}"
+# The OAuth applications people sign in through, keyed by provider. The unit loads it before the
+# daemon's own env file; setup.sh seeds it blank from the committed example, as the package does.
+PROVIDERS_FILE="${TKS_AUTH_PROVIDERS_FILE:-${ENV_DIR}/providers.env}"
 PROVIDERS_EXAMPLE="${REPO_DIR}/deploy/providers.env.example"
-
-# What this anchor can be configured with, generated from AnchorSettings on every build. The
-# `.anchor.json` suffix is what routes it: setup.sh creates the anchors directory and deploy.sh
-# installs the file there unprivileged, so the descriptor can never be older than the binary it
-# describes — and it never lands where a node's leaves are scanned for.
-LEAF_DESCRIPTOR="${REPO_DIR}/deploy/${PROJECT}.anchor.json"
-
-# The id this anchor is known by — the descriptor's "id" and its filename stem in the anchors
-# directory.
-LEAF_ID="auth-anchor"
 
 render_unit() {   # $1 = unit filename
     sed "s/^User=.*/User=${DEPLOY_USER}/; s/^Group=.*/Group=${DEPLOY_GROUP}/" \
         "${REPO_DIR}/deploy/$1"
 }
 
-# Health is HTTP on the port the unit's Anchor__ListenAddress binds. Probed on the loopback
+# Health is HTTP on the port the unit's Auth__ListenAddress binds. Probed on the loopback
 # whatever the unit binds to, because what is being proven is that this daemon serves — not that a
 # firewall lets somebody else reach it.
-ANCHOR_PORT="${ANCHOR_PORT:-8098}"
+AUTH_PORT="${AUTH_PORT:-8098}"
 health_probe() {
-    curl -fsS -o /dev/null --max-time 2 "http://127.0.0.1:${ANCHOR_PORT}/health" 2>/dev/null
+    curl -fsS -o /dev/null --max-time 2 "http://127.0.0.1:${AUTH_PORT}/health" 2>/dev/null
 }
-
-# What several members of a cluster on one machine share, and the directory this anchor publishes its
-# verification key into. A package host gets it from kgsm-base's tmpfiles fragment, which is where it
-# belongs — it is written by several packages and owned by none of them. A host provisioned from a
-# checkout has no kgsm-base, so it is created here on the same terms: created if absent, never
-# re-owned if it is already there, because a machine that has the package has a directory whose
-# ownership is that package's answer and not this one's.
-CLUSTER_SHARED_DIR="${KGSM_CLUSTER_SHARED_DIR:-/var/lib/kgsm/cluster}"
 
 # Serving the provider at its one address, the host of the issuer in /etc/tks-auth/tks-auth.env: the same
 # script the package's tks-auth-serve.service runs, pointed at this checkout's templates. A person signs in
@@ -97,13 +77,6 @@ setup_serving() {
 
 setup_project_extras() {
     setup_serving
-
-    if [[ -d "$CLUSTER_SHARED_DIR" ]]; then
-        log "shared cluster directory ${CLUSTER_SHARED_DIR} already exists — leaving its ownership alone"
-        return 0
-    fi
-    log "creating ${CLUSTER_SHARED_DIR} (owned by ${DEPLOY_USER}) — what members on this machine share"
-    $SUDO install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" "$CLUSTER_SHARED_DIR"
 }
 # ── END PROJECT BLOCK ─────────────────────────────────────────────────────────
 
@@ -141,59 +114,8 @@ render_polkit_rule() {
     printf '%s\n' "$rendered"
 }
 
-# ── The anchor's own configuration surface ────────────────────────────────────
-# This daemon serves the page its configuration is changed on, because nothing else can: a leaf is
-# configured through the node that runs it, and an anchor is a peer of every node rather than
-# something one of them hosts. Two things have to be in place for a change to take effect, and both
-# are installed once by setup.sh:
-#
-#   the drop-in   feeds the override file back to the unit, ordered after everything else it loads
-#   the grant     lets the account the daemon runs as bounce its own unit, and nothing else
-#
-# The override FILE is not installed by anything — the daemon writes it, unprivileged, in its own
-# state directory, and its absence is the normal state of an anchor nobody has changed.
-CONFIG_OVERRIDE_FILE="${KGSM_ANCHOR_CONFIG_OVERRIDE:-/var/lib/${PROJECT}/config-override.env}"
-CONFIG_DROPIN_TEMPLATE="${REPO_DIR}/deploy/config/50-${PROJECT}-config.conf"
-CONFIG_DROPIN_DST="${SYSTEMD_DIR}/${UNITS[0]}.d/50-${PROJECT}-config.conf"
-CONFIG_POLKIT_TEMPLATE="${REPO_DIR}/deploy/config/49-${PROJECT}-self-restart.rules.in"
-CONFIG_POLKIT_DST="/etc/polkit-1/rules.d/49-${PROJECT}-self-restart.rules"
-
-render_config_dropin() {
-    [[ -f "$CONFIG_DROPIN_TEMPLATE" ]] || { err "missing drop-in template: ${CONFIG_DROPIN_TEMPLATE}"; return 1; }
-    local rendered
-    rendered="$(< "$CONFIG_DROPIN_TEMPLATE")"
-    printf '%s\n' "${rendered//@OVERRIDE_FILE@/${CONFIG_OVERRIDE_FILE}}"
-}
-
-# The service account, which is what the grant names. render_unit rewrites the unit's User= to the
-# deploying user, so under deploy.sh these are one account and this grant restates what the deploy
-# grant already allows. It is installed anyway: the two say different things, they are read by
-# different templates, and a host where the service account is its own is exactly the host where
-# nobody would think to check.
-render_config_polkit() {
-    [[ -f "$CONFIG_POLKIT_TEMPLATE" ]] || { err "missing polkit template: ${CONFIG_POLKIT_TEMPLATE}"; return 1; }
-    local rendered
-    rendered="$(< "$CONFIG_POLKIT_TEMPLATE")"
-    rendered="${rendered//@SVC_USER@/${DEPLOY_USER}}"
-    rendered="${rendered//@UNIT@/${UNITS[0]}}"
-    printf '%s\n' "$rendered"
-}
-
-SERVICE="${UNITS[0]}"           # the primary unit, e.g. kgsm-api.service
+SERVICE="${UNITS[0]}"           # the primary unit, e.g. tks-auth.service
 PUBLISH_DIR="${REPO_DIR}/artifacts/publish"
-
-# Where a component's config descriptor lands, and the two are separate directories because leaves and
-# anchors are separate things. A LEAF is run by this node: kgsm-api scans the leaves directory, holds
-# no list of its own, and a new leaf becomes configurable by landing a file there. An ANCHOR serves one
-# capability to the whole cluster and is a peer of every node in it — sharing a machine with one is a
-# deployment coincidence — so its descriptor records what runs here and is read by nothing that
-# administers this node's services.
-#
-# Which directory a project uses is decided by the SUFFIX of the descriptor its build produced, and the
-# generator refuses a suffix that disagrees with the identity the component declares. So a component
-# cannot reach the wrong directory without failing its own build.
-LEAF_DESCRIPTOR_DIR="${KGSM_LEAF_DESCRIPTOR_DIR:-/var/lib/kgsm/leaves}"
-ANCHOR_DESCRIPTOR_DIR="${KGSM_ANCHOR_DESCRIPTOR_DIR:-/var/lib/kgsm/anchors}"
 
 # Privileged-call indirection, used by setup.sh ONLY. deploy.sh never calls this. An automated
 # run can set SUDO='sudo -A' + SUDO_ASKPASS=… to provision without an interactive prompt; no
@@ -283,91 +205,4 @@ install_units_unprivileged() {
         fi
         rm -f "$tmp"
     done
-}
-
-# Where this project's descriptor belongs, from the suffix its build produced. An unrecognised suffix
-# is refused rather than guessed at: guessing puts an anchor on some node's service board, which has
-# no symptom until somebody reads that board and believes it.
-descriptor_dir_for() {
-    case "$1" in
-        *.anchor.json) printf '%s' "$ANCHOR_DESCRIPTOR_DIR" ;;
-        *.leaf.json)   printf '%s' "$LEAF_DESCRIPTOR_DIR" ;;
-        *)             return 1 ;;
-    esac
-}
-
-# Install this project's config descriptor into the discovery directory its kind belongs to.
-# Unprivileged: the directory is owned by DEPLOY_USER (setup.sh created it), so this is a plain file
-# write.
-#
-# A project with no descriptor file describes nothing — nothing is installed and nothing fails. When
-# the file IS present it is validated before it lands, because a reader skips a malformed one
-# silently: catching it here is the difference between "the panel has no page for this" and knowing
-# why.
-install_leaf_descriptor() {
-    [[ -n "${LEAF_DESCRIPTOR:-}" && -f "$LEAF_DESCRIPTOR" ]] || return 0
-
-    local dir
-    if ! dir="$(descriptor_dir_for "$LEAF_DESCRIPTOR")"; then
-        err "${LEAF_DESCRIPTOR} ends in neither .leaf.json nor .anchor.json, so there is no"
-        err "directory it belongs in. The suffix is what says whether this component is one of"
-        err "this node's leaves or an anchor serving the whole cluster."
-        return 1
-    fi
-
-    local dst="${dir}/${LEAF_ID}.json"
-
-    # Validate what we can before it lands: it must parse, and its "id" must be the id this
-    # project deploys under — a mismatch would install the file under a name kgsm-api then reads
-    # back as a different leaf.
-    if command -v python3 >/dev/null 2>&1; then
-        if ! python3 - "$LEAF_DESCRIPTOR" "$LEAF_ID" <<'PY'
-import json, sys
-path, want = sys.argv[1], sys.argv[2]
-try:
-    d = json.load(open(path))
-except Exception as e:
-    sys.exit(f"{path} is not valid JSON: {e}")
-if d.get("id") != want:
-    sys.exit(f"{path} declares id={d.get('id')!r}, but this project deploys leaf id {want!r}.")
-PY
-        then
-            err "refusing to install the leaf descriptor — kgsm-api would skip it and the"
-            err "Control Panel would show no configuration for ${PROJECT}."
-            return 1
-        fi
-    fi
-
-    if [[ ! -d "$dir" ]]; then
-        err "descriptor directory ${dir} is missing."
-        err "run ONCE (it will ask for your sudo password):   ${REPO_DIR}/deploy/setup.sh"
-        return 1
-    fi
-
-    if ! cmp -s "$LEAF_DESCRIPTOR" "$dst"; then
-        log "config descriptor changed → ${dst}"
-        install -m 0644 "$LEAF_DESCRIPTOR" "$dst"
-    fi
-
-    # The action manifest the build writes beside the descriptor, installed under the same name in
-    # the actions/ directory beside it: what this anchor reports to the authority as the actions it
-    # performs, and what the catalog of grantable actions is built from.
-    local manifest="${LEAF_DESCRIPTOR%.json}.actions.json"
-    if [[ -f "$manifest" ]]; then
-        install -d -m 0755 "${dir}/actions"
-        if ! cmp -s "$manifest" "${dir}/actions/${LEAF_ID}.json"; then
-            log "action manifest changed → ${dir}/actions/${LEAF_ID}.json"
-            install -m 0644 "$manifest" "${dir}/actions/${LEAF_ID}.json"
-        fi
-    fi
-
-    # A component that has changed kind leaves its old file behind, and a stale descriptor in the
-    # leaves directory is read as a leaf however the component now describes itself.
-    local other
-    [[ "$dir" == "$ANCHOR_DESCRIPTOR_DIR" ]] && other="${LEAF_DESCRIPTOR_DIR}/${LEAF_ID}.json" \
-                                             || other="${ANCHOR_DESCRIPTOR_DIR}/${LEAF_ID}.json"
-    if [[ -f "$other" ]]; then
-        log "removing ${other} — this component is described in ${dir}"
-        rm -f "$other"
-    fi
 }

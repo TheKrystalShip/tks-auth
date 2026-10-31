@@ -1,4 +1,4 @@
-// A session with the sign-in package's interface and no anchor behind it, so a test sets the
+// A session with the sign-in package's interface and no provider behind it, so a test sets the
 // snapshot it draws: `adopt` signs a person in from claims, `end` ends, `signOut` clears.
 
 import { useSyncExternalStore } from "react";
@@ -15,7 +15,7 @@ export function createStandInSession() {
   };
   return {
     restore: async () => null,
-    // Resolves true once the redirect has started, false when the anchor cannot be reached; never rejects.
+    // Resolves true once the redirect has started, false when the provider cannot be reached; never rejects.
     signIn: async () => false,
     signOut: async () => set(NONE),
     // Rejects with `code` "ended" or "none" when there is no token to offer.

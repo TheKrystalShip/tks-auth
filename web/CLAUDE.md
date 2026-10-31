@@ -27,7 +27,7 @@ npm test                  # the gate and the stored-session carry-over
     fragments a round trip through a provider or another surface leaves (`#linked=`, `#link_error=`,
     `#proved`, `#confirm`, `#reauth_error=`).
 - **`admin.html` → `src/admin/`.** Overview, accounts, roles, permissions, the catalog grouped by
-  application, assignments, service requests and applications, in the frame. A browser client of the
+  application, assignments and applications, in the frame. A browser client of the
   provider that served it, through `@thekrystalship/auth-client`: the built-in public client `tks-auth`,
   its callback `/admin/` on the issuer's own origin, configured in `src/admin/auth.js`. The package
   keeps the session signed in; the pages hold nothing of it. Calls go through the session's
@@ -51,9 +51,8 @@ provider's published operations and the caller's `/me/access` (`src/admin/stores
 `src/lib/operations.js` and `src/lib/access.js`), and a control the rules would refuse stays on screen
 with the provider's reason beside it (`authorityStore.check`). The page holds no copy of the rules.
 
-**A page's parameters are in its address** (`src/admin/route.js`): `#/assignments?scope=…&label=…` is
-how another surface — a KGSM server's "manage access" — opens the roles held at one scope. A scope
-this provider holds no record of is named by the `label` the link carries.
+**A page's parameters are in its address** (`src/admin/route.js`): `#/accounts?status=pending` opens the
+queue of accounts awaiting approval, and the catalog's filters ride the same way.
 
 ## Policy
 

@@ -31,9 +31,9 @@ value_of() {
     sed -n "s/^[[:space:]]*$1=[[:space:]]*//p" "$ENV_FILE" | tail -n1 | sed -E 's/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/; s/[[:space:]]+$//'
 }
 
-ISSUER="$(value_of Anchor__Issuer)"
+ISSUER="$(value_of Auth__Issuer)"
 EMAIL="$(value_of TKS_AUTH_ACME_EMAIL)"
-LISTEN="$(value_of Anchor__ListenAddress)"
+LISTEN="$(value_of Auth__ListenAddress)"
 LISTEN="${LISTEN:-http://127.0.0.1:8098}"
 LISTEN="${LISTEN#http://}"
 LISTEN="${LISTEN%/}"

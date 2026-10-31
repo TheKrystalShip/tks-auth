@@ -30,7 +30,7 @@ const TABS = [
 // submission of the same credential. Switching tabs keeps what was typed: somebody who tried to sign
 // in and finds they have no account should not retype their username to make one.
 function SignInCard({
-  tab, onTab, providers, registrationOpen, available, anchorError, onAnchorError, onSubmit, onProvider, foot,
+  tab, onTab, providers, registrationOpen, available, providerError, onProviderError, onSubmit, onProvider, foot,
 }) {
   const registering = tab === "register";
   const [leaving, setLeaving] = React.useState(false);
@@ -49,14 +49,14 @@ function SignInCard({
       }
       : {},
     onSubmit: async (values) => {
-      if (onAnchorError) onAnchorError(null);
+      if (onProviderError) onProviderError(null);
       const result = await onSubmit({
         username: registering ? values.username.trim() : values.username,
         password: values.password,
         displayName: values.displayName.trim(),
       });
       if (result.ok) { setLeaving(true); return; }
-      if (result.unreachable && onAnchorError) onAnchorError(result.error);
+      if (result.unreachable && onProviderError) onProviderError(result.error);
       else return { message: result.error };
     },
   });
@@ -78,7 +78,7 @@ function SignInCard({
       wordmark="The Krystal Ship"
       tagline={registering ? "Create an account." : "Sign in."}
       foot={foot}
-      error={anchorError}
+      error={providerError}
       tabs={TABS} tab={tab} onTab={onTab}
       providers={providers}
       busyProvider={busyProvider}
@@ -86,15 +86,15 @@ function SignInCard({
       providerText={(p) => (providers.length === 1
         ? (registering ? "Sign up" : "Continue") + " with " + providerLabel(p)
         : providerLabel(p))}
-      notice={closed ? <Notice tone="warn" icon="ban">This cluster isn’t taking new accounts.</Notice> : null}
+      notice={closed ? <Notice tone="warn" icon="ban">This provider isn’t taking new accounts.</Notice> : null}
       password={!closed}
-      divider="or with a KGSM account"
+      divider="or with another account"
       form={form}
-      busy={!available || leaving || !!anchorError}
+      busy={!available || leaving || !!providerError}
       passwordAutoComplete={registering ? "new-password" : "current-password"}
       passwordAside={!registering ? (
         <Button variant="link" size="xs"
-          onClick={() => form.setFormError("Ask whoever manages accounts on this cluster to reset it.")}>
+          onClick={() => form.setFormError("Ask whoever manages accounts here to reset it.")}>
           Forgot?
         </Button>
       ) : null}
@@ -116,7 +116,7 @@ function SignInApp() {
   const [context, setContext] = React.useState(null);
   const [problem, setProblem] = React.useState(null);
   const [tab, setTab] = React.useState("login");
-  const [anchorError, setAnchorError] = React.useState(null);
+  const [providerError, setProviderError] = React.useState(null);
   const registering = tab === "register";
 
   React.useEffect(() => {
@@ -158,8 +158,8 @@ function SignInApp() {
       providers={context ? context.providers || [] : []}
       registrationOpen={!!(context && context.registration)}
       available={!!context}
-      anchorError={anchorError}
-      onAnchorError={setAnchorError}
+      providerError={providerError}
+      onProviderError={setProviderError}
       onSubmit={submit}
       onProvider={(provider) => window.location.assign("/authorize/" + encodeURIComponent(provider))}
       foot={name ? <span>{registering ? "Creating your account for" : "Signing in to"} <b className="signin-foot__name">{name}</b></span> : null} />

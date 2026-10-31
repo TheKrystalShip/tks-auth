@@ -1,14 +1,11 @@
 // Assignments — who holds which role where, and giving or taking one away.
 //
-// One editor for both places an assignment is made: an account's page (its roles at every scope) and
-// the Assignments page (every role held at one scope). Fix `accountId` for the first, `scope` for the
-// second; the other is chosen.
+// One editor for both places an assignment is made: an account's page (its roles) and the Assignments
+// page (every role held by anyone). Fix `accountId` for the first; the account is chosen in the second.
 //
-// Every role is offered, and each one the rules would refuse at the chosen account and scope carries
-// the provider's reason — someone who may assign roles sees why a role above their own cannot be
-// chosen, instead of finding it missing. What a role grants at a narrower scope than some of its
-// actions is less than it grants everywhere, which the rules decide and the provider states; this
-// editor says only what it was told.
+// Every role is offered, and each one the rules would refuse for the chosen account carries the
+// provider's reason — someone who may assign roles sees why a role above their own cannot be chosen,
+// instead of finding it missing.
 
 import React from "react";
 
@@ -17,25 +14,14 @@ import {
 } from "@thekrystalship/krystal";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
-import { Locked, RefusalNote, parseInstance, roleName, useChecks, useScopeOptions, useScopeText } from "./kit.jsx";
+import { Locked, RefusalNote, roleName, useChecks } from "./kit.jsx";
 
-// A scope as the target an assignment edit is asked at.
-function targetOf(scope) {
-  if (!scope || scope === "cluster") return { cluster: true };
-  if (scope.startsWith("node:")) return { hostId: scope.slice(5) };
-  const inst = parseInstance(scope);
-  return inst ? { server: { hostId: inst.hostId, id: inst.serverId, installNonce: inst.nonce } } : { cluster: true };
-}
-
-function Assignments({ view, accountId, scope }) {
-  const scopeText = useScopeText();
-  const scopeOptions = useScopeOptions(view);
+function Assignments({ view, accountId }) {
   const [refusal, setRefusal] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [revoking, setRevoking] = React.useState(null);
 
-  const held = view.assignments.filter((a) =>
-    (!accountId || a.accountId === accountId) && (!scope || a.scope === scope));
+  const held = view.assignments.filter((a) => !accountId || a.accountId === accountId);
 
   const people = view.accounts.filter((a) => a.kind === "person" && a.status === "active")
     .sort((a, b) => a.username.localeCompare(b.username));
@@ -43,25 +29,24 @@ function Assignments({ view, accountId, scope }) {
     .sort((a, b) => a.rank - b.rank);
 
   const form = useForm({
-    defaultValues: { who: accountId || "", where: scope || "cluster", role: "" },
+    defaultValues: { who: accountId || "", role: "" },
     onSubmit: async ({ role }) => {
       if (!account || !role) return;
-      const r = await run({ kind: "assign", accountId: account, roleId: role, scope: at });
+      const r = await run({ kind: "assign", accountId: account, roleId: role });
       if (r.ok) form.setValue("role", "");
     },
   });
-  const { who, where, role } = form.values;
+  const { who, role } = form.values;
   const account = accountId || who;
-  const at = scope || where;
-  const assignRefusal = editRefusal("assign", targetOf(at));
+  const assignRefusal = editRefusal("assign");
   const canAssign = !assignRefusal;
 
-  // The rules' verdict on each role for the chosen account and scope, and on revoking each held one.
+  // The rules' verdict on each role for the chosen account, and on revoking each held one.
   const probes = React.useMemo(() => [
-    ...(account && canAssign ? roles.map((r) => ({ kind: "assign", accountId: account, roleId: r.id, scope: at })) : []),
+    ...(account && canAssign ? roles.map((r) => ({ kind: "assign", accountId: account, roleId: r.id })) : []),
     ...held.map((a) => ({ kind: "revoke", assignmentId: a.id })),
-  ], [account, at, canAssign, roles, held]);
-  const verdicts = useChecks(probes, probes.map((p) => p.kind + (p.roleId || p.assignmentId)).join("|") + account + at);
+  ], [account, canAssign, roles, held]);
+  const verdicts = useChecks(probes, probes.map((p) => p.kind + (p.roleId || p.assignmentId)).join("|") + account);
   const offered = account && canAssign ? roles.length : 0;
   const verdictForRole = (id) => {
     const i = roles.findIndex((r) => r.id === id);
@@ -88,7 +73,7 @@ function Assignments({ view, accountId, scope }) {
     <div className="admin-assign">
       <RefusalNote refusal={refusal} compact />
       {held.length === 0
-        ? <div className="admin-quiet">{scope ? "No roles held here." : "Holds only everyone."}</div>
+        ? <div className="admin-quiet">{accountId ? "Holds only everyone." : "No roles are held."}</div>
         : (
           <List label="Roles held" className="admin-assign__list">
             {held.map((a) => {
@@ -104,14 +89,14 @@ function Assignments({ view, accountId, scope }) {
                   )}
                   title={accountId ? name : nameOf(a.accountId)}
                   sub={accountId
-                    ? <>{scopeText(a.scope)}{reason}</>
+                    ? (reason ? <>{v.message}</> : undefined)
                     : <>{holder ? holder.username : a.accountId}{reason}</>}
                   meta={<>
                     {!accountId && <Pill size="sm">{name}</Pill>}
                     {closed ? <Locked result={v} /> : null}
                   </>}
                   onOpen={accountId ? undefined : () => go("accounts", a.accountId)}
-                  actions={!closed && !editRefusal("revoke", targetOf(a.scope)) ? (
+                  actions={!closed && !editRefusal("revoke") ? (
                     <IconButton variant="ghost" tone="danger" icon="x" label={"Take " + name + " away"}
                       disabled={busy} onClick={() => setRevoking(a)} />
                   ) : null} />
@@ -120,35 +105,28 @@ function Assignments({ view, accountId, scope }) {
           </List>
         )}
 
-      {(canAssign || !scope) && (
-        <Form form={form} className="admin-assign__form">
-          {!accountId && (
-            <FormField name="who" control="select" className="admin-assign__field" aria-label="Account" disabled={busy}>
-              <option value="">Account…</option>
-              {people.map((p) => <option key={p.id} value={p.id}>{p.displayName || p.username}</option>)}
-            </FormField>
-          )}
-          {!scope && (
-            <FormField name="where" control="select" className="admin-assign__field" aria-label="Scope" disabled={busy}>
-              {scopeOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </FormField>
-          )}
-          <FormField name="role" control="select" className="admin-assign__field" aria-label="Role" disabled={busy || !canAssign || !account}>
-            <option value="">Role…</option>
-            {roles.map((r) => {
-              const v = verdictForRole(r.id);
-              const closed = v && !v.allowed;
-              return <option key={r.id} value={r.id} disabled={!!closed}>{r.name}{closed ? " — " + v.message : ""}</option>;
-            })}
+      <Form form={form} className="admin-assign__form">
+        {!accountId && (
+          <FormField name="who" control="select" className="admin-assign__field" aria-label="Account" disabled={busy}>
+            <option value="">Account…</option>
+            {people.map((p) => <option key={p.id} value={p.id}>{p.displayName || p.username}</option>)}
           </FormField>
-          <FormSubmit disabled={busy || !canAssign || !account || !role || (chosen && !chosen.allowed)}>
-            Assign
-          </FormSubmit>
-        </Form>
-      )}
+        )}
+        <FormField name="role" control="select" className="admin-assign__field" aria-label="Role" disabled={busy || !canAssign || !account}>
+          <option value="">Role…</option>
+          {roles.map((r) => {
+            const v = verdictForRole(r.id);
+            const closed = v && !v.allowed;
+            return <option key={r.id} value={r.id} disabled={!!closed}>{r.name}{closed ? " — " + v.message : ""}</option>;
+          })}
+        </FormField>
+        <FormSubmit disabled={busy || !canAssign || !account || !role || (chosen && !chosen.allowed)}>
+          Assign
+        </FormSubmit>
+    </Form>
       {!canAssign && account && (
         <Notice tone="warn" icon="lock" className="admin-refusal admin-refusal--compact">
-          Assigning roles at {scopeText(at)} · {assignRefusal}
+          Assigning roles · {assignRefusal}
         </Notice>
       )}
 
@@ -156,7 +134,7 @@ function Assignments({ view, accountId, scope }) {
         <ConfirmDialog data-dialog="confirm-take-away" title={"Take " + roleName(view, revoking.roleId) + " away?"}
           icon="user-minus" tone="danger" confirm="Take away" cancel="Keep" onClose={() => setRevoking(null)}
           onConfirm={async () => { await run({ kind: "revoke", assignmentId: revoking.id }); }}>
-          {nameOf(revoking.accountId)} stops holding {roleName(view, revoking.roleId)} at {scopeText(revoking.scope)}.
+          {nameOf(revoking.accountId)} stops holding {roleName(view, revoking.roleId)}.
         </ConfirmDialog>
       )}
     </div>

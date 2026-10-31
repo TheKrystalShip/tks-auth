@@ -13,7 +13,7 @@ import {
   Breadcrumbs, Button, Checkbox, ConfirmDialog, PageHeader, Select, SettingsRow, SettingsSection,
 } from "@thekrystalship/krystal";
 import { useApplications } from "./applicationsStore.js";
-import { Brief, Locked, RefusalNote, authorityGate, confirmed, useAuthority, useChecks, useScopeText } from "./kit.jsx";
+import { Brief, Locked, RefusalNote, authorityGate, confirmed, useAuthority, useChecks } from "./kit.jsx";
 import { NameDialog, OWNER_VERDICT, countOf, holdsText, probeOf } from "./roleParts.jsx";
 import { go } from "./route.js";
 import { authorityStore, editRefusal } from "./stores.js";
@@ -21,7 +21,6 @@ import { authorityStore, editRefusal } from "./stores.js";
 function RolePage({ id }) {
   const state = useAuthority();
   const view = state.view;
-  const scopeText = useScopeText();
   const applications = useApplications();
   const role = view ? view.roles.find((r) => r.id === id) : null;
   const canEdit = !editRefusal("role.create");
@@ -118,11 +117,8 @@ function RolePage({ id }) {
         {role.kind === "everyone" && <SettingsRow icon="users" title="Every active person" />}
         {role.kind !== "everyone" && holders.length === 0 && <div className="admin-quiet">Nobody holds this role.</div>}
         {role.kind !== "everyone" && holders.map(({ a, who }) => (
-          <SettingsRow key={a.id} icon={who.kind === "service" ? "bot" : "user"} title={who.displayName || who.username}
-            sub={scopeText(a.scope)}>
-            {who.kind === "person" && (
-              <Button variant="outline" size="sm" onClick={() => go("accounts", who.id)}>Open</Button>
-            )}
+          <SettingsRow key={a.id} icon="user" title={who.displayName || who.username}>
+            <Button variant="outline" size="sm" onClick={() => go("accounts", who.id)}>Open</Button>
           </SettingsRow>
         ))}
       </SettingsSection>

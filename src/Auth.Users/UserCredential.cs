@@ -11,7 +11,7 @@ public enum CredentialKind
 
     /// <summary>
     /// An external identity linked to the account — a Discord, GitHub or Google subject. Carries no
-    /// secret: the provider did the verifying, and no KGSM surface retains a provider token.
+    /// secret: the provider did the verifying, and no surface retains a provider token.
     /// </summary>
     Identity = 1,
 }
@@ -38,7 +38,7 @@ public enum CredentialKind
 /// <param name="UserId">The account this proves. Deleting the account deletes this with it.</param>
 /// <param name="Kind">Password or linked identity.</param>
 /// <param name="Handle">
-/// <c>provider:subject</c> — <see cref="KgsmIdentity.Handle"/> for a linked identity, and
+/// <c>provider:subject</c> — <see cref="AccountIdentity.Handle"/> for a linked identity, and
 /// <see cref="UserCredentials.LocalHandle"/> for a password. Unique across the store.
 /// </param>
 /// <param name="Secret">The password hash, or <see langword="null"/> for a linked identity.</param>
@@ -69,10 +69,10 @@ public static class UserCredentials
     /// id exists at all: the row survives a rename, and the uniqueness constraint on the handle
     /// column becomes "one password per account" for free.
     /// </remarks>
-    public static string LocalHandle(string userId) => KgsmActor.Format(KgsmActorProvider.Local, userId);
+    public static string LocalHandle(string userId) => ActorStrings.Format(ActorProvider.Local, userId);
 
     /// <summary>The handle a linked external identity is filed under.</summary>
-    public static string IdentityHandle(KgsmIdentity identity) => identity.Handle;
+    public static string IdentityHandle(AccountIdentity identity) => identity.Handle;
 }
 
 /// <summary>

@@ -4,7 +4,7 @@ namespace TheKrystalShip.Auth.Access;
 
 /// <summary>
 /// Everything that decides access, at one authority version: accounts, the catalog, permissions,
-/// roles, assignments and service requirements.
+/// roles and assignments.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -13,19 +13,16 @@ namespace TheKrystalShip.Auth.Access;
 /// here.
 /// </para>
 /// <para>
-/// The anchor builds one from its own store; every other member builds one from its replica. Nothing
-/// here reads a file: that is the store's job.
+/// The store builds one. Nothing here reads a file: that is the store's job.
 /// </para>
 /// </remarks>
 public sealed class AuthoritySnapshot
 {
     private static readonly IReadOnlyList<Assignment> NoAssignments = [];
-    private static readonly IReadOnlyList<ServiceRequirement> NoRequirements = [];
     private static readonly IReadOnlyDictionary<string, IReadOnlySet<string>> NoNamespaces =
         new Dictionary<string, IReadOnlySet<string>>();
 
     private readonly FrozenDictionary<string, IReadOnlyList<Assignment>> _assignmentsByAccount;
-    private readonly FrozenDictionary<string, IReadOnlyList<ServiceRequirement>> _requirementsByAccount;
     private readonly FrozenDictionary<string, FrozenSet<string>> _roleActions;
     private readonly IReadOnlyDictionary<string, IReadOnlySet<string>> _applicationNamespaces;
 
@@ -37,15 +34,10 @@ public sealed class AuthoritySnapshot
         IEnumerable<Permission> permissions,
         IEnumerable<Role> roles,
         IEnumerable<Assignment> assignments,
-        IEnumerable<ServiceRequirement> requirements,
-        AuthorityFreshness freshness,
-        int minimumContractVersion = AccessContract.Version,
         IReadOnlyDictionary<string, IReadOnlySet<string>>? applicationNamespaces = null)
     {
         _applicationNamespaces = applicationNamespaces ?? NoNamespaces;
         Version = version;
-        Freshness = freshness;
-        MinimumContractVersion = minimumContractVersion;
 
         Accounts = accounts.ToFrozenDictionary(a => a.AccountId, StringComparer.Ordinal);
         Catalog = catalog.ToFrozenDictionary(a => a.Id, StringComparer.Ordinal);
@@ -57,12 +49,6 @@ public sealed class AuthoritySnapshot
         _assignmentsByAccount = allAssignments
             .GroupBy(a => a.AccountId, StringComparer.Ordinal)
             .ToFrozenDictionary(g => g.Key, g => (IReadOnlyList<Assignment>)[.. g], StringComparer.Ordinal);
-
-        ServiceRequirement[] allRequirements = [.. requirements];
-        Requirements = allRequirements;
-        _requirementsByAccount = allRequirements
-            .GroupBy(r => r.AccountId, StringComparer.Ordinal)
-            .ToFrozenDictionary(g => g.Key, g => (IReadOnlyList<ServiceRequirement>)[.. g], StringComparer.Ordinal);
 
         _roleActions = Roles.Values.ToFrozenDictionary(
             r => r.RoleId,
@@ -96,43 +82,8 @@ public sealed class AuthoritySnapshot
         return [.. Catalog.Keys.Where(id => ActionIds.TryParse(id, out string component, out _) && owned.Contains(component))];
     }
 
-    private AuthoritySnapshot(AuthoritySnapshot from, AuthorityFreshness freshness, int minimumContractVersion)
-    {
-        Version = from.Version;
-        Freshness = freshness;
-        MinimumContractVersion = minimumContractVersion;
-        Accounts = from.Accounts;
-        Catalog = from.Catalog;
-        Permissions = from.Permissions;
-        Roles = from.Roles;
-        Assignments = from.Assignments;
-        Requirements = from.Requirements;
-        _assignmentsByAccount = from._assignmentsByAccount;
-        _requirementsByAccount = from._requirementsByAccount;
-        _roleActions = from._roleActions;
-        _applicationNamespaces = from._applicationNamespaces;
-    }
-
-    /// <summary>
-    /// The same authority, confirmed at a different moment or held to a different contract.
-    /// </summary>
-    /// <remarks>
-    /// A replica is confirmed current on every heartbeat while what it holds changes far less often, so
-    /// a new freshness shares every index with this snapshot rather than building them again.
-    /// </remarks>
-    public AuthoritySnapshot With(AuthorityFreshness freshness, int minimumContractVersion) =>
-        freshness == Freshness && minimumContractVersion == MinimumContractVersion
-            ? this
-            : new AuthoritySnapshot(this, freshness, minimumContractVersion);
-
     /// <summary>The authority version this snapshot was read at.</summary>
     public long Version { get; }
-
-    /// <summary>How recently this snapshot was confirmed current.</summary>
-    public AuthorityFreshness Freshness { get; }
-
-    /// <summary>The lowest evaluation contract the cluster accepts.</summary>
-    public int MinimumContractVersion { get; }
 
     /// <summary>Every account, by id.</summary>
     public IReadOnlyDictionary<string, AccessAccount> Accounts { get; }
@@ -149,16 +100,9 @@ public sealed class AuthoritySnapshot
     /// <summary>Every assignment.</summary>
     public IReadOnlyList<Assignment> Assignments { get; }
 
-    /// <summary>Every service requirement.</summary>
-    public IReadOnlyList<ServiceRequirement> Requirements { get; }
-
     /// <summary>The assignments an account holds.</summary>
     public IReadOnlyList<Assignment> AssignmentsOf(string accountId) =>
         _assignmentsByAccount.GetValueOrDefault(accountId, NoAssignments);
-
-    /// <summary>The requirements a service account has declared or been decided on.</summary>
-    public IReadOnlyList<ServiceRequirement> RequirementsOf(string accountId) =>
-        _requirementsByAccount.GetValueOrDefault(accountId, NoRequirements);
 
     /// <summary>The actions a role grants through its permissions. Owner's are implicit and not listed.</summary>
     public IReadOnlySet<string> ActionsOf(string roleId) =>
@@ -190,5 +134,5 @@ public sealed class AuthoritySnapshot
 
     /// <summary>A snapshot with nothing in it: no accounts, so everybody is refused.</summary>
     public static AuthoritySnapshot Empty { get; } =
-        new(0, [], [], [], [], [], [], AuthorityFreshness.Authoritative);
+        new(0, [], [], [], [], []);
 }

@@ -1,7 +1,7 @@
 namespace TheKrystalShip.Auth.Users;
 
 /// <summary>
-/// What a KGSM password may be.
+/// What a password may be.
 /// </summary>
 /// <remarks>
 /// <para>

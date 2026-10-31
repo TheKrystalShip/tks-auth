@@ -1,34 +1,33 @@
 namespace TheKrystalShip.Auth.Access;
 
-/// <summary>One member declaring an action, at the version of the component that declares it.</summary>
-public sealed record ActionDeclaration(string Member, string? Version);
+/// <summary>One source declaring an action, at the version of the component that declares it.</summary>
+public sealed record ActionDeclaration(string Source, string? Version);
 
-/// <summary>An action in the catalog, and every member declaring it.</summary>
+/// <summary>An action in the catalog, and every source declaring it.</summary>
 public sealed record CatalogEntry(CatalogAction Action, IReadOnlyList<ActionDeclaration> DeclaredBy);
 
 /// <summary>
-/// The catalog: the union of every reporting member's manifests.
+/// The catalog: the union of every source's manifests.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Members run different builds, so two members may declare one action at two versions of its
-/// component. The union holds the action once, with every member and version declaring it; an action
-/// runs only where a member declaring it runs.
+/// Two sources may declare one action at two versions of its component. The union holds the action once,
+/// with every source and version declaring it.
 /// </para>
 /// <para>
 /// An id is immutable in meaning, so two declarations of one id agree on what it does. Its title may
-/// be reworded between versions, and the declaration from the highest version wins — then the member id
+/// be reworded between versions, and the declaration from the highest version wins — then the source
 /// that sorts first, so the answer never depends on the order reports arrived in.
 /// </para>
 /// </remarks>
 public static class CatalogUnion
 {
-    /// <summary>The catalog the reports of <paramref name="members"/> add up to, sorted by action id.</summary>
-    public static IReadOnlyList<CatalogEntry> Of(IReadOnlyDictionary<string, MemberCatalogReport> members)
+    /// <summary>The catalog the reports of <paramref name="sources"/> add up to, sorted by action id.</summary>
+    public static IReadOnlyList<CatalogEntry> Of(IReadOnlyDictionary<string, CatalogReport> sources)
     {
         Dictionary<string, List<(CatalogAction Action, ActionDeclaration By)>> found = new(StringComparer.Ordinal);
 
-        foreach ((string member, MemberCatalogReport report) in members)
+        foreach ((string source, CatalogReport report) in sources)
         {
             foreach (ActionManifest manifest in report.Manifests)
             {
@@ -37,7 +36,7 @@ public static class CatalogUnion
                     if (!found.TryGetValue(action.Id, out var declarations))
                         found[action.Id] = declarations = [];
 
-                    declarations.Add((action, new ActionDeclaration(member, manifest.Version)));
+                    declarations.Add((action, new ActionDeclaration(source, manifest.Version)));
                 }
             }
         }
@@ -48,12 +47,12 @@ public static class CatalogUnion
             {
                 var chosen = f.Value
                     .OrderByDescending(d => d.By.Version, VersionOrder.Instance)
-                    .ThenBy(d => d.By.Member, StringComparer.Ordinal)
+                    .ThenBy(d => d.By.Source, StringComparer.Ordinal)
                     .First();
 
                 return new CatalogEntry(
                     chosen.Action,
-                    [.. f.Value.Select(d => d.By).Distinct().OrderBy(d => d.Member, StringComparer.Ordinal)]);
+                    [.. f.Value.Select(d => d.By).Distinct().OrderBy(d => d.Source, StringComparer.Ordinal)]);
             })];
     }
 

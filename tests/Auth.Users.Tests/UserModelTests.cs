@@ -8,7 +8,7 @@ public class UserModelTests
     {
         // Two different strings on purpose: the handle keys sessions and credentials and must
         // survive a rename, while the actor string is what a person reads in an audit log.
-        KgsmUser user = Make.User("haru") with { UserId = "usr_abc" };
+        UserAccount user = Make.User("haru") with { UserId = "usr_abc" };
 
         Assert.Equal("local:usr_abc", user.AsIdentity().Handle);
         Assert.Equal("local:haru", user.AsIdentity().ActorString);
@@ -17,7 +17,7 @@ public class UserModelTests
     [Fact]
     public void ARenameLeavesTheHandleAlone()
     {
-        KgsmUser user = Make.User("haru") with { UserId = "usr_abc" };
+        UserAccount user = Make.User("haru") with { UserId = "usr_abc" };
         Assert.Equal(user.AsIdentity().Handle, (user with { Username = "kaito" }).AsIdentity().Handle);
     }
 

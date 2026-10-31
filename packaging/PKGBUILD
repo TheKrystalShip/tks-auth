@@ -3,43 +3,34 @@
 # Build from this directory:  cd packaging && makepkg
 #
 # Compiles nothing. CI publishes the Native-AOT binary and builds the pages into ui/ beside it first,
-# and this places the result, so the packaged bytes are the tested bytes. Point KGSM_STAGE at that
+# and this places the result, so the packaged bytes are the tested bytes. Point TKS_AUTH_STAGE at that
 # publish output, or leave it unset to use ../artifacts/publish, which is where deploy.sh leaves one.
 #
-# The daemon is the one deployable built from this repo, and it is what this ships. The repo's other
-# output is a set of libraries every surface compiles against, published to NuGet on their own
-# versions.
 
 pkgname=tks-auth
 pkgver=1.4.0
 pkgrel=1
-pkgdesc="tks-auth — the account store and the one sign-in"
+pkgdesc="tks-auth — an OpenID Connect provider: accounts, applications and their roles"
 arch=('x86_64')
 url="https://github.com/TheKrystalShip/tks-auth"
 license=('GPL-3.0-or-later')
-# Every node carries it: kgsm-api depends on it, because a node signs nobody in and every session it
-# accepts is an anchor's. It is preset-DISABLED, and the install hook switches it on only on the machine
-# that founded its cluster — a cluster has one anchor, and a fresh one anywhere else would claim the
-# accounts before gossip told it who holds them.
-groups=('kgsm-node')
-# kgsm-base carries the kgsm service account this unit runs as, the /etc/kgsm/cluster-founded record saying whether this machine founded its
-# cluster, and the preset policy deciding whether this runs here.
-depends=('kgsm-base' 'systemd')
-# The daemon's earlier package name, so a node that has it installed upgrades to this one; and the
-# package its pages came in, which these pages replace.
-provides=('kgsm-auth-anchor')
-replaces=('kgsm-auth-anchor' 'kgsm-web-auth')
-conflicts=('kgsm-auth-anchor' 'kgsm-web-auth')
+# The daemon runs as its own system user, created from the sysusers fragment this ships. It is installed
+# and left off; enable it once its issuer is set.
+depends=('systemd')
+# The package the pages of an earlier layout came in, which these pages replace.
+replaces=('kgsm-web-auth')
+conflicts=('kgsm-web-auth')
 backup=('etc/tks-auth/tks-auth.env'
         'etc/tks-auth/providers.env')
 install="tks-auth.install"
 optdepends=(
-    'kgsm-api: the node whose Control Panel people sign in to through this anchor'
+    'nginx: serves the provider at its issuer address (tks-auth-serve.service)'
+    'certbot: issues the certificate of an https issuer'
 )
 # No separate debug package: these are shipped to a private fleet, not a distro archive.
 options=('!debug')
 
-_stage() { printf '%s' "${KGSM_STAGE:-${startdir}/../artifacts/publish}"; }
+_stage() { printf '%s' "${TKS_AUTH_STAGE:-${startdir}/../artifacts/publish}"; }
 
 pkgver() {
     "${startdir}/../deploy/version.sh" --pkgver
@@ -49,8 +40,8 @@ build() {
     local stage; stage="$(_stage)"
     [[ -f "${stage}/tks-auth" ]] || {
         printf '\n  no publish output at %s\n' "$stage" >&2
-        printf '  build it first:  dotnet publish src/Auth.Anchor/Anchor.csproj -c Release -r linux-x64 -o artifacts/publish\n' >&2
-        printf '  or point KGSM_STAGE at an existing one.\n\n' >&2
+        printf '  build it first:  dotnet publish src/Auth.Server/Server.csproj -c Release -r linux-x64 -o artifacts/publish\n' >&2
+        printf '  or point TKS_AUTH_STAGE at an existing one.\n\n' >&2
         return 1
     }
     # The pages are part of what this ships: without them the daemon serves a plain sign-in form and no
@@ -88,31 +79,8 @@ package() {
     install -Dm640 "${repo}/deploy/providers.env.example" \
         "${pkgdir}/etc/${pkgname}/providers.env"
 
-    # The config descriptor, in the ANCHORS directory — not where a node's leaves are scanned for.
-    # This daemon serves one capability to the whole cluster and is a peer of every node in it, so it
-    # belongs on no node's service board. Packaged rather than installed by a script, so it can never
-    # describe a different build than the one beside it.
-    install -Dm644 "${repo}/deploy/tks-auth.anchor.json" \
-        "${pkgdir}/var/lib/kgsm/anchors/auth-anchor.json"
-
-    # The auth:* actions this anchor performs, beside the descriptor in its actions/ directory under the
-    # same name: what it reports to the catalog of grantable actions.
-    install -Dm644 "${repo}/deploy/tks-auth.anchor.actions.json" \
-        "${pkgdir}/var/lib/kgsm/anchors/actions/auth-anchor.json"
-
-    # What makes this anchor's own configuration page take effect: the drop-in that feeds a change
-    # back to the unit, and the grant that lets the service account bounce it. The override file
-    # itself is written by the daemon at runtime and belongs to no package.
-    install -Dm644 "${repo}/deploy/config/50-tks-auth-config.conf" \
-        "${pkgdir}/usr/lib/systemd/system/tks-auth.service.d/50-tks-auth-config.conf"
-    sed -i "s|@OVERRIDE_FILE@|/var/lib/tks-auth/config-override.env|" \
-        "${pkgdir}/usr/lib/systemd/system/tks-auth.service.d/50-tks-auth-config.conf"
-
-    sed -e "s|@SVC_USER@|kgsm|" -e "s|@UNIT@|tks-auth.service|" \
-        "${repo}/deploy/config/49-tks-auth-self-restart.rules.in" \
-        > "${srcdir}/49-tks-auth-self-restart.rules"
-    install -Dm644 "${srcdir}/49-tks-auth-self-restart.rules" \
-        "${pkgdir}/usr/share/polkit-1/rules.d/49-tks-auth-self-restart.rules"
+    # The system user the unit runs as.
+    install -Dm644 "${repo}/packaging/tks-auth.sysusers" "${pkgdir}/usr/lib/sysusers.d/tks-auth.conf"
 
     # Serving the provider at its one address, the host of the issuer in /etc/tks-auth/tks-auth.env: the
     # oneshot that issues the name's certificate and renders its vhost, and the templates it reads.

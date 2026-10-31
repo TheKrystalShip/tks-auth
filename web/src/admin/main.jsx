@@ -8,7 +8,7 @@ import "@thekrystalship/krystal/lib/theme";
 
 import { Gate } from "./Gate.jsx";
 import { session } from "./auth.js";
-import { refreshAccess, refreshMembers } from "./stores.js";
+import { refreshAccess } from "./stores.js";
 
 // tks-auth's admin pages. The document is served by the provider with a floor of its own; this
 // application replaces it once the session is restored, and the gate leaves for the provider's sign-in
@@ -22,7 +22,6 @@ const returnTo = await session.restore();
 if (returnTo) window.history.replaceState(null, "", returnTo);
 
 refreshAccess();
-refreshMembers();
 // What this person may do moves when somebody else changes it; coming back to the tab reads it again.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshAccess();

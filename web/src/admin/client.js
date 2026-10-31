@@ -40,9 +40,9 @@ async function call(method, path, body) {
   return data;
 }
 
-const ACCOUNTS = "/auth/cluster/users";
-const EDITS = "/auth/cluster/authority/edits";
-const APPLICATIONS = "/auth/cluster/applications";
+const ACCOUNTS = "/auth/admin/users";
+const EDITS = "/auth/admin/authority/edits";
+const APPLICATIONS = "/auth/admin/applications";
 
 const one = (id) => "/" + encodeURIComponent(id);
 
@@ -64,15 +64,13 @@ const api = {
   // Who may do what: read, one change against the version on screen, and the rules' verdict on edits
   // nobody has made.
   authority: {
-    read: () => call("GET", "/auth/cluster/authority"),
+    read: () => call("GET", "/auth/admin/authority"),
     edit: (version, edit) => call("POST", EDITS, { ...edit, version }),
-    check: (edits) => call("POST", "/auth/cluster/authority/checks", { edits }).then((r) => (r && r.results) || []),
+    check: (edits) => call("POST", "/auth/admin/authority/checks", { edits }).then((r) => (r && r.results) || []),
   },
   // The caller's own actions here, and which action each gated request needs.
   me: () => call("GET", "/me/access"),
-  operations: () => call("GET", "/auth/cluster/operations"),
-  // The KGSM cluster's members, where this provider holds a cluster's accounts; a 404 standalone.
-  members: () => call("GET", "/auth/cluster/members").then((r) => (r && r.members) || []),
+  operations: () => call("GET", "/auth/admin/operations"),
   // The applications this provider signs people in to.
   applications: {
     list: () => call("GET", APPLICATIONS).then((r) => (r && r.data) || []),

@@ -1,7 +1,7 @@
 namespace TheKrystalShip.Auth.Access.Tests;
 
 /// <summary>
-/// The catalog every member's report adds up to, and the manifests those reports are made of.
+/// The catalog every source's report adds up to, and the manifests those reports are made of.
 /// </summary>
 public sealed class CatalogUnionTests : IDisposable
 {
@@ -12,10 +12,10 @@ public sealed class CatalogUnionTests : IDisposable
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
     private static ActionManifest Manifest(string version, string title) =>
-        new(1, "reactor", version, [new ManifestAction("rules.write", title, "write", "node", null)], []);
+        new(1, "reactor", version, [new ManifestAction("rules.write", title, "write", null)]);
 
-    private static IReadOnlyList<CatalogEntry> Union(params (string Member, ActionManifest Manifest)[] reports) =>
-        CatalogUnion.Of(reports.ToDictionary(r => r.Member, r => new MemberCatalogReport(false, [r.Manifest])));
+    private static IReadOnlyList<CatalogEntry> Union(params (string Source, ActionManifest Manifest)[] reports) =>
+        CatalogUnion.Of(reports.ToDictionary(r => r.Source, r => new CatalogReport([r.Manifest])));
 
     [Theory]
     [InlineData("0.4.0", "0.10.0")]
@@ -32,7 +32,7 @@ public sealed class CatalogUnionTests : IDisposable
     }
 
     [Fact]
-    public void AtOneVersionTheMemberThatSortsFirstWinsWhateverOrderReportsArrive()
+    public void AtOneVersionTheSourceThatSortsFirstWinsWhateverOrderReportsArrive()
     {
         CatalogEntry one = Union(("walter", Manifest("1.0.0", "Walter's")), ("jessie", Manifest("1.0.0", "Jessie's"))).Single();
         CatalogEntry two = Union(("jessie", Manifest("1.0.0", "Jessie's")), ("walter", Manifest("1.0.0", "Walter's"))).Single();
@@ -47,10 +47,10 @@ public sealed class CatalogUnionTests : IDisposable
     {
         ActionManifest manifest = new(1, "reactor", "1.0.0",
         [
-            new ManifestAction("rules.write", "Change rules", "write", "node", null),
-            new ManifestAction("Bad Id", "Broken", "write", "node", null),
-            new ManifestAction("untitled", " ", "write", "node", null),
-        ], []);
+            new ManifestAction("rules.write", "Change rules", "write", null),
+            new ManifestAction("Bad Id", "Broken", "write", null),
+            new ManifestAction("untitled", " ", "write", null),
+        ]);
 
         Assert.Equal(["reactor:rules.write"], manifest.CatalogActions().Select(a => a.Id));
     }
@@ -62,17 +62,15 @@ public sealed class CatalogUnionTests : IDisposable
         File.WriteAllText(path, """
             { "schemaVersion": 1, "component": "reactor", "version": "0.4.0",
               "actions": [ { "id": "rules.write", "title": "Change reactor rules", "effect": "write", "scope": "node" },
-                           { "id": "view.write", "title": "Change own view", "effect": "write", "scope": "cluster", "self": true } ],
-              "requires": [ { "action": "kgsm:server.restart", "scope": "instance", "why": "restart" } ] }
+                           { "id": "view.write", "title": "Change own view", "effect": "write", "scope": "cluster", "self": true } ] }
             """);
 
         ActionManifest? manifest = ActionManifests.TryRead(path, out string? problem);
 
         Assert.Null(problem);
         CatalogAction[] actions = [.. manifest!.CatalogActions()];
-        Assert.Equal(new CatalogAction("reactor:rules.write", "Change reactor rules", ActionEffect.Write, ScopeKind.Node), actions[0]);
+        Assert.Equal(new CatalogAction("reactor:rules.write", "Change reactor rules", ActionEffect.Write), actions[0]);
         Assert.True(actions[1].Self);
-        Assert.Equal("kgsm:server.restart", manifest.Requires!.Single().Action);
     }
 
     [Theory]

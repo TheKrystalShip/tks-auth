@@ -24,7 +24,7 @@ import { SignInMethodsPage } from "./SignInMethodsPage.jsx";
 // The same proof gates `auth:*` actions on every surface. A surface refused with `reauth_required`
 // opens this page at `#confirm`, which asks for the proof straight away and changes nothing else.
 
-const RESUME_KEY = "kgsm:account:resume";
+const RESUME_KEY = "tks-auth:account:resume";
 
 function remember(action) {
   try { sessionStorage.setItem(RESUME_KEY, JSON.stringify(action)); } catch { /* private mode */ }

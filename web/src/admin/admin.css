@@ -1,16 +1,5 @@
 /* The admin pages: what only they have: the catalog's component headings and a secret shown once. */
 
-/* The scope an Assignments page is about, chosen in its header. */
-.admin-scope {
-  width: min(360px, 100%);
-}
-
-/* The state of a service requirement, in a column of its own at the start of the row so the states line up. */
-.admin-state {
-  display: inline-flex;
-  min-width: 84px;
-}
-
 /* A component's heading above its actions inside an application's section. */
 .admin-group-title {
   padding: 10px 14px 4px;

@@ -2,7 +2,7 @@
 //
 // An account is the primary identity object: it exists on its own, and an external provider (Discord
 // today, others later) is a credential attached to it rather than the source of it. What an account
-// may do is the roles assigned to it — each everywhere, at a node or on one server — plus what
+// may do is the roles assigned to it plus what
 // `everyone` holds; approving somebody makes them active holding only that, and assigning a role is
 // the next, separate act (`AccountPage`).
 //
@@ -16,7 +16,7 @@
 import React from "react";
 
 import {
-  AccountAvatar, Button, FormDialog, FormField, ListPage, ListRow, Pill, SettingsRow, SettingsSection, Toolbar,
+  AccountAvatar, Button, FormDialog, FormField, ListPage, ListRow, Pill, Toolbar,
   ToolbarCount, ToolbarFilters, ToolbarSearch, useFilters, useStore,
 } from "@thekrystalship/krystal";
 import { StatusPill, nameOf, providersOf, useAccounts } from "./accountParts.jsx";
@@ -57,7 +57,6 @@ function AccountsPage({ params }) {
     .filter((u) => !needle || nameOf(u).toLowerCase().includes(needle) || (u.username || "").toLowerCase().includes(needle))
     .sort((a, b) => (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1));
   const countOf = (s) => all.filter((u) => u.status === s).length;
-  const services = view ? view.accounts.filter((a) => a.kind === "service") : [];
 
   const rolesOf = (id) => {
     if (!view) return null;
@@ -119,16 +118,6 @@ function AccountsPage({ params }) {
       }}
       foot={(
         <>
-          {services.length > 0 && (
-            <SettingsSection icon="bot" title="Service accounts">
-              {services.map((s) => (
-                <SettingsRow key={s.id} icon="bot" title={s.username}
-                  sub={s.requirements.length + (s.requirements.length === 1 ? " requirement" : " requirements")}>
-                  <StatusPill status={s.status} />
-                </SettingsRow>
-              ))}
-            </SettingsSection>
-          )}
           {creating && <CreateDialog onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />}
         </>
       )} />

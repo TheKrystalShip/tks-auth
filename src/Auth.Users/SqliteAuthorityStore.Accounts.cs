@@ -5,12 +5,11 @@ using TheKrystalShip.Auth.Access;
 namespace TheKrystalShip.Auth.Users;
 
 // People's accounts at schema version 2: the account store every sign-in door reads, over the same file
-// and the same write path as the authority, so an account change is versioned, owed to the cluster and
+// and the same write path as the authority, so an account change is versioned and
 // cached against exactly as a role change is.
 //
-// Only person accounts are reached through IUserStore; service accounts belong to the reports that
-// create them. What an account may do is its assignments, which are read through the authority rather
-// than off the account.
+// What an account may do is its assignments, which are read through the authority rather than off the
+// account.
 public sealed partial class SqliteAuthorityStore : IUserStore
 {
     private const string PersonColumns =
@@ -20,22 +19,22 @@ public sealed partial class SqliteAuthorityStore : IUserStore
         "credential_id, user_id, kind, handle, secret, label, created_utc, last_used_utc";
 
     /// <inheritdoc />
-    public Task<KgsmUser?> FindByIdAsync(string userId, CancellationToken ct = default) =>
+    public Task<UserAccount?> FindByIdAsync(string userId, CancellationToken ct = default) =>
         ReadPersonAsync("WHERE u.user_id = $p", userId, ct);
 
     /// <inheritdoc />
-    public Task<KgsmUser?> FindByUsernameAsync(string username, CancellationToken ct = default) =>
+    public Task<UserAccount?> FindByUsernameAsync(string username, CancellationToken ct = default) =>
         ReadPersonAsync("WHERE u.username_key = $p", Usernames.Key(username), ct);
 
     /// <inheritdoc />
-    public Task<KgsmUser?> FindByCredentialAsync(string handle, CancellationToken ct = default) =>
+    public Task<UserAccount?> FindByCredentialAsync(string handle, CancellationToken ct = default) =>
         ReadPersonAsync("JOIN credentials c ON c.user_id = u.user_id WHERE c.handle = $p", handle, ct);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<KgsmUser>> ListAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserAccount>> ListAsync(CancellationToken ct = default)
     {
         await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
-        List<KgsmUser> users = [];
+        List<UserAccount> users = [];
         Read(connection, null,
             $"SELECT {PersonColumns} FROM users u WHERE u.kind = 'person' ORDER BY u.created_utc, u.user_id;",
             r => users.Add(MapPerson(r)));
@@ -44,7 +43,7 @@ public sealed partial class SqliteAuthorityStore : IUserStore
 
     /// <inheritdoc />
     /// <remarks>A person account, holding nothing but <c>everyone</c> until somebody assigns it a role.</remarks>
-    public Task CreateAsync(KgsmUser user, CancellationToken ct = default)
+    public Task CreateAsync(UserAccount user, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(user);
 
@@ -69,7 +68,7 @@ public sealed partial class SqliteAuthorityStore : IUserStore
     /// administration rules; a request doing it goes through <see cref="DisableAccount"/> instead, which is
     /// what holds the last Owner.
     /// </remarks>
-    public Task<bool> UpdateAsync(KgsmUser user, CancellationToken ct = default)
+    public Task<bool> UpdateAsync(UserAccount user, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(user);
 
@@ -100,7 +99,7 @@ public sealed partial class SqliteAuthorityStore : IUserStore
         bool deleted = false;
         await WriteAsync(expectedVersion: null, DateTimeOffset.UtcNow, ct, (w, s) =>
         {
-            if (s.Accounts.TryGetValue(userId, out AccessAccount? account) && account.Kind == AccountKind.Person)
+            if (s.Accounts.ContainsKey(userId))
             {
                 DeleteAccountRow(w, s, userId);
                 deleted = true;
@@ -133,7 +132,7 @@ public sealed partial class SqliteAuthorityStore : IUserStore
     }
 
     /// <inheritdoc />
-    /// <remarks>The account's handles travel with it, so attaching one is a change to the account the cluster is owed.</remarks>
+    /// <remarks>The account's handles travel with it, so attaching one is a change to the account.</remarks>
     public Task AddCredentialAsync(UserCredential credential, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(credential);
@@ -156,7 +155,7 @@ public sealed partial class SqliteAuthorityStore : IUserStore
     }
 
     /// <inheritdoc />
-    /// <remarks>A secret never travels, so setting one owes the cluster nothing.</remarks>
+    /// <remarks>A secret never travels, so setting one moves no version.</remarks>
     public Task<bool> SetCredentialSecretAsync(string credentialId, string secret, CancellationToken ct = default) =>
         RecordAsync(ct, w => w.RecordCount("UPDATE credentials SET secret = $s WHERE credential_id = $id;",
             ("$id", credentialId), ("$s", secret)) > 0);
@@ -242,7 +241,7 @@ public sealed partial class SqliteAuthorityStore : IUserStore
 
     // ── plumbing ──────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>An account write: versioned, owed to the cluster, cached against — through the authority's own path.</summary>
+    /// <summary>An account write: versioned, cached against — through the authority's own path.</summary>
     private async Task<T> AccountWriteAsync<T>(CancellationToken ct, Func<Writer, T> apply)
     {
         T result = default!;
@@ -257,7 +256,7 @@ public sealed partial class SqliteAuthorityStore : IUserStore
     /// <summary>Bookkeeping that is nobody's access: committed without advancing the authority version.</summary>
     private Task<T> RecordAsync<T>(CancellationToken ct, Func<Writer, T> apply) => AccountWriteAsync(ct, apply);
 
-    /// <summary>Stamp an account with this write's version, so the cluster is owed its current state.</summary>
+    /// <summary>Stamp an account with this write's version.</summary>
     private static void Stamp(Writer w, string userId) =>
         w.Execute("UPDATE users SET version = $v WHERE user_id = $id;", ("$id", userId));
 
@@ -274,18 +273,18 @@ public sealed partial class SqliteAuthorityStore : IUserStore
         }
     }
 
-    private static string Origin(KgsmUser user) => AccountWire.ToWire(user.Origin);
+    private static string Origin(UserAccount user) => AccountWire.ToWire(user.Origin);
 
-    private async Task<KgsmUser?> ReadPersonAsync(string where, string parameter, CancellationToken ct)
+    private async Task<UserAccount?> ReadPersonAsync(string where, string parameter, CancellationToken ct)
     {
         await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
-        KgsmUser? found = null;
+        UserAccount? found = null;
         Read(connection, null, $"SELECT {PersonColumns} FROM users u {where} AND u.kind = 'person';",
             r => found = MapPerson(r), ("$p", parameter));
         return found;
     }
 
-    private static KgsmUser MapPerson(SqliteDataReader r) => new(
+    private static UserAccount MapPerson(SqliteDataReader r) => new(
         UserId: r.GetString(0),
         Username: r.GetString(1),
         DisplayName: r.GetString(2),
@@ -303,4 +302,32 @@ public sealed partial class SqliteAuthorityStore : IUserStore
         Label: r.IsDBNull(5) ? null : r.GetString(5),
         Created: UserWire.ReadTime(r.GetString(6)),
         LastUsed: r.IsDBNull(7) ? null : UserWire.ReadTime(r.GetString(7)));
+
+    /// <summary>
+    /// The id of the account a handle belongs to, or <see langword="null"/>: the account a credential is
+    /// filed under, or the account a <c>local:&lt;user id&gt;</c> handle names — which an account with no
+    /// password has no credential row for.
+    /// </summary>
+    public async Task<string?> FindAccountIdByHandleAsync(string handle, CancellationToken ct = default)
+    {
+        await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
+        if (Scalar(connection, null, "SELECT user_id FROM credentials WHERE handle = $h;", ("$h", handle)) is string held)
+            return held;
+
+        string prefix = UserCredentials.LocalHandle(string.Empty);
+        return handle.StartsWith(prefix, StringComparison.Ordinal)
+            ? Scalar(connection, null, "SELECT user_id FROM users WHERE user_id = $id;", ("$id", handle[prefix.Length..])) as string
+            : null;
+    }
+
+    /// <summary>Who granted each assignment, and when.</summary>
+    public async Task<IReadOnlyList<AssignmentDetail>> AssignmentDetailsAsync(CancellationToken ct = default)
+    {
+        await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
+        List<AssignmentDetail> details = [];
+        Read(connection, null, "SELECT assignment_id, granted_by, created_utc FROM assignments ORDER BY assignment_id;",
+            r => details.Add(new AssignmentDetail(
+                r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1), UserWire.ReadTime(r.GetString(2)))));
+        return details;
+    }
 }

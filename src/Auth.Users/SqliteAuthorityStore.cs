@@ -18,8 +18,6 @@ public enum AuthorityChangeKind
     PermissionRemoved,
     AssignmentGranted,
     AssignmentRevoked,
-    RequirementApproved,
-    RequirementRevoked,
     CatalogActionAdded,
     CatalogActionRemoved,
     AccountDisabled,
@@ -33,16 +31,20 @@ public enum AuthorityChangeKind
 /// <param name="Kind">What happened.</param>
 /// <param name="Subject">The record: a role, permission, assignment or account id, or an action id.</param>
 /// <param name="Name">The role, permission or account name at the time, for a reader.</param>
-/// <param name="AccountId">The account an assignment or requirement belongs to.</param>
+/// <param name="AccountId">The account an assignment belongs to.</param>
 /// <param name="RoleId">The role an assignment is of.</param>
-/// <param name="Scope">The scope an assignment or approved requirement holds.</param>
 public sealed record AuthorityChange(
     AuthorityChangeKind Kind,
     string Subject,
     string? Name = null,
     string? AccountId = null,
-    string? RoleId = null,
-    string? Scope = null);
+    string? RoleId = null);
+
+/// <summary>Who granted an assignment, and when.</summary>
+/// <param name="AssignmentId">The assignment.</param>
+/// <param name="GrantedBy">The actor who granted it, when one is recorded.</param>
+/// <param name="Created">When it was granted.</param>
+public sealed record AssignmentDetail(string AssignmentId, string? GrantedBy, DateTimeOffset Created);
 
 /// <summary>The result of an authority write.</summary>
 /// <param name="Version">The authority version after the write.</param>
@@ -73,12 +75,6 @@ public sealed class StaleAuthorityException(long expected, long current)
     /// <summary>The version it would have been applied to.</summary>
     public long Current { get; } = current;
 }
-
-/// <summary>An action a component's manifest says it performs as its own service account.</summary>
-/// <param name="Action">The other component's action id.</param>
-/// <param name="ScopeKind">The scope kind it needs the action at.</param>
-/// <param name="Why">Why, for the person reviewing it.</param>
-public sealed record DeclaredRequirement(string Action, ScopeKind ScopeKind, string? Why);
 
 /// <summary>The opaque ids the authority tables hand out, on the pattern of <see cref="UserIds"/>.</summary>
 public static class AuthorityIds
@@ -116,20 +112,13 @@ public static class AuthorityIds
 /// assignment that ended rather than a role deletion that implied them.
 /// </para>
 /// <para>
-/// The writes that belong to the system rather than to a person — the catalog, service accounts and
-/// their declared requirements, and Owner granted from the host's shell — bypass the rules, and are
-/// never reachable from a request.
-/// </para>
-/// <para>
-/// <b>Every write owes the cluster what it changed, in the same transaction.</b> Each record a write
-/// stamped with the new version, and each one it removed, is filed in <c>authority_outbox</c> before the
-/// write commits, so a change can never exist without its announcement being owed.
+/// The writes that belong to the system rather than to a person — the catalog, and Owner granted from
+/// the host's shell — bypass the rules, and are never reachable from a request.
 /// </para>
 /// </remarks>
 public sealed partial class SqliteAuthorityStore
 {
     private readonly string _connectionString;
-    private readonly string _replicaConnectionString;
     private readonly TimeSpan _busyTimeout;
 
     /// <summary>
@@ -150,24 +139,19 @@ public sealed partial class SqliteAuthorityStore
             DefaultTimeout = (int)Math.Ceiling(options.BusyTimeout.TotalSeconds),
         }.ToString();
 
-        // Unpooled, so a connection with foreign keys off never returns to a pool the anchor's own
-        // writes draw from.
-        _replicaConnectionString = new SqliteConnectionStringBuilder(_connectionString)
-        {
-            ForeignKeys = false,
-            Pooling = false,
-        }.ToString();
-
         string? directory = Path.GetDirectoryName(Path.GetFullPath(options.Path));
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        Initialize(options.Path);
+        MigrationNotes = Initialize(options.Path);
     }
+
+    /// <summary>What opening the file changed in it: each record the one-time upgrade removed, one line each.</summary>
+    public IReadOnlyList<string> MigrationNotes { get; }
 
     // ── schema ────────────────────────────────────────────────────────────────────────────────
 
-    private void Initialize(string path)
+    private IReadOnlyList<string> Initialize(string path)
     {
         using SqliteConnection connection = Connect();
 
@@ -180,16 +164,29 @@ public sealed partial class SqliteAuthorityStore
 
         Execute(connection, null, "PRAGMA journal_mode=WAL;");
 
+        string? found = null;
+        if (Scalar(connection, null,
+                "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'schema_meta';") is not 0L)
+        {
+            found = Scalar(connection, null, "SELECT value FROM schema_meta WHERE key = $key;",
+                ("$key", UserSchema.VersionKey)) as string;
+        }
+
+        // A file written by the previous schema is copied aside before anything in it is dropped.
+        if (found == AuthoritySchema.PreviousVersion.ToString(CultureInfo.InvariantCulture))
+            BackUp(connection, path);
+
         using SqliteTransaction transaction = connection.BeginTransaction(IsolationLevel.Serializable, deferred: false);
 
-        bool fresh = Scalar(connection, transaction,
-            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'schema_meta';") is 0L;
-
-        string? found = fresh
+        // Read again under the write lock: a second process opening the same file at the same moment
+        // finds the upgrade done rather than doing it twice.
+        found = Scalar(connection, transaction,
+            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'schema_meta';") is 0L
             ? null
             : Scalar(connection, transaction, "SELECT value FROM schema_meta WHERE key = $key;",
                 ("$key", UserSchema.VersionKey)) as string;
 
+        IReadOnlyList<string> notes = [];
         if (found is null)
         {
             Execute(connection, transaction, AuthoritySchema.CreateAccounts);
@@ -200,20 +197,25 @@ public sealed partial class SqliteAuthorityStore
                 ("$key", UserSchema.VersionKey),
                 ("$value", AuthoritySchema.Version.ToString(CultureInfo.InvariantCulture)));
         }
+        else if (found == AuthoritySchema.PreviousVersion.ToString(CultureInfo.InvariantCulture))
+        {
+            notes = Upgrade(connection, transaction);
+        }
         else if (found != AuthoritySchema.Version.ToString(CultureInfo.InvariantCulture))
         {
             throw new UserStoreSchemaException(
                 $"The account store at '{path}' is at schema version {found}; the authority store reads " +
-                $"version {AuthoritySchema.Version} and nothing else.");
+                $"version {AuthoritySchema.Version} and upgrades from version {AuthoritySchema.PreviousVersion}.");
         }
 
         EnsureAdditiveColumns(connection, transaction);
         transaction.Commit();
+        return notes;
     }
 
     /// <summary>
-    /// Add the nullable columns a file written by an earlier build lacks. The schema version is a floor and
-    /// a column is only ever added, so an older build still reads the file.
+    /// Add the nullable columns a file written by an earlier build lacks. A column is only ever added, so
+    /// an older build of the same schema still reads the file.
     /// </summary>
     private static void EnsureAdditiveColumns(SqliteConnection connection, SqliteTransaction transaction)
     {
@@ -244,16 +246,15 @@ public sealed partial class SqliteAuthorityStore
     }
 
     /// <summary>
-    /// Everything that decides access, as one snapshot. The anchor's own store is the authority and
-    /// is always current; a replica passes the freshness it last confirmed.
+    /// Everything that decides access, as one snapshot.
     /// </summary>
-    public async Task<AuthoritySnapshot> LoadAsync(AuthorityFreshness? freshness = null, CancellationToken ct = default)
+    public async Task<AuthoritySnapshot> LoadAsync(CancellationToken ct = default)
     {
         await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
         await using SqliteTransaction transaction = (SqliteTransaction)await connection
             .BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
 
-        return Load(connection, transaction, freshness ?? AuthorityFreshness.Authoritative);
+        return Load(connection, transaction);
     }
 
     /// <summary>The account a username names, or <see langword="null"/>.</summary>
@@ -266,29 +267,25 @@ public sealed partial class SqliteAuthorityStore
         if (id is null)
             return null;
 
-        return Load(connection, null, AuthorityFreshness.Authoritative).Accounts.GetValueOrDefault(id);
+        return Load(connection, null).Accounts.GetValueOrDefault(id);
     }
 
-    private static AuthoritySnapshot Load(SqliteConnection connection, SqliteTransaction? transaction, AuthorityFreshness freshness)
+    private static AuthoritySnapshot Load(SqliteConnection connection, SqliteTransaction? transaction)
     {
         long version = ReadVersion(connection, transaction);
 
         List<AccessAccount> accounts = [];
         Read(connection, transaction,
             """
-            SELECT u.user_id, u.username, u.kind, u.status, s.component, s.member
-            FROM users u LEFT JOIN service_accounts s ON s.user_id = u.user_id;
+            SELECT user_id, username, status FROM users;
             """,
             r => accounts.Add(new AccessAccount(
-                r.GetString(0), r.GetString(1), AccountWire.ParseKind(r.GetString(2)),
-                ToAccessStatus(UserStatuses.Parse(r.GetString(3))),
-                r.IsDBNull(4) ? null : new ServiceIdentity(r.GetString(4), r.GetString(5)))));
+                r.GetString(0), r.GetString(1), ToAccessStatus(UserStatuses.Parse(r.GetString(2))))));
 
         List<CatalogAction> catalog = [];
-        Read(connection, transaction, "SELECT action, title, effect, scope_kind, self FROM catalog_actions;",
+        Read(connection, transaction, "SELECT action, title, effect, self FROM catalog_actions;",
             r => catalog.Add(new CatalogAction(
-                r.GetString(0), r.GetString(1), ActionEffects.Parse(r.GetString(2)),
-                ScopeKinds.Parse(r.GetString(3)), r.GetInt64(4) != 0)));
+                r.GetString(0), r.GetString(1), ActionEffects.Parse(r.GetString(2)), r.GetInt64(3) != 0)));
 
         Dictionary<string, HashSet<string>> permissionActions = new(StringComparer.Ordinal);
         Read(connection, transaction, "SELECT permission_id, action FROM permission_actions;",
@@ -310,46 +307,30 @@ public sealed partial class SqliteAuthorityStore
                 rolePermissions.GetValueOrDefault(r.GetString(0)) ?? [],
                 r.IsDBNull(4) ? null : r.GetString(4))));
 
-        // A scope that does not parse grants nothing: the row is left out rather than guessed at.
         List<Assignment> assignments = [];
-        Read(connection, transaction, "SELECT assignment_id, user_id, role_id, scope FROM assignments;",
-            r =>
-            {
-                if (AccessScope.TryParse(r.GetString(3), out AccessScope? scope))
-                    assignments.Add(new Assignment(r.GetString(0), r.GetString(1), r.GetString(2), scope.Value));
-            });
-
-        List<ServiceRequirement> requirements = [];
-        Read(connection, transaction,
-            "SELECT user_id, action, scope_kind, why, state, grant_scope, decided_by, declared FROM service_requirements;",
-            r => requirements.Add(new ServiceRequirement(
-                r.GetString(0), r.GetString(1), ScopeKinds.Parse(r.GetString(2)),
-                r.IsDBNull(3) ? null : r.GetString(3),
-                RequirementStates.Parse(r.GetString(4)),
-                !r.IsDBNull(5) && AccessScope.TryParse(r.GetString(5), out AccessScope? grant) ? grant : null,
-                r.IsDBNull(6) ? null : r.GetString(6),
-                r.GetInt64(7) != 0)));
+        Read(connection, transaction, "SELECT assignment_id, user_id, role_id FROM assignments;",
+            r => assignments.Add(new Assignment(r.GetString(0), r.GetString(1), r.GetString(2))));
 
         return new AuthoritySnapshot(
-            version, accounts, catalog, permissions, roles, assignments, requirements, freshness,
+            version, accounts, catalog, permissions, roles, assignments,
             applicationNamespaces: ApplicationNamespacesOf(connection, transaction));
     }
 
     /// <summary>
     /// The components each application's manifests declare, from the reports held under the applications'
-    /// catalog members. A report that no longer parses declares none.
+    /// catalog sources. A report that no longer parses declares none.
     /// </summary>
     private static Dictionary<string, IReadOnlySet<string>> ApplicationNamespacesOf(SqliteConnection connection, SqliteTransaction? transaction)
     {
         Dictionary<string, IReadOnlySet<string>> owned = new(StringComparer.Ordinal);
-        Read(connection, transaction, "SELECT member, report FROM member_reports WHERE member LIKE 'application:%';", r =>
+        Read(connection, transaction, "SELECT source, report FROM catalog_reports WHERE source LIKE 'application:%';", r =>
         {
             if (ApplicationNamespaces.ApplicationOf(r.GetString(0)) is not { } application)
                 return;
 
             try
             {
-                if (JsonSerializer.Deserialize(r.GetString(1), AccessJsonContext.Default.MemberCatalogReport) is { } report)
+                if (JsonSerializer.Deserialize(r.GetString(1), AccessJsonContext.Default.CatalogReport) is { } report)
                     owned[application] = report.Manifests.Select(m => m.Component).ToHashSet(StringComparer.Ordinal);
             }
             catch (JsonException)
@@ -418,7 +399,7 @@ public sealed partial class SqliteAuthorityStore
             {
                 Role role = s.Roles[e.RoleId];
                 foreach (Assignment a in s.Assignments.Where(a => a.RoleId == e.RoleId))
-                    w.Changed(AuthorityChangeKind.AssignmentRevoked, a.AssignmentId, role.Name, a.AccountId, a.RoleId, a.Scope.ToString());
+                    w.Changed(AuthorityChangeKind.AssignmentRevoked, a.AssignmentId, role.Name, a.AccountId, a.RoleId);
 
                 w.Execute("DELETE FROM roles WHERE role_id = $id;", ("$id", e.RoleId));
                 ShiftCustomRanks(w, s, from: role.Rank + 1, by: -1);
@@ -515,27 +496,15 @@ public sealed partial class SqliteAuthorityStore
             }
 
             case Assign e:
-                return InsertAssignment(w, e.AccountId, e.RoleId, e.Scope, grantedBy: actorId, s.Roles[e.RoleId].Name);
+                return InsertAssignment(w, e.AccountId, e.RoleId, grantedBy: actorId, s.Roles[e.RoleId].Name);
 
             case Revoke e:
             {
                 Assignment a = s.Assignments.Single(a => a.AssignmentId == e.AssignmentId);
                 w.Execute("DELETE FROM assignments WHERE assignment_id = $id;", ("$id", e.AssignmentId));
-                w.Changed(AuthorityChangeKind.AssignmentRevoked, a.AssignmentId, s.Roles[a.RoleId].Name, a.AccountId, a.RoleId, a.Scope.ToString());
+                w.Changed(AuthorityChangeKind.AssignmentRevoked, a.AssignmentId, s.Roles[a.RoleId].Name, a.AccountId, a.RoleId);
                 return null;
             }
-
-            case ApproveRequirement e:
-                SetRequirement(w, e.AccountId, e.Action, RequirementState.Approved, e.Scope, actorId);
-                return null;
-
-            case NarrowRequirement e:
-                SetRequirement(w, e.AccountId, e.Action, RequirementState.Approved, e.Scope, actorId);
-                return null;
-
-            case RevokeRequirement e:
-                SetRequirement(w, e.AccountId, e.Action, RequirementState.Revoked, null, actorId);
-                return null;
 
             case DisableAccount e:
                 w.Execute("UPDATE users SET status = $status, version = $v, updated_utc = $now WHERE user_id = $id;",
@@ -569,40 +538,23 @@ public sealed partial class SqliteAuthorityStore
         }
     }
 
-    private static string InsertAssignment(Writer w, string accountId, string roleId, AccessScope scope, string grantedBy, string roleName)
+    private static string InsertAssignment(Writer w, string accountId, string roleId, string grantedBy, string roleName)
     {
         string id = AuthorityIds.NewAssignmentId();
         w.Execute(
             """
-            INSERT INTO assignments (assignment_id, user_id, role_id, scope, granted_by, version, created_utc)
-            VALUES ($id, $user, $role, $scope, $by, $v, $now);
+            INSERT INTO assignments (assignment_id, user_id, role_id, granted_by, version, created_utc)
+            VALUES ($id, $user, $role, $by, $v, $now);
             """,
-            ("$id", id), ("$user", accountId), ("$role", roleId), ("$scope", scope.ToString()), ("$by", grantedBy));
-        w.Changed(AuthorityChangeKind.AssignmentGranted, id, roleName, accountId, roleId, scope.ToString());
+            ("$id", id), ("$user", accountId), ("$role", roleId), ("$by", grantedBy));
+        w.Changed(AuthorityChangeKind.AssignmentGranted, id, roleName, accountId, roleId);
         return id;
-    }
-
-    private static void SetRequirement(
-        Writer w, string accountId, string action, RequirementState state, AccessScope? grant, string decidedBy)
-    {
-        w.Execute(
-            """
-            UPDATE service_requirements
-            SET state = $state, grant_scope = $grant, decided_by = $by, version = $v, updated_utc = $now
-            WHERE user_id = $id AND action = $action;
-            """,
-            ("$id", accountId), ("$action", action), ("$state", RequirementStates.ToWire(state)),
-            ("$grant", (object?)grant?.ToString() ?? DBNull.Value), ("$by", decidedBy));
-
-        w.Changed(
-            state == RequirementState.Approved ? AuthorityChangeKind.RequirementApproved : AuthorityChangeKind.RequirementRevoked,
-            action, accountId: accountId, scope: grant?.ToString());
     }
 
     private static void DeleteAccountRow(Writer w, AuthoritySnapshot s, string accountId)
     {
         foreach (Assignment a in s.AssignmentsOf(accountId))
-            w.Changed(AuthorityChangeKind.AssignmentRevoked, a.AssignmentId, s.Roles.GetValueOrDefault(a.RoleId)?.Name, a.AccountId, a.RoleId, a.Scope.ToString());
+            w.Changed(AuthorityChangeKind.AssignmentRevoked, a.AssignmentId, s.Roles.GetValueOrDefault(a.RoleId)?.Name, a.AccountId, a.RoleId);
 
         w.Execute("DELETE FROM users WHERE user_id = $id;", ("$id", accountId));
         w.Changed(AuthorityChangeKind.AccountDeleted, accountId, s.Accounts.GetValueOrDefault(accountId)?.Name, accountId);
@@ -615,80 +567,24 @@ public sealed partial class SqliteAuthorityStore
     /// </summary>
     /// <remarks>
     /// Adds no power: whoever can run it already holds this file. It is the recovery path for a
-    /// cluster whose every Owner has lost every credential, and it is recorded like any other grant,
+    /// provider whose every Owner has lost every credential, and it is recorded like any other grant,
     /// under <paramref name="actor"/>. An account already holding Owner is left as it is and the write
     /// changes nothing.
     /// </remarks>
-    /// <exception cref="InvalidOperationException">No such account, or a service account.</exception>
+    /// <exception cref="InvalidOperationException">No such account.</exception>
     public Task<AuthorityWrite> GrantOwnerLocallyAsync(string username, string actor, DateTimeOffset now, CancellationToken ct = default) =>
         WriteAsync(expectedVersion: null, now, ct, (w, s) =>
         {
             AccessAccount account = s.Accounts.Values.FirstOrDefault(a => Usernames.Key(a.Name) == Usernames.Key(username))
                 ?? throw new InvalidOperationException($"There is no account named '{username}'.");
 
-            if (account.Kind != AccountKind.Person)
-                throw new InvalidOperationException($"'{account.Name}' is a service account; Owner is held by people.");
-
             return s.IsOwner(account.AccountId)
                 ? null
-                : InsertAssignment(w, account.AccountId, BuiltInRoles.OwnerId, AccessScope.Cluster, actor, BuiltInRoles.OwnerName);
+                : InsertAssignment(w, account.AccountId, BuiltInRoles.OwnerId, actor, BuiltInRoles.OwnerName);
         });
 
     /// <summary>
-    /// Carry the authority to <paramref name="application"/>'s roles from the host's shell, with none of the
-    /// rules: see <see cref="ApplicationRolesMigration"/>.
-    /// </summary>
-    /// <remarks>
-    /// The administrator role is made, or an existing role of that name is taken, to hold every action of the
-    /// application; every Owner is given it at cluster scope; every assignment at a node or an instance is
-    /// removed. Each change is reported on its own, so the journal carries every grant and every removal.
-    /// Planned and applied in one transaction, so the plan applied is the plan of the store as it stands.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The administrator role's name is a built-in role's.</exception>
-    public Task<AuthorityWrite> MigrateToApplicationRolesAsync(
-        string application, string administratorName, string actor, DateTimeOffset now, CancellationToken ct = default) =>
-        WriteAsync(expectedVersion: null, now, ct, (w, s) =>
-        {
-            ApplicationRolesPlan plan = ApplicationRolesMigration.Plan(s, application, administratorName);
-
-            string roleId;
-            if (plan.AdministratorRoleId is { } existing)
-            {
-                roleId = existing;
-                if (plan.FlagsAdministrator)
-                    SetEveryAction(w, s, roleId, application);
-            }
-            else
-            {
-                roleId = AuthorityIds.NewRoleId();
-                ShiftCustomRanks(w, s, from: RoleRanks.FirstCustom, by: 1);
-                w.Execute(
-                    """
-                    INSERT INTO roles (role_id, name, name_key, kind, rank, holds_all_of, version, updated_utc)
-                    VALUES ($id, $name, $key, 'custom', $rank, $all, $v, $now);
-                    """,
-                    ("$id", roleId), ("$name", plan.AdministratorName), ("$key", AuthorityRules.NameKey(plan.AdministratorName)),
-                    ("$rank", RoleRanks.FirstCustom), ("$all", application));
-                w.Changed(AuthorityChangeKind.RoleChanged, roleId, plan.AdministratorName);
-            }
-
-            foreach (AdministratorGrant grant in plan.Administrators)
-                InsertAssignment(w, grant.AccountId, roleId, AccessScope.Cluster, actor, plan.AdministratorName);
-
-            foreach (DroppedAssignment dropped in plan.Dropped)
-            {
-                Assignment held = s.Assignments.Single(a => a.AssignmentId == dropped.AssignmentId);
-                w.Execute("DELETE FROM assignments WHERE assignment_id = $id;", ("$id", held.AssignmentId));
-                w.Changed(AuthorityChangeKind.AssignmentRevoked, held.AssignmentId, dropped.Role, held.AccountId, held.RoleId,
-                    held.Scope.ToString());
-            }
-
-            return roleId;
-        });
-
-    /// <summary>
-    /// Replace the catalog with <paramref name="actions"/>: the union of every roster member's last
-    /// report. An action no longer declared leaves every permission that held it.
+    /// Replace the catalog with <paramref name="actions"/>: the union of every source's last report. An action no longer declared leaves every permission that held it.
     /// </summary>
     public Task<AuthorityWrite> ReplaceCatalogAsync(IReadOnlyCollection<CatalogAction> actions, DateTimeOffset now, CancellationToken ct = default) =>
         WriteAsync(expectedVersion: null, now, ct, (w, s) =>
@@ -736,11 +632,11 @@ public sealed partial class SqliteAuthorityStore
         {
             w.Execute(
                 """
-                INSERT INTO catalog_actions (action, title, effect, scope_kind, self, version)
-                VALUES ($a, $title, $effect, $scope, $self, $v);
+                INSERT INTO catalog_actions (action, title, effect, self, version)
+                VALUES ($a, $title, $effect, $self, $v);
                 """,
                 ("$a", action.Id), ("$title", action.Title), ("$effect", ActionEffects.ToWire(action.Effect)),
-                ("$scope", ScopeKinds.ToWire(action.Scope)), ("$self", action.Self ? 1 : 0));
+                ("$self", action.Self ? 1 : 0));
         }
 
         foreach (string arrived in next.Keys.Where(id => !s.Catalog.ContainsKey(id)).Order(StringComparer.Ordinal))
@@ -750,138 +646,94 @@ public sealed partial class SqliteAuthorityStore
             w.Changed(AuthorityChangeKind.CatalogActionRemoved, left);
     }
 
-    // ── members' reports ──────────────────────────────────────────────────────────────────────
+    // ── reports ───────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Record what <paramref name="member"/> reports it is responsible for, and bring the catalog and
-    /// that member's service accounts in line with it.
+    /// Record what <paramref name="source"/> declares, and bring the catalog in line with it.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The report replaces the member's previous one. The catalog becomes the union of every stored
-    /// report; each component requiring something gets its service account and its requirements; a
-    /// component the member no longer reports has its service account forgotten.
+    /// The report replaces the source's previous one. The catalog becomes the union of every stored
+    /// report.
     /// </para>
     /// <para>
     /// A report identical to the last one writes nothing and leaves the authority version alone, so the
-    /// periodic re-report every member sends costs the cluster nothing.
+    /// periodic re-read of an application costs nothing.
     /// </para>
     /// </remarks>
-    public Task<AuthorityWrite> RecordMemberReportAsync(
-        string member, MemberCatalogReport report, DateTimeOffset now, CancellationToken ct = default)
+    public Task<AuthorityWrite> RecordReportAsync(
+        string source, CatalogReport report, DateTimeOffset now, CancellationToken ct = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(member);
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
         ArgumentNullException.ThrowIfNull(report);
 
         return WriteAsync(expectedVersion: null, now, ct, (w, s) =>
         {
-            Dictionary<string, MemberCatalogReport> reports = ReadReports(w);
+            Dictionary<string, CatalogReport> reports = ReadReports(w);
 
-            // Delivery is not ordered: a report read before the one held arrived late, and taking it
-            // would put back what the member has since stopped declaring.
-            if (reports.TryGetValue(member, out MemberCatalogReport? held) && held.Sequence > report.Sequence)
+            // A report read before the one held arrived late, and taking it would put back what the
+            // source has since stopped declaring.
+            if (reports.TryGetValue(source, out CatalogReport? held) && held.Sequence > report.Sequence)
                 return null;
 
-            string json = JsonSerializer.Serialize(report, AccessJsonContext.Default.MemberCatalogReport);
+            string json = JsonSerializer.Serialize(report, AccessJsonContext.Default.CatalogReport);
             w.Record(
                 """
-                INSERT INTO member_reports (member, report, received_utc) VALUES ($m, $r, $now)
-                ON CONFLICT(member) DO UPDATE SET report = excluded.report, received_utc = excluded.received_utc;
+                INSERT INTO catalog_reports (source, report, received_utc) VALUES ($s, $r, $now)
+                ON CONFLICT(source) DO UPDATE SET report = excluded.report, received_utc = excluded.received_utc;
                 """,
-                ("$m", member), ("$r", json));
+                ("$s", source), ("$r", json));
 
-            reports[member] = report;
+            reports[source] = report;
             ReplaceCatalog(w, s, [.. CatalogUnion.Of(reports).Select(e => e.Action)]);
-
-            HashSet<string> components = new(StringComparer.Ordinal);
-            foreach (ActionManifest manifest in report.Manifests)
-            {
-                components.Add(manifest.Component);
-                DeclareRequirements(w, s, new ServiceIdentity(manifest.Component, member), report.Anchor, Requirements(manifest));
-            }
-
-            foreach (AccessAccount account in s.Accounts.Values.Where(a =>
-                         a.Service is { } svc && svc.Member == member && !components.Contains(svc.Component)))
-            {
-                DeleteAccountRow(w, s, account.AccountId);
-            }
-
             return null;
         });
     }
 
     /// <summary>
-    /// Forget everything <paramref name="member"/> reported: it has been removed from the cluster.
+    /// Forget everything <paramref name="source"/> declared: it has been removed.
     /// </summary>
     /// <remarks>
-    /// Every action only it declared leaves the catalog and every permission, and every service account
-    /// belonging to it is forgotten. A member that is merely offline keeps its report; only removal
-    /// comes here.
+    /// Every action only it declared leaves the catalog and every permission.
     /// </remarks>
-    public Task<AuthorityWrite> ForgetMemberAsync(string member, DateTimeOffset now, CancellationToken ct = default) =>
+    public Task<AuthorityWrite> ForgetReportAsync(string source, DateTimeOffset now, CancellationToken ct = default) =>
         WriteAsync(expectedVersion: null, now, ct, (w, s) =>
         {
-            Dictionary<string, MemberCatalogReport> reports = ReadReports(w);
-            if (reports.Remove(member))
-                w.Record("DELETE FROM member_reports WHERE member = $m;", ("$m", member));
+            Dictionary<string, CatalogReport> reports = ReadReports(w);
+            if (reports.Remove(source))
+                w.Record("DELETE FROM catalog_reports WHERE source = $s;", ("$s", source));
 
             ReplaceCatalog(w, s, [.. CatalogUnion.Of(reports).Select(e => e.Action)]);
-
-            foreach (AccessAccount account in s.Accounts.Values.Where(a => a.Service?.Member == member))
-                DeleteAccountRow(w, s, account.AccountId);
-
             return null;
         });
 
-    /// <summary>
-    /// Drop every assignment naming one install of an instance on <paramref name="node"/>: the install
-    /// with <paramref name="nonce"/> is gone.
-    /// </summary>
-    /// <remarks>
-    /// Matched on the nonce, so a message arriving after the instance was installed again under the same
-    /// name takes nothing from the new install.
-    /// </remarks>
-    public Task<AuthorityWrite> RemoveInstanceAsync(string node, string nonce, DateTimeOffset now, CancellationToken ct = default) =>
-        WriteAsync(expectedVersion: null, now, ct, (w, s) =>
-        {
-            foreach (Assignment a in s.Assignments.Where(a =>
-                         a.Scope.Kind == ScopeKind.Instance && a.Scope.Node == node && a.Scope.Nonce == nonce))
-            {
-                w.Execute("DELETE FROM assignments WHERE assignment_id = $id;", ("$id", a.AssignmentId));
-                w.Changed(AuthorityChangeKind.AssignmentRevoked, a.AssignmentId, s.Roles.GetValueOrDefault(a.RoleId)?.Name,
-                    a.AccountId, a.RoleId, a.Scope.ToString());
-            }
-
-            return null;
-        });
-
-    /// <summary>The members whose reports the catalog is built from.</summary>
-    public async Task<IReadOnlyList<string>> ReportingMembersAsync(CancellationToken ct = default)
+    /// <summary>The sources whose reports the catalog is built from.</summary>
+    public async Task<IReadOnlyList<string>> ReportingSourcesAsync(CancellationToken ct = default)
     {
         await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
-        List<string> members = [];
-        Read(connection, null, "SELECT member FROM member_reports ORDER BY member;", r => members.Add(r.GetString(0)));
-        return members;
+        List<string> sources = [];
+        Read(connection, null, "SELECT source FROM catalog_reports ORDER BY source;", r => sources.Add(r.GetString(0)));
+        return sources;
     }
 
-    /// <summary>The catalog, with every member and component version declaring each action.</summary>
+    /// <summary>The catalog, with every source and component version declaring each action.</summary>
     public async Task<IReadOnlyList<CatalogEntry>> CatalogAsync(CancellationToken ct = default)
     {
         await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
         return CatalogUnion.Of(ReadReports(connection, null));
     }
 
-    private static Dictionary<string, MemberCatalogReport> ReadReports(Writer w) => w.Query(ReadReports);
+    private static Dictionary<string, CatalogReport> ReadReports(Writer w) => w.Query(ReadReports);
 
     /// <summary>Every stored report. One that no longer parses is left out, as if never reported.</summary>
-    private static Dictionary<string, MemberCatalogReport> ReadReports(SqliteConnection connection, SqliteTransaction? transaction)
+    private static Dictionary<string, CatalogReport> ReadReports(SqliteConnection connection, SqliteTransaction? transaction)
     {
-        Dictionary<string, MemberCatalogReport> reports = new(StringComparer.Ordinal);
-        Read(connection, transaction, "SELECT member, report FROM member_reports;", r =>
+        Dictionary<string, CatalogReport> reports = new(StringComparer.Ordinal);
+        Read(connection, transaction, "SELECT source, report FROM catalog_reports;", r =>
         {
             try
             {
-                if (JsonSerializer.Deserialize(r.GetString(1), AccessJsonContext.Default.MemberCatalogReport) is { } report)
+                if (JsonSerializer.Deserialize(r.GetString(1), AccessJsonContext.Default.CatalogReport) is { } report)
                     reports[r.GetString(0)] = report;
             }
             catch (JsonException)
@@ -892,131 +744,22 @@ public sealed partial class SqliteAuthorityStore
         return reports;
     }
 
-    private static IReadOnlyCollection<DeclaredRequirement> Requirements(ActionManifest manifest) =>
-        [.. (manifest.Requires ?? [])
-            .Where(r => ActionIds.IsValid(r.Action))
-            .Select(r => new DeclaredRequirement(r.Action, ScopeKinds.Parse(r.Scope), r.Why))];
-
-    /// <summary>
-    /// Record what a component on a member now requires, creating its service account the first time
-    /// it requires anything.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A requirement the account has never held is approved automatically at the member's own scope —
-    /// the node for a component on a node, the cluster for an anchor — except an <c>auth:*</c> one,
-    /// which waits for an Owner. A requirement the account has held before keeps whatever it was left
-    /// at, so an Owner's revocation or narrowing sticks for the account's life. One the manifest no
-    /// longer lists stops granting until it is listed again.
-    /// </para>
-    /// <para>Each automatic approval is reported, so it is journaled and announced.</para>
-    /// </remarks>
-    public Task<AuthorityWrite> DeclareRequirementsAsync(
-        ServiceIdentity service, bool anchor, IReadOnlyCollection<DeclaredRequirement> requires, DateTimeOffset now,
-        CancellationToken ct = default) =>
-        WriteAsync(expectedVersion: null, now, ct, (w, s) => DeclareRequirements(w, s, service, anchor, requires));
-
-    /// <summary>
-    /// The body of <see cref="DeclareRequirementsAsync"/>: writes only what differs from what is held.
-    /// Returns the service account's id, or <see langword="null"/> when there is none and nothing was
-    /// required.
-    /// </summary>
-    private static string? DeclareRequirements(
-        Writer w, AuthoritySnapshot s, ServiceIdentity service, bool anchor, IReadOnlyCollection<DeclaredRequirement> requires)
+    /// <summary>The generation, read alone: what a cached snapshot is compared against.</summary>
+    public async Task<long> GenerationAsync(CancellationToken ct = default)
     {
-        string? accountId = ServiceAccountId(s, service);
-        if (accountId is null)
-        {
-            if (requires.Count == 0)
-                return null;
-
-            accountId = CreateServiceAccount(w, service);
-        }
-
-        Dictionary<string, ServiceRequirement> held = s.RequirementsOf(accountId).ToDictionary(r => r.Action, StringComparer.Ordinal);
-        HashSet<string> listed = requires.Select(r => r.Action).ToHashSet(StringComparer.Ordinal);
-
-        foreach (ServiceRequirement stale in held.Values.Where(r => r.Declared && !listed.Contains(r.Action)))
-        {
-            w.Execute("UPDATE service_requirements SET declared = 0, version = $v, updated_utc = $now WHERE user_id = $id AND action = $a;",
-                ("$id", accountId), ("$a", stale.Action));
-        }
-
-        AccessScope memberScope = service.MemberScope(anchor);
-        foreach (DeclaredRequirement requirement in requires)
-        {
-            if (!ActionIds.IsValid(requirement.Action))
-                continue;
-
-            if (held.TryGetValue(requirement.Action, out ServiceRequirement? existing))
-            {
-                if (existing.Declared && existing.ScopeKind == requirement.ScopeKind && existing.Why == requirement.Why)
-                    continue;
-
-                w.Execute(
-                    """
-                    UPDATE service_requirements
-                    SET declared = 1, scope_kind = $kind, why = $why, version = $v, updated_utc = $now
-                    WHERE user_id = $id AND action = $a;
-                    """,
-                    ("$id", accountId), ("$a", requirement.Action), ("$kind", ScopeKinds.ToWire(requirement.ScopeKind)),
-                    ("$why", (object?)requirement.Why ?? DBNull.Value));
-                continue;
-            }
-
-            bool waits = ActionIds.IsAuth(requirement.Action);
-            w.Execute(
-                """
-                INSERT INTO service_requirements
-                    (user_id, action, scope_kind, why, state, grant_scope, decided_by, declared, version, updated_utc)
-                VALUES ($id, $a, $kind, $why, $state, $grant, NULL, 1, $v, $now);
-                """,
-                ("$id", accountId), ("$a", requirement.Action), ("$kind", ScopeKinds.ToWire(requirement.ScopeKind)),
-                ("$why", (object?)requirement.Why ?? DBNull.Value),
-                ("$state", RequirementStates.ToWire(waits ? RequirementState.Waiting : RequirementState.Approved)),
-                ("$grant", waits ? DBNull.Value : memberScope.ToString()));
-
-            if (!waits)
-                w.Changed(AuthorityChangeKind.RequirementApproved, requirement.Action, accountId: accountId, scope: memberScope.ToString());
-        }
-
-        return accountId;
+        await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
+        return ReadMetaLong(connection, null, AuthoritySchema.GenerationKey);
     }
 
-    /// <summary>
-    /// Forget a component's service account on a member entirely: its roles, its requirements and
-    /// every decision about them. The component installed again later is a new service.
-    /// </summary>
-    public Task<AuthorityWrite> ForgetServiceAccountAsync(ServiceIdentity service, DateTimeOffset now, CancellationToken ct = default) =>
-        WriteAsync(expectedVersion: null, now, ct, (w, s) =>
-        {
-            if (ServiceAccountId(s, service) is { } accountId)
-                DeleteAccountRow(w, s, accountId);
-
-            return null;
-        });
-
-    private static string? ServiceAccountId(AuthoritySnapshot s, ServiceIdentity service) =>
-        s.Accounts.Values.FirstOrDefault(a => a.Service == service)?.AccountId;
-
-    /// <summary>
-    /// A service account's row. Its username is <c>&lt;component&gt;@&lt;member&gt;</c>, which no
-    /// person's username can be — <c>@</c> is outside what <see cref="Usernames"/> accepts — so a person
-    /// can never register a service's name.
-    /// </summary>
-    private static string CreateServiceAccount(Writer w, ServiceIdentity service)
+    /// <summary>The snapshot and the generation it was read at, in one transaction.</summary>
+    internal async Task<(AuthoritySnapshot Snapshot, long Generation)> LoadWithGenerationAsync(CancellationToken ct)
     {
-        string id = UserIds.NewUserId();
-        w.Execute(
-            """
-            INSERT INTO users (user_id, username, username_key, display_name, origin, kind, status, created_utc, updated_utc, version)
-            VALUES ($id, $name, $key, $display, $origin, $kind, $status, $now, $now, $v);
-            """,
-            ("$id", id), ("$name", service.Name), ("$key", Usernames.Key(service.Name)), ("$display", service.Actor),
-            ("$origin", AccountWire.Admitted), ("$kind", AccountWire.Service), ("$status", UserStatuses.Active));
-        w.Execute("INSERT INTO service_accounts (user_id, component, member) VALUES ($id, $c, $m);",
-            ("$id", id), ("$c", service.Component), ("$m", service.Member));
-        return id;
+        await using SqliteConnection connection = await ConnectAsync(ct).ConfigureAwait(false);
+        await using SqliteTransaction transaction = (SqliteTransaction)await connection
+            .BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
+
+        long generation = ReadMetaLong(connection, transaction, AuthoritySchema.GenerationKey);
+        return (Load(connection, transaction), generation);
     }
 
     // ── plumbing ──────────────────────────────────────────────────────────────────────────────
@@ -1041,14 +784,14 @@ public sealed partial class SqliteAuthorityStore
         if (expectedVersion is { } expected && expected != current)
             throw new StaleAuthorityException(expected, current);
 
-        AuthoritySnapshot snapshot = Load(connection, transaction, AuthorityFreshness.Authoritative);
+        AuthoritySnapshot snapshot = Load(connection, transaction);
         Writer writer = new(connection, transaction, current + 1, UserWire.ToWire(now));
 
         string? created = apply(writer, snapshot);
         if (!writer.Wrote)
         {
-            // Bookkeeping alone — a member's report stored again unchanged — commits and leaves the
-            // authority where it was.
+            // Bookkeeping alone — a report stored again unchanged — commits and leaves the authority
+            // where it was.
             if (writer.Recorded)
                 await transaction.CommitAsync(ct).ConfigureAwait(false);
 
@@ -1059,57 +802,10 @@ public sealed partial class SqliteAuthorityStore
             ("$key", AuthoritySchema.AuthorityVersionKey),
             ("$value", writer.Version.ToString(CultureInfo.InvariantCulture)));
 
-        Owe(connection, transaction, writer);
         AdvanceGeneration(connection, transaction);
 
         await transaction.CommitAsync(ct).ConfigureAwait(false);
         return new AuthorityWrite(writer.Version, writer.Changes, created);
-    }
-
-    /// <summary>
-    /// File every record this write changed in the outbox: each one stamped with its version, and each
-    /// one it reported removed. A record removed and changed in one write is owed as removed.
-    /// </summary>
-    private static void Owe(SqliteConnection connection, SqliteTransaction transaction, Writer writer)
-    {
-        Dictionary<string, bool> owed = new(StringComparer.Ordinal);
-
-        void Stamped(string sql, Func<string, AuthorityRecordKey> key) =>
-            Read(connection, transaction, sql, r => owed.TryAdd(key(r.GetString(0)).ToString(), false), ("$v", writer.Version));
-
-        Stamped("SELECT role_id FROM roles WHERE version = $v;", AuthorityRecordKey.Role);
-        Stamped("SELECT permission_id FROM permissions WHERE version = $v;", AuthorityRecordKey.Permission);
-        Stamped("SELECT assignment_id FROM assignments WHERE version = $v;", AuthorityRecordKey.Assignment);
-        Stamped("SELECT user_id FROM users WHERE version = $v;", AuthorityRecordKey.Account);
-        Stamped("SELECT DISTINCT user_id FROM service_requirements WHERE version = $v;", AuthorityRecordKey.Account);
-
-        if (ReadMetaLong(connection, transaction, AuthoritySchema.CatalogVersionKey) == writer.Version)
-            owed.TryAdd(AuthorityRecordKey.Catalog.ToString(), false);
-
-        foreach (AuthorityChange change in writer.Changes)
-        {
-            AuthorityRecordKey? removed = change.Kind switch
-            {
-                AuthorityChangeKind.RoleRemoved => AuthorityRecordKey.Role(change.Subject),
-                AuthorityChangeKind.PermissionRemoved => AuthorityRecordKey.Permission(change.Subject),
-                AuthorityChangeKind.AssignmentRevoked => AuthorityRecordKey.Assignment(change.Subject),
-                AuthorityChangeKind.AccountDeleted => AuthorityRecordKey.Account(change.Subject),
-                _ => null,
-            };
-
-            if (removed is { } key)
-                owed[key.ToString()] = true;
-        }
-
-        foreach ((string record, bool removed) in owed)
-        {
-            Execute(connection, transaction,
-                """
-                INSERT INTO authority_outbox (record, version, removed) VALUES ($r, $v, $removed)
-                ON CONFLICT(record) DO UPDATE SET version = excluded.version, removed = excluded.removed;
-                """,
-                ("$r", record), ("$v", writer.Version), ("$removed", removed ? 1 : 0));
-        }
     }
 
     /// <summary>Advance the counter a cached snapshot is compared against.</summary>
@@ -1135,9 +831,7 @@ public sealed partial class SqliteAuthorityStore
         public List<AuthorityChange> Changes { get; } = [];
 
         /// <summary>
-        /// Whether anything was written. Not every write is a change worth journaling — a requirement
-        /// a manifest stopped listing, a service account created for a requirement that waits — but
-        /// every one advances the version.
+        /// Whether anything was written. Every write that changed a row advances the version.
         /// </summary>
         public bool Wrote { get; private set; }
 
@@ -1152,7 +846,7 @@ public sealed partial class SqliteAuthorityStore
         }
 
         /// <summary>
-        /// Run a statement that records bookkeeping rather than authority — a member's stored report. It
+        /// Run a statement that records bookkeeping rather than authority — a stored report. It
         /// commits with the write and does not, alone, advance the version.
         /// </summary>
         public void Record(string sql, params (string Name, object Value)[] parameters)
@@ -1189,8 +883,8 @@ public sealed partial class SqliteAuthorityStore
 
         public void Changed(
             AuthorityChangeKind kind, string subject, string? name = null, string? accountId = null,
-            string? roleId = null, string? scope = null) =>
-            Changes.Add(new AuthorityChange(kind, subject, name, accountId, roleId, scope));
+            string? roleId = null) =>
+            Changes.Add(new AuthorityChange(kind, subject, name, accountId, roleId));
     }
 
     private static long ReadVersion(SqliteConnection connection, SqliteTransaction? transaction)

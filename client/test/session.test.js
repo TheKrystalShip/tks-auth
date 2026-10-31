@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserManager } from "oidc-client-ts";
 import { createSession } from "../src/index.js";
-import { API, CLIENT_ID, ISSUER, PREFIX, cfg, createAnchor, installLocks, jwt, removeLocks, seed, storedUser } from "./anchor.js";
+import { API, CLIENT_ID, ISSUER, PREFIX, cfg, createProvider, installLocks, jwt, removeLocks, seed, storedUser } from "./provider.js";
 
-let anchor;
+let provider;
 const tick = (ms) => vi.advanceTimersByTimeAsync(ms);
 
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   history.replaceState(null, "", "/");
-  anchor = createAnchor();
-  anchor.install();
+  provider = createProvider();
+  provider.install();
   installLocks();
 });
 
@@ -25,7 +25,7 @@ afterEach(() => {
 /** A session restored from what a past sign-in stored. */
 async function live(options = {}) {
   vi.useFakeTimers();
-  const tokens = await seed(anchor);
+  const tokens = await seed(provider);
   const session = createSession({ ...cfg, ...options });
   await session.restore();
   expect(session.getSnapshot().status).toBe("live");
@@ -39,7 +39,7 @@ describe("sign-in", () => {
     await vi.waitFor(() => expect(Object.keys(sessionStorage).some((k) => k.startsWith(PREFIX))).toBe(true));
     const stateKey = Object.keys(sessionStorage).find((k) => k.startsWith(PREFIX));
     const stateId = stateKey.slice(PREFIX.length);
-    anchor.codes.set("abc", "u1");
+    provider.codes.set("abc", "u1");
 
     history.pushState(null, "", `/signed-in?code=abc&state=${stateId}`);
     const returned = createSession(cfg);
@@ -52,7 +52,7 @@ describe("sign-in", () => {
     expect(snap.account).toEqual({ id: "u1", name: "Ada", username: "ada" });
     expect(snap.claims.sub).toBe("u1");
     expect(storedUser().refresh_token).toMatch(/^r/);
-    expect(anchor.calls.code).toBe(1);
+    expect(provider.calls.code).toBe(1);
   });
 
   it("is signed out with nothing stored, and ended with access_denied", async () => {
@@ -87,7 +87,7 @@ describe("sign-in", () => {
     void leaving.signIn({ returnTo: "//evil.test/x" });
     await vi.waitFor(() => expect(Object.keys(sessionStorage).some((k) => k.startsWith(PREFIX))).toBe(true));
     const stateId = Object.keys(sessionStorage).find((k) => k.startsWith(PREFIX)).slice(PREFIX.length);
-    anchor.codes.set("abc", "u1");
+    provider.codes.set("abc", "u1");
     history.pushState(null, "", `/signed-in?code=abc&state=${stateId}`);
     expect(await createSession(cfg).restore()).toBeNull();
   });
@@ -100,10 +100,10 @@ describe("renewal", () => {
     session.subscribe(() => seen.push(session.getSnapshot().status));
 
     await tick((300 - 60) * 1000 - 1000);
-    expect(anchor.calls.refresh).toBe(0);
+    expect(provider.calls.refresh).toBe(0);
     await tick(2000);
 
-    expect(anchor.calls.refresh).toBe(1);
+    expect(provider.calls.refresh).toBe(1);
     const snap = session.getSnapshot();
     expect(snap.status).toBe("live");
     expect(snap.expiresAt).toBeGreaterThan(Date.now() + 200 * 1000);
@@ -115,11 +115,11 @@ describe("renewal", () => {
     const { session, tokens } = await live();
     expect(session.token()).toBe(tokens.access_token);
     expect(await session.fresh()).toBe(tokens.access_token);
-    expect(anchor.calls.refresh).toBe(0);
+    expect(provider.calls.refresh).toBe(0);
 
     const forced = await session.fresh({ force: true });
 
-    expect(anchor.calls.refresh).toBe(1);
+    expect(provider.calls.refresh).toBe(1);
     expect(forced).not.toBe(tokens.access_token);
     expect(session.token()).toBe(forced);
     expect(session.getSnapshot().status).toBe("live");
@@ -133,58 +133,58 @@ describe("renewal", () => {
 
   it("renews on a 401 and replays the call once", async () => {
     const { session, tokens } = await live();
-    anchor.invalidate(tokens.access_token);
+    provider.invalidate(tokens.access_token);
 
     const response = await session.authorizedFetch(API);
 
     expect(response.status).toBe(200);
-    expect(anchor.calls.api).toBe(2);
-    expect(anchor.calls.refresh).toBe(1);
+    expect(provider.calls.api).toBe(2);
+    expect(provider.calls.refresh).toBe(1);
   });
 
   it("replays a refused call only once", async () => {
     const { session } = await live();
-    anchor.apiAlways401 = true;
+    provider.apiAlways401 = true;
 
     const response = await session.authorizedFetch(API);
 
     expect(response.status).toBe(401);
-    expect(anchor.calls.api).toBe(2);
-    expect(anchor.calls.refresh).toBe(1);
+    expect(provider.calls.api).toBe(2);
+    expect(provider.calls.refresh).toBe(1);
   });
 
   it("renews before a call when asked for a fresh token", async () => {
     const { session, tokens } = await live();
     const response = await session.authorizedFetch(API, { fresh: true });
     expect(response.status).toBe(200);
-    expect(anchor.calls.refresh).toBe(1);
-    expect(anchor.calls.api).toBe(1);
+    expect(provider.calls.refresh).toBe(1);
+    expect(provider.calls.api).toBe(1);
     expect(await session.fresh()).not.toBe(tokens.access_token);
   });
 
   it("shares one renewal among concurrent callers of a tab", async () => {
     removeLocks();
     const { session, tokens } = await live();
-    anchor.invalidate(tokens.access_token);
+    provider.invalidate(tokens.access_token);
     const results = await Promise.all([session.authorizedFetch(API), session.authorizedFetch(API), session.fresh()]);
     expect(results[0].status).toBe(200);
     expect(results[1].status).toBe(200);
-    expect(anchor.calls.refresh).toBe(1);
+    expect(provider.calls.refresh).toBe(1);
   });
 
   it("renews once for two sessions on one storage, under the lock, with one refresh token", async () => {
     vi.useFakeTimers();
-    const tokens = await seed(anchor);
+    const tokens = await seed(provider);
     const a = createSession(cfg);
     const b = createSession(cfg);
     await Promise.all([a.restore(), b.restore()]);
-    anchor.invalidate(tokens.access_token);
+    provider.invalidate(tokens.access_token);
 
     const [ra, rb] = await Promise.all([a.authorizedFetch(API), b.authorizedFetch(API)]);
 
     expect(ra.status).toBe(200);
     expect(rb.status).toBe(200);
-    expect(anchor.calls.refresh).toBe(1);
+    expect(provider.calls.refresh).toBe(1);
     expect(a.getSnapshot().status).toBe("live");
     expect(b.getSnapshot().status).toBe("live");
     expect(a.getSnapshot().claims.jti).toBe(b.getSnapshot().claims.jti);
@@ -195,10 +195,10 @@ describe("renewal", () => {
     const events = [];
     session.subscribe(() => events.push(session.getSnapshot().status));
     // While this tab's refresh is in flight, another tab stores a newer session.
-    anchor.beforeRefresh = async () => {
-      anchor.beforeRefresh = null;
-      await seed(anchor);
-      anchor.refuseAll = true;
+    provider.beforeRefresh = async () => {
+      provider.beforeRefresh = null;
+      await seed(provider);
+      provider.refuseAll = true;
     };
 
     await tick(250 * 1000);
@@ -213,7 +213,7 @@ describe("renewal", () => {
 describe("refusal", () => {
   it("ends only after the grace, with the reason", async () => {
     const { session } = await live({ graceMs: 30000 });
-    anchor.refuseAll = true;
+    provider.refuseAll = true;
 
     await tick(241 * 1000);
     expect(session.getSnapshot()).toMatchObject({ status: "stale", reason: null });
@@ -228,11 +228,11 @@ describe("refusal", () => {
 
   it("recovers when the refusal clears inside the grace", async () => {
     const { session } = await live();
-    anchor.refuseAll = true;
+    provider.refuseAll = true;
     await tick(250 * 1000);
     expect(session.getSnapshot().status).toBe("stale");
     // Another tab signs in again inside the grace.
-    await seed(anchor);
+    await seed(provider);
     window.dispatchEvent(new StorageEvent("storage", { storageArea: localStorage, key: `${PREFIX}user:${ISSUER}:${CLIENT_ID}` }));
     await tick(0);
     await vi.waitFor(() => expect(session.getSnapshot().status).toBe("live"));
@@ -242,18 +242,18 @@ describe("refusal", () => {
 
   it("reports access_denied as denied", async () => {
     const { session } = await live({ graceMs: 1000 });
-    anchor.refuseAll = true;
-    anchor.refuseWith = "access_denied";
+    provider.refuseAll = true;
+    provider.refuseWith = "access_denied";
     await tick(250 * 1000);
     await tick(1500);
     expect(session.getSnapshot()).toMatchObject({ status: "ended", reason: "denied" });
   });
 
-  it("does not end on a refusal while the anchor stays unreachable at the grace's end", async () => {
+  it("does not end on a refusal while the provider stays unreachable at the grace's end", async () => {
     const { session } = await live({ graceMs: 5000 });
-    anchor.refuseAll = true;
+    provider.refuseAll = true;
     await tick(241 * 1000);
-    anchor.down = true;
+    provider.down = true;
     await tick(6000);
     expect(session.getSnapshot().status).toBe("stale");
   });
@@ -264,37 +264,37 @@ describe("outages", () => {
     const { session } = await live();
     const seen = [];
     session.subscribe(() => seen.push(session.getSnapshot().status));
-    anchor.down = true;
+    provider.down = true;
 
     await tick(250 * 1000);
     expect(session.getSnapshot().status).toBe("stale");
-    const first = anchor.calls.refresh;
+    const first = provider.calls.refresh;
     await tick(14000);
-    expect(anchor.calls.refresh).toBe(first);
+    expect(provider.calls.refresh).toBe(first);
     await tick(1500);
-    expect(anchor.calls.refresh).toBe(first);   // the anchor is down: the request never arrives
+    expect(provider.calls.refresh).toBe(first);   // the provider is down: the request never arrives
     expect(session.getSnapshot().status).toBe("stale");
 
-    anchor.down = false;
+    provider.down = false;
     window.dispatchEvent(new Event("online"));
     await vi.waitFor(() => expect(session.getSnapshot().status).toBe("live"));
-    expect(anchor.calls.refresh).toBe(first + 1);
+    expect(provider.calls.refresh).toBe(first + 1);
     expect(seen).not.toContain("ended");
   });
 
   it("retries by itself when nothing signals the reconnect", async () => {
     const { session } = await live();
-    anchor.down = true;
+    provider.down = true;
     await tick(250 * 1000);
     expect(session.getSnapshot().status).toBe("stale");
-    anchor.down = false;
+    provider.down = false;
     await tick(16000);
     expect(session.getSnapshot().status).toBe("live");
   });
 
   it("offers the stored token while it is unexpired, and the held one when it is not", async () => {
     const { session, tokens } = await live();
-    anchor.down = true;
+    provider.down = true;
     await tick(250 * 1000);
     expect(session.getSnapshot().status).toBe("stale");
     expect(await session.fresh()).toBe(tokens.access_token);
@@ -305,25 +305,25 @@ describe("outages", () => {
 
   it("ends at once at boot when the refusal survives the lock and the recheck", async () => {
     vi.useFakeTimers();
-    await seed(anchor);
+    await seed(provider);
     await tick(400 * 1000);
-    anchor.refuseAll = true;
+    provider.refuseAll = true;
     const session = createSession(cfg);
     await session.restore();
     expect(session.getSnapshot()).toMatchObject({ status: "ended", reason: "refused" });
     expect(storedUser()).toBeNull();
   });
 
-  it("restores an expired stored session as stale when the anchor is unreachable", async () => {
+  it("restores an expired stored session as stale when the provider is unreachable", async () => {
     vi.useFakeTimers();
-    await seed(anchor);
+    await seed(provider);
     await tick(400 * 1000);
-    anchor.down = true;
+    provider.down = true;
     const session = createSession(cfg);
     await session.restore();
     expect(session.getSnapshot().status).toBe("stale");
     expect(session.getSnapshot().account.id).toBe("u1");
-    anchor.down = false;
+    provider.down = false;
     window.dispatchEvent(new Event("online"));
     await vi.waitFor(() => expect(session.getSnapshot().status).toBe("live"));
   });
@@ -339,7 +339,7 @@ describe("device grant", () => {
 
   it("sends the device name and returns the code to show", async () => {
     const { code } = await start();
-    expect(anchor.deviceForms[0]).toMatchObject({ client_id: CLIENT_ID, device_name: "Living room" });
+    expect(provider.deviceForms[0]).toMatchObject({ client_id: CLIENT_ID, device_name: "Living room" });
     expect(code).toMatchObject({ userCode: "ABCD-EFGH", expiresIn: 600 });
     expect(code.verificationUriComplete).toContain("user_code");
     code.cancel();
@@ -348,15 +348,15 @@ describe("device grant", () => {
 
   it("polls through pending and slow_down, then signs in and stores the session", async () => {
     const { session, code } = await start();
-    anchor.deviceScript = ["authorization_pending", "slow_down", "approve"];
+    provider.deviceScript = ["authorization_pending", "slow_down", "approve"];
     const outcome = code.poll();
     await tick(5000);
     await tick(5000);
     await tick(5000);
-    expect(anchor.calls.devicePoll).toBe(2);   // after slow_down the next poll waits 10 s
+    expect(provider.calls.devicePoll).toBe(2);   // after slow_down the next poll waits 10 s
     await tick(5000);
     expect(await outcome).toBe("signed-in");
-    expect(anchor.pollTimes[2] - anchor.pollTimes[1]).toBe(10000);
+    expect(provider.pollTimes[2] - provider.pollTimes[1]).toBe(10000);
     expect(session.getSnapshot()).toMatchObject({ status: "live", account: { id: "u1" } });
     expect(storedUser().refresh_token).toBeTruthy();
     expect(storedUser().id_token).toBeUndefined();
@@ -368,20 +368,20 @@ describe("device grant", () => {
 
   it("resolves refused and expired", async () => {
     let { code } = await start();
-    anchor.deviceScript = ["access_denied"];
+    provider.deviceScript = ["access_denied"];
     let outcome = code.poll();
     await tick(5000);
     expect(await outcome).toBe("refused");
 
     ({ code } = await start());
-    anchor.deviceScript = ["expired_token"];
+    provider.deviceScript = ["expired_token"];
     outcome = code.poll();
     await tick(5000);
     expect(await outcome).toBe("expired");
   });
 
-  it("expires by the clock when the anchor keeps saying pending", async () => {
-    anchor.deviceExpiresIn = 12;
+  it("expires by the clock when the provider keeps saying pending", async () => {
+    provider.deviceExpiresIn = 12;
     const { code } = await start();
     const outcome = code.poll();
     await tick(15000);
@@ -390,7 +390,7 @@ describe("device grant", () => {
 
   it("keeps polling through network failures", async () => {
     const { session, code } = await start();
-    anchor.deviceScript = ["network", "network", "approve"];
+    provider.deviceScript = ["network", "network", "approve"];
     const outcome = code.poll();
     await tick(15000);
     expect(await outcome).toBe("signed-in");
@@ -399,18 +399,18 @@ describe("device grant", () => {
 
   it("renews a device session like any other", async () => {
     const { session, code } = await start();
-    anchor.deviceScript = ["approve"];
+    provider.deviceScript = ["approve"];
     const outcome = code.poll();
     await tick(5000);
     expect(await outcome).toBe("signed-in");
     await tick(250 * 1000);
-    expect(anchor.calls.refresh).toBe(1);
+    expect(provider.calls.refresh).toBe(1);
     expect(session.getSnapshot().status).toBe("live");
   });
 
   it("signs a device out by revoking its refresh token", async () => {
     const { session, code } = await start();
-    anchor.deviceScript = ["approve"];
+    provider.deviceScript = ["approve"];
     const outcome = code.poll();
     await tick(5000);
     await outcome;
@@ -419,7 +419,7 @@ describe("device grant", () => {
 
     await session.signOut();
 
-    expect(anchor.revoked).toEqual([refreshToken]);
+    expect(provider.revoked).toEqual([refreshToken]);
     expect(redirect).not.toHaveBeenCalled();
     expect(session.getSnapshot().status).toBe("none");
     expect(storedUser()).toBeNull();
@@ -427,14 +427,14 @@ describe("device grant", () => {
 });
 
 describe("sign-out", () => {
-  it("clears the session and redirects to the anchor with the id token", async () => {
+  it("clears the session and redirects to the provider with the id token", async () => {
     const { session, tokens } = await live();
     const redirect = vi.spyOn(UserManager.prototype, "signoutRedirect").mockResolvedValue();
     await session.signOut();
     expect(redirect).toHaveBeenCalledWith({ id_token_hint: tokens.id_token });
     expect(session.getSnapshot().status).toBe("none");
     expect(storedUser()).toBeNull();
-    expect(anchor.calls.revoke).toBe(0);
+    expect(provider.calls.revoke).toBe(0);
   });
 
   it("ends a tab when another tab signs the session out", async () => {
@@ -488,12 +488,12 @@ describe("adopt", () => {
     expect(session.getSnapshot()).toMatchObject({ status: "ended", reason: "refused" });
   });
 
-  it("signs out without touching storage or the anchor", async () => {
+  it("signs out without touching storage or the provider", async () => {
     const session = createSession(cfg);
     session.adopt({ access_token: jwt({ sub: "d1", exp: Math.floor(Date.now() / 1000) + 120 }), expires_in: 120 }, async () => null);
     await session.signOut();
     expect(session.getSnapshot().status).toBe("none");
-    expect(anchor.calls.revoke).toBe(0);
+    expect(provider.calls.revoke).toBe(0);
   });
 });
 
@@ -540,7 +540,7 @@ describe("snapshot", () => {
 describe("discovery", () => {
   it("takes its issuer and client id from resolve", async () => {
     vi.useFakeTimers();
-    await seed(anchor, { clientId: "other" });
+    await seed(provider, { clientId: "other" });
     const session = createSession({ resolve: async () => ({ issuer: ISSUER, clientId: "other" }) });
     await session.restore();
     expect(session.getSnapshot().status).toBe("live");
@@ -554,7 +554,7 @@ describe("discovery", () => {
 
   it("keeps two clients on one origin apart", async () => {
     vi.useFakeTimers();
-    await seed(anchor, { clientId: "other" });
+    await seed(provider, { clientId: "other" });
     const session = createSession(cfg);
     await session.restore();
     expect(session.getSnapshot().status).toBe("none");

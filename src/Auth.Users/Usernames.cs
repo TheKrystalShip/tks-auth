@@ -1,7 +1,7 @@
 namespace TheKrystalShip.Auth.Users;
 
 /// <summary>
-/// What a KGSM username may be, and the key two of them are compared by.
+/// What a username may be, and the key two of them are compared by.
 /// </summary>
 /// <remarks>
 /// <para>

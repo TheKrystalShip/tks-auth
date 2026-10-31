@@ -90,7 +90,7 @@ if (!existsSync(DIST)) {
   }
 
   const signIn = existsSync(resolve(DIST, "auth-sign-in.html")) ? readFileSync(resolve(DIST, "auth-sign-in.html"), "utf8") : "";
-  if (!signIn.includes("<!--kgsm-floor-providers-->"))
+  if (!signIn.includes("<!--tks-floor-providers-->"))
     fail("✗ auth-sign-in.html lost the providers marker — the floor would offer no provider");
   if (!/<form[^>]*method="post"[^>]*action="\/authorize\/credentials"/.test(signIn))
     fail("✗ auth-sign-in.html has no floor form posting to /authorize/credentials");

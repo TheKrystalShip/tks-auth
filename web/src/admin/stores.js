@@ -2,7 +2,7 @@
 // administer.
 //
 // **These pages name no action.** A control is gated on the request it would make — the method, the
-// path and the body — and the provider says which action that is (`GET /auth/cluster/operations`,
+// path and the body — and the provider says which action that is (`GET /auth/admin/operations`,
 // read by `../lib/operations.js`) and whether this person holds it (`GET /me/access`, read by
 // `../lib/access.js`). Nothing here decides access, and nothing here can drift from what the daemon
 // enforces.
@@ -14,7 +14,7 @@
 // sentence, and for a subset refusal the actions not held — handed back to the page that asked.
 
 import { createStore } from "@thekrystalship/krystal/lib/store";
-import { reportAllows, targetOf } from "../lib/access.js";
+import { reportAllows } from "../lib/access.js";
 import { requirementOf } from "../lib/operations.js";
 import { ACCOUNTS, EDITS, api } from "./client.js";
 
@@ -32,14 +32,6 @@ function refreshAccess() {
     }));
 }
 
-// Where one published entry is checked: the scope it names, made concrete. A request whose scope is
-// the request's own — an assignment at a node — is asked at `opts.target`.
-function entryTarget(entry, opts) {
-  if (opts && opts.anywhere) return null;
-  if (entry.scope === "request") return (opts && opts.target) || { cluster: true };
-  return { cluster: true };
-}
-
 // Why this request may not be made, or null when it may. A provider that has not answered, or a request
 // it does not publish, closes the control.
 function callRefusal(method, path, opts) {
@@ -48,13 +40,13 @@ function callRefusal(method, path, opts) {
   const req = requirementOf(operations, method, path, opts && opts.body);
   if (!req.published) return "Not offered here";
   for (const e of req.entries) {
-    if (!reportAllows(report, e.action, targetOf(entryTarget(e, opts)))) return "Needs " + e.action;
+    if (!reportAllows(report, e.action)) return "Needs " + e.action;
   }
   return null;
 }
 
-// Why the caller cannot make an authority edit of `kind` (asked at `target` for an assignment).
-const editRefusal = (kind, target) => callRefusal("POST", EDITS, { body: { kind }, target });
+// Why the caller cannot make an authority edit of `kind`.
+const editRefusal = (kind) => callRefusal("POST", EDITS, { body: { kind } });
 
 // The same question for a request on the accounts: `sub` under the accounts route (`/_` for any one)
 // and the body it would carry.
@@ -63,13 +55,13 @@ const userRefusal = (method, sub, body) => callRefusal(method, ACCOUNTS + (sub |
 // Whether the provider says this person holds every action, declared or not.
 const isOwner = () => !!(accessStore.getState().report && accessStore.getState().report.owner);
 
-// Whether this person may change anything here at all — any write the provider publishes, anywhere.
+// Whether this person may change anything here at all — any write the provider publishes.
 function administers() {
   const { state, report, operations } = accessStore.getState();
   if (state !== "ok" || !report || !operations) return false;
   if (report.owner) return true;
   return (operations.operations || [])
-    .some((op) => op.method !== "GET" && reportAllows(report, op.action, targetOf(null)));
+    .some((op) => op.method !== "GET" && reportAllows(report, op.action));
 }
 
 // ── The authority ─────────────────────────────────────────────────────────────
@@ -125,16 +117,7 @@ authorityStore.refresh = refreshAuthority;
 authorityStore.edit = edit;
 authorityStore.check = check;
 
-// ── The cluster's members ─────────────────────────────────────────────────────
-
-// The members a KGSM cluster names, for a scope's words; empty where this provider holds no cluster.
-const membersStore = createStore({ list: [] });
-
-function refreshMembers() {
-  return api.members().then((list) => membersStore.setState({ list }), () => membersStore.setState({ list: [] }));
-}
-
 export {
-  accessStore, administers, authorityStore, callRefusal, editRefusal, isOwner, membersStore,
-  refreshAccess, refreshMembers, refusalOf, userRefusal,
+  accessStore, administers, authorityStore, callRefusal, editRefusal, isOwner,
+  refreshAccess, refusalOf, userRefusal,
 };

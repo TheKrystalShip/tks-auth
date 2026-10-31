@@ -5,17 +5,15 @@ namespace TheKrystalShip.Auth.Access;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Every change needs the <c>auth:*</c> action it is, held at its scope. Beyond that, two rules hold
-/// per scope:
+/// Every change needs the <c>auth:*</c> action it is. Beyond that, two rules hold:
 /// </para>
 /// <list type="bullet">
 /// <item>
-///   <b>Subset.</b> A caller puts into a role, a permission, an assignment or a service's grant only
-///   actions they hold at that scope or wider.
+///   <b>Subset.</b> A caller puts into a role, a permission or an assignment only actions they hold.
 /// </item>
 /// <item>
 ///   <b>Ranking.</b> A caller edits, ranks, assigns or removes only roles ranked below their own highest
-///   role at that scope or wider, and never raises a role to or above their own.
+///   role, and never raises a role to or above their own.
 /// </item>
 /// </list>
 /// <para>
@@ -24,7 +22,7 @@ namespace TheKrystalShip.Auth.Access;
 /// through one they share.
 /// </para>
 /// <para>
-/// An Owner is outside both rules. Only an Owner grants or revokes Owner, and the cluster never loses
+/// An Owner is outside both rules. Only an Owner grants or revokes Owner, and the provider never loses
 /// its last active Owner. The checks are pure: they read a snapshot and change nothing.
 /// </para>
 /// </remarks>
@@ -37,24 +35,16 @@ public static class AuthorityRules
     /// Whether <paramref name="actorId"/> may make <paramref name="edit"/>. <see langword="null"/> means
     /// it may; otherwise the refusal says why.
     /// </summary>
-    public static AuthorityRefusal? Check(AuthoritySnapshot snapshot, string actorId, AuthorityEdit edit, TimeProvider? clock = null)
+    public static AuthorityRefusal? Check(AuthoritySnapshot snapshot, string actorId, AuthorityEdit edit)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(edit);
 
-        Context c = new(snapshot, new AccessEvaluator(snapshot, clock), actorId);
+        Context c = new(snapshot, new AccessEvaluator(snapshot), actorId);
 
-        // The action first, from the edit's kind — the same entry the anchor publishes as the operation's
-        // action, so what a client is told an edit needs is what is checked here. An edit about an
-        // assignment is checked at that assignment's scope; one naming an assignment that does not
-        // exist, cluster-wide, so an unknown id tells a caller nothing they could not already ask.
-        AccessScope scope = edit switch
-        {
-            Assign a => a.Scope,
-            Revoke r => snapshot.Assignments.FirstOrDefault(x => x.AssignmentId == r.AssignmentId)?.Scope ?? AccessScope.Cluster,
-            _ => AccessScope.Cluster,
-        };
-        if (c.Lacks(edit.Kind.Action, scope) is { } refused)
+        // The action first, from the edit's kind: the same entry the provider publishes as the operation's
+        // action, so what a client is told an edit needs is what is checked here.
+        if (c.Lacks(edit.Kind.Action) is { } refused)
             return refused;
 
         return edit switch
@@ -71,38 +61,32 @@ public static class AuthorityRules
             SetPermissionActions e => CheckSetPermissionActions(c, e),
             Assign e => CheckAssign(c, e),
             Revoke e => CheckRevoke(c, e),
-            ApproveRequirement e => CheckApproveRequirement(c, e),
-            NarrowRequirement e => CheckNarrowRequirement(c, e),
-            RevokeRequirement e => CheckRevokeRequirement(c, e),
-            DisableAccount e => CheckAccountRemoval(c, e.AccountId, deleting: false),
-            DeleteAccount e => CheckAccountRemoval(c, e.AccountId, deleting: true),
+            DisableAccount e => CheckAccountRemoval(c, e.AccountId),
+            DeleteAccount e => CheckAccountRemoval(c, e.AccountId),
             _ => throw new ArgumentOutOfRangeException(nameof(edit), edit.GetType().Name, "Not an authority edit."),
         };
     }
 
     /// <summary>
     /// The rank a role <paramref name="actorId"/> creates is given: directly below their own highest
-    /// role at cluster scope. An Owner's lands first among the custom roles.
+    /// role. An Owner's lands first among the custom roles.
     /// </summary>
     public static int CreationRank(AuthoritySnapshot snapshot, string actorId) =>
-        TopRank(snapshot, actorId, AccessScope.Cluster) + 1;
+        TopRank(snapshot, actorId) + 1;
 
     /// <summary>
-    /// The highest-ranked role <paramref name="accountId"/> holds at <paramref name="scope"/> or wider,
-    /// as a rank: lower is higher. <c>everyone</c> counts for an active person.
+    /// The highest-ranked role <paramref name="accountId"/> holds, as a rank: lower is higher. <c>everyone</c> counts for an active person.
     /// </summary>
-    public static int TopRank(AuthoritySnapshot snapshot, string accountId, AccessScope scope)
+    public static int TopRank(AuthoritySnapshot snapshot, string accountId)
     {
         if (!snapshot.Accounts.TryGetValue(accountId, out AccessAccount? account))
-            return RoleRanks.Service;
+            return RoleRanks.Nothing;
 
-        int top = account.Kind == AccountKind.Person && account.Status == AccountStatus.Active
-            ? RoleRanks.Everyone
-            : RoleRanks.Service;
+        int top = account.Status == AccountStatus.Active ? RoleRanks.Everyone : RoleRanks.Nothing;
 
         foreach (Assignment assignment in snapshot.AssignmentsOf(accountId))
         {
-            if (assignment.Scope.Contains(scope) && snapshot.Roles.TryGetValue(assignment.RoleId, out Role? role))
+            if (snapshot.Roles.TryGetValue(assignment.RoleId, out Role? role))
                 top = Math.Min(top, role.Rank);
         }
 
@@ -116,7 +100,7 @@ public static class AuthorityRules
         if (NameProblem(e.Name, c.Snapshot.Roles.Values.Select(r => (r.RoleId, r.Name)), except: null) is { } bad)
             return bad;
 
-        if (!c.IsOwner && c.Top(AccessScope.Cluster) >= RoleRanks.Everyone)
+        if (!c.IsOwner && c.Top() >= RoleRanks.Everyone)
         {
             return new AuthorityRefusal(RefusalCode.RankNotBelow,
                 "A new role is created directly below your own highest role, and you hold no role above everyone.");
@@ -146,7 +130,7 @@ public static class AuthorityRules
         if (role.Kind == RoleKind.Owner || (role.Kind == RoleKind.Everyone && !everyoneEditable))
             return new AuthorityRefusal(RefusalCode.BuiltInRole, $"'{role.Name}' is built in and cannot be changed that way.");
 
-        return c.RankBelow(role, AccessScope.Cluster);
+        return c.RankBelow(role);
     }
 
     private static AuthorityRefusal? CheckRankRole(Context c, RankRole e)
@@ -158,7 +142,7 @@ public static class AuthorityRules
         if (e.Rank < RoleRanks.FirstCustom || e.Rank > customs)
             return new AuthorityRefusal(RefusalCode.InvalidRank, $"A rank runs from {RoleRanks.FirstCustom} to {customs}.");
 
-        if (!c.IsOwner && e.Rank <= c.Top(AccessScope.Cluster))
+        if (!c.IsOwner && e.Rank <= c.Top())
         {
             return new AuthorityRefusal(RefusalCode.RankNotBelow,
                 "A role cannot be raised to or above your own highest role.");
@@ -182,7 +166,7 @@ public static class AuthorityRules
             .Where(p => !role!.Permissions.Contains(p))
             .SelectMany(p => c.Snapshot.Permissions[p].Actions);
 
-        return c.Subset(added, AccessScope.Cluster);
+        return c.Subset(added);
     }
 
     private static AuthorityRefusal? CheckSetRoleEveryAction(Context c, SetRoleEveryAction e)
@@ -201,7 +185,7 @@ public static class AuthorityRules
         IEnumerable<string> added = c.Snapshot.ActionsOfApplication(e.Application)
             .Where(a => !c.Snapshot.ActionsOf(role!.RoleId).Contains(a));
 
-        return c.Subset(added, AccessScope.Cluster);
+        return c.Subset(added);
     }
 
     // ── permissions ───────────────────────────────────────────────────────────────────────────
@@ -232,7 +216,7 @@ public static class AuthorityRules
         if (c.IsOwner)
             return null;
 
-        int top = c.Top(AccessScope.Cluster);
+        int top = c.Top();
         Role? above = c.Snapshot.RolesHolding(permissionId).FirstOrDefault(r => r.Rank <= top);
         if (above is not null)
         {
@@ -251,7 +235,7 @@ public static class AuthorityRules
         foreach (string action in e.Actions)
         {
             if (!c.Snapshot.Catalog.TryGetValue(action, out CatalogAction? declared))
-                return new AuthorityRefusal(RefusalCode.NotFileable, $"No member declares '{action}'.");
+                return new AuthorityRefusal(RefusalCode.NotFileable, $"Nothing declares '{action}'.");
 
             if (declared.Self)
             {
@@ -260,7 +244,7 @@ public static class AuthorityRules
             }
         }
 
-        return c.Subset(e.Actions.Where(a => !permission!.Actions.Contains(a)), AccessScope.Cluster);
+        return c.Subset(e.Actions.Where(a => !permission!.Actions.Contains(a)));
     }
 
     // ── assignments ───────────────────────────────────────────────────────────────────────────
@@ -280,27 +264,20 @@ public static class AuthorityRules
         {
             if (!c.IsOwner)
                 return new AuthorityRefusal(RefusalCode.OwnerOnly, "Only an Owner grants Owner.");
-
-            if (e.Scope.Kind != ScopeKind.Cluster)
-                return new AuthorityRefusal(RefusalCode.InvalidScope, "Owner is held across the whole cluster.");
-
-            if (account.Kind != AccountKind.Person)
-                return new AuthorityRefusal(RefusalCode.WrongAccountKind, "Owner is held by people, never by a service.");
         }
-        else if (c.RankBelow(role, e.Scope) is { } rank)
+        else if (c.RankBelow(role) is { } rank)
         {
             return rank;
         }
 
-        IEnumerable<string> granted = c.Snapshot.ActionsOf(role.RoleId).Where(a =>
-            c.Snapshot.Catalog.TryGetValue(a, out CatalogAction? declared) && declared.Scope >= e.Scope.Kind);
+        IEnumerable<string> granted = c.Snapshot.ActionsOf(role.RoleId).Where(c.Snapshot.Catalog.ContainsKey);
 
-        if (c.Subset(granted, e.Scope) is { } notHeld)
+        if (c.Subset(granted) is { } notHeld)
             return notHeld;
 
-        bool duplicate = c.Snapshot.AssignmentsOf(e.AccountId).Any(a => a.RoleId == e.RoleId && a.Scope == e.Scope);
+        bool duplicate = c.Snapshot.AssignmentsOf(e.AccountId).Any(a => a.RoleId == e.RoleId);
         return duplicate
-            ? new AuthorityRefusal(RefusalCode.DuplicateAssignment, $"{account.Name} already holds '{role.Name}' at {e.Scope}.")
+            ? new AuthorityRefusal(RefusalCode.DuplicateAssignment, $"{account.Name} already holds '{role.Name}'.")
             : null;
     }
 
@@ -321,71 +298,15 @@ public static class AuthorityRules
             return LastOwner(c, assignment.AccountId);
         }
 
-        return c.RankBelow(role, assignment.Scope);
-    }
-
-    // ── service requirements ──────────────────────────────────────────────────────────────────
-
-    private static AuthorityRefusal? RequirementChange(Context c, string accountId, string action, out ServiceRequirement? requirement)
-    {
-        requirement = null;
-        if (!c.Snapshot.Accounts.TryGetValue(accountId, out AccessAccount? account))
-            return NotFound("account", accountId);
-
-        if (account.Kind != AccountKind.Service)
-            return new AuthorityRefusal(RefusalCode.WrongAccountKind, $"{account.Name} is not a service account.");
-
-        requirement = c.Snapshot.RequirementsOf(accountId).FirstOrDefault(r => r.Action == action);
-        return requirement is null ? NotFound("requirement", action) : null;
-    }
-
-    private static AuthorityRefusal? CheckApproveRequirement(Context c, ApproveRequirement e)
-    {
-        if (RequirementChange(c, e.AccountId, e.Action, out _) is { } refused)
-            return refused;
-
-        if (ActionIds.IsAuth(e.Action) && !c.IsOwner)
-            return new AuthorityRefusal(RefusalCode.OwnerOnly, $"Only an Owner approves '{e.Action}' for a service.");
-
-        return c.Subset([e.Action], e.Scope);
-    }
-
-    private static AuthorityRefusal? CheckNarrowRequirement(Context c, NarrowRequirement e)
-    {
-        if (RequirementChange(c, e.AccountId, e.Action, out ServiceRequirement? requirement) is { } refused)
-            return refused;
-
-        if (requirement!.State != RequirementState.Approved || requirement.Grant is not { } grant)
-            return new AuthorityRefusal(RefusalCode.WrongRequirementState, $"'{e.Action}' is not approved, so there is nothing to narrow.");
-
-        if (grant == e.Scope || !grant.Contains(e.Scope))
-            return new AuthorityRefusal(RefusalCode.InvalidScope, $"{e.Scope} is not inside {grant}.");
-
-        return null;
-    }
-
-    private static AuthorityRefusal? CheckRevokeRequirement(Context c, RevokeRequirement e)
-    {
-        if (RequirementChange(c, e.AccountId, e.Action, out ServiceRequirement? requirement) is { } refused)
-            return refused;
-
-        return requirement!.State == RequirementState.Revoked
-            ? new AuthorityRefusal(RefusalCode.WrongRequirementState, $"'{e.Action}' is already revoked.")
-            : null;
+        return c.RankBelow(role);
     }
 
     // ── accounts ──────────────────────────────────────────────────────────────────────────────
 
-    private static AuthorityRefusal? CheckAccountRemoval(Context c, string accountId, bool deleting)
+    private static AuthorityRefusal? CheckAccountRemoval(Context c, string accountId)
     {
         if (!c.Snapshot.Accounts.TryGetValue(accountId, out AccessAccount? account))
             return NotFound("account", accountId);
-
-        if (deleting && account.Kind == AccountKind.Service)
-        {
-            return new AuthorityRefusal(RefusalCode.WrongAccountKind,
-                "A service account is forgotten when its component stops being reported, never by hand.");
-        }
 
         if (!c.Snapshot.IsOwner(accountId))
             return null;
@@ -402,7 +323,7 @@ public static class AuthorityRules
         bool isActive = c.Snapshot.Accounts.TryGetValue(accountId, out AccessAccount? account) && account.Status == AccountStatus.Active;
 
         return isActive && !others
-            ? new AuthorityRefusal(RefusalCode.LastOwner, "The cluster would be left with no active Owner.")
+            ? new AuthorityRefusal(RefusalCode.LastOwner, "There would be no active Owner left.")
             : null;
     }
 
@@ -436,45 +357,45 @@ public static class AuthorityRules
 
         /// <summary>
         /// Whether the caller is an Owner who can use it right now. Evaluated through the evaluator, so
-        /// an Owner on a stale replica or a disabled account is exempt from nothing.
+        /// a disabled Owner is exempt from nothing.
         /// </summary>
         public bool IsOwner { get; } =
-            snapshot.IsOwner(actorId) && evaluator.Allows(actorId, AuthActions.RolesEdit, AccessScope.Cluster).Allowed;
+            snapshot.IsOwner(actorId) && evaluator.Allows(actorId, AuthActions.RolesEdit).Allowed;
 
-        public int Top(AccessScope scope) => TopRank(Snapshot, actorId, scope);
+        public int Top() => TopRank(Snapshot, actorId);
 
-        public AuthorityRefusal? Lacks(string action, AccessScope scope)
+        public AuthorityRefusal? Lacks(string action)
         {
-            AccessDecision decision = evaluator.Allows(actorId, action, scope);
+            AccessDecision decision = evaluator.Allows(actorId, action);
             return decision.Allowed
                 ? null
-                : new AuthorityRefusal(RefusalCode.NotPermitted, $"You do not hold '{action}' at {scope} ({decision.Reason}).");
+                : new AuthorityRefusal(RefusalCode.NotPermitted, $"You do not hold '{action}' ({decision.Reason}).");
         }
 
-        public AuthorityRefusal? RankBelow(Role role, AccessScope scope)
+        public AuthorityRefusal? RankBelow(Role role)
         {
-            if (IsOwner || role.Rank > Top(scope))
+            if (IsOwner || role.Rank > Top())
                 return null;
 
             return new AuthorityRefusal(RefusalCode.RankNotBelow,
-                $"'{role.Name}' does not rank below your highest role at {scope}.");
+                $"'{role.Name}' does not rank below your highest role.");
         }
 
-        public AuthorityRefusal? Subset(IEnumerable<string> actions, AccessScope scope)
+        public AuthorityRefusal? Subset(IEnumerable<string> actions)
         {
             if (IsOwner)
                 return null;
 
             string[] missing = actions
                 .Distinct(StringComparer.Ordinal)
-                .Where(a => !evaluator.Allows(actorId, a, scope).Allowed)
+                .Where(a => !evaluator.Allows(actorId, a).Allowed)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
 
             return missing.Length == 0
                 ? null
                 : new AuthorityRefusal(RefusalCode.NotHeld,
-                    $"You do not hold {string.Join(", ", missing)} at {scope}.", missing);
+                    $"You do not hold {string.Join(", ", missing)}.", missing);
         }
     }
 }

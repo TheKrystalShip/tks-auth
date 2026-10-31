@@ -1,13 +1,12 @@
 // route.js — where the admin pages are, in the address's fragment: `#/<page>[/<id>][?<name>=<value>&…]`.
 //
-// The fragment is the source of truth, so a link from another surface opens a page with its
-// parameters filled in — `#/assignments?scope=instance:<node>/<id>%23<nonce>&label=<name>` opens the
-// roles held on one server — and Back and Forward move between pages. An empty or unknown address is
+// The fragment is the source of truth, so a link opens a page with its parameters filled in
+// (`#/accounts?status=pending`), and Back and Forward move between pages. An empty or unknown address is
 // the overview. A page's `id` is URI-decoded.
 
 import React from "react";
 
-const PAGES = ["overview", "accounts", "roles", "permissions", "catalog", "assignments", "services", "applications"];
+const PAGES = ["overview", "accounts", "roles", "permissions", "catalog", "assignments", "applications"];
 
 function parse(hash) {
   const raw = String(hash || "").replace(/^#\/?/, "");

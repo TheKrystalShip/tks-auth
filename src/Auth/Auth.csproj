@@ -8,30 +8,19 @@
     <AssemblyName>TheKrystalShip.Auth</AssemblyName>
 
     <!--
-      Zero package dependencies, by design. Every KGSM surface takes this assembly — including the
-      Discord bot, whose deploy is tuned for footprint, and the CLI, whose startup a consumer feels
-      directly. Anything this referenced would reach all of them, so it stays a pure library: no HTTP,
-      no configuration binder, no ORM. The transports that DO need those live in
-      the sibling packages, which only the surfaces that need them take.
+      Zero package dependencies, by design: a pure library with no HTTP, no configuration binder and no
+      ORM. The projects that need those sit beside it.
     -->
     <IsAotCompatible>true</IsAotCompatible>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
-    <PackageId>TheKrystalShip.Auth</PackageId>
-    <Authors>Heisenberg</Authors>
-    <Version>5.0.0</Version>
+    <IsPackable>false</IsPackable>
     <Description>
-      KGSM identity: the provider-agnostic KgsmIdentity, the failure a provider or the account store
-      reports when it cannot answer, the session claim names, and the provider:name actor convention.
-      A session proves who somebody is and nothing more; what they may do is Auth.Access's.
-      Dependency-free and AOT-safe.
+      Provider-agnostic identity: AccountIdentity, the failure a provider or the account store reports
+      when it cannot answer, the session claim names and the provider:name actor convention. A session
+      proves who somebody is and nothing more; what they may do is Auth.Access's. Dependency-free and
+      AOT-safe.
     </Description>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="../../README.md" Pack="true" PackagePath="/" />
-  </ItemGroup>
 
 </Project>

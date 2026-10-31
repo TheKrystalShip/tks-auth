@@ -7,8 +7,8 @@ namespace TheKrystalShip.Auth.Users.Tests;
 /// </summary>
 public sealed class IdentityLinkServiceTests
 {
-    private static KgsmIdentity Discord(string subject = "1001", string username = "haru", string? display = null) =>
-        new(KgsmActorProvider.Discord, subject, username, display ?? username, AvatarUrl: null, Scopes: []);
+    private static AccountIdentity Discord(string subject = "1001", string username = "haru", string? display = null) =>
+        new(ActorProvider.Discord, subject, username, display ?? username, AvatarUrl: null, Scopes: []);
 
     [Fact]
     public async Task AnIdentityNobodyClaimsProvisionsAPendingAccountThatArrived()
@@ -205,14 +205,14 @@ public sealed class IdentityLinkServiceTests
     public async Task LinkingToAnAccountAttachesTheIdentityToIt()
     {
         using TempStore temp = new();
-        KgsmUser user = Make.User(username: "haru");
+        UserAccount user = Make.User(username: "haru");
         await temp.Store.CreateAsync(user);
         IdentityLinkService linking = new(temp.Store);
 
         LinkResult result = await linking.LinkAsync(user.UserId, Discord(), Make.Now);
 
         Assert.Equal(LinkOutcome.Provisioned, result.Outcome);
-        KgsmUser? proved = await temp.Store.FindByCredentialAsync("discord:1001");
+        UserAccount? proved = await temp.Store.FindByCredentialAsync("discord:1001");
         Assert.Equal(user.UserId, proved!.UserId);
     }
 
@@ -220,8 +220,8 @@ public sealed class IdentityLinkServiceTests
     public async Task AnIdentityAlreadyAttachedElsewhereIsNeverRepointed()
     {
         using TempStore temp = new();
-        KgsmUser mine = Make.User(username: "haru");
-        KgsmUser theirs = Make.User(username: "wout");
+        UserAccount mine = Make.User(username: "haru");
+        UserAccount theirs = Make.User(username: "wout");
         await temp.Store.CreateAsync(mine);
         await temp.Store.CreateAsync(theirs);
         IdentityLinkService linking = new(temp.Store);
@@ -237,7 +237,7 @@ public sealed class IdentityLinkServiceTests
     public async Task LinkingTheSameIdentityToTheSameAccountTwiceIsNotAnError()
     {
         using TempStore temp = new();
-        KgsmUser user = Make.User();
+        UserAccount user = Make.User();
         await temp.Store.CreateAsync(user);
         IdentityLinkService linking = new(temp.Store);
         await linking.LinkAsync(user.UserId, Discord(), Make.Now);
@@ -254,7 +254,7 @@ public sealed class IdentityLinkServiceTests
     public async Task DetachingOneOfTwoCredentialsLeavesTheOtherAndTheAccount()
     {
         using TempStore temp = new();
-        KgsmUser user = Make.User();
+        UserAccount user = Make.User();
         await temp.Store.CreateAsync(user);
         await temp.Store.AddCredentialAsync(Make.Identity(user.UserId, "local:" + user.UserId));
         await temp.Store.AddCredentialAsync(Make.Identity(user.UserId, "discord:1001"));
@@ -272,7 +272,7 @@ public sealed class IdentityLinkServiceTests
     public async Task TheLastCredentialIsRefused_NotSilentlyLeavingAnAccountNobodyCanSignInTo()
     {
         using TempStore temp = new();
-        KgsmUser user = Make.User();
+        UserAccount user = Make.User();
         await temp.Store.CreateAsync(user);
         await temp.Store.AddCredentialAsync(Make.Identity(user.UserId, "discord:1001"));
         UserCredential only = (await temp.Store.FindCredentialAsync("discord:1001"))!;
@@ -291,8 +291,8 @@ public sealed class IdentityLinkServiceTests
         // record would detach a stranger's identity — so the account it is on decides, and "not yours"
         // and "not real" are one answer.
         using TempStore temp = new();
-        KgsmUser mine = Make.User("haru");
-        KgsmUser theirs = Make.User("kaito");
+        UserAccount mine = Make.User("haru");
+        UserAccount theirs = Make.User("kaito");
         await temp.Store.CreateAsync(mine);
         await temp.Store.CreateAsync(theirs);
         await temp.Store.AddCredentialAsync(Make.Identity(theirs.UserId, "discord:2002"));

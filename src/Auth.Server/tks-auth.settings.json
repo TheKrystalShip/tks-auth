@@ -1,0 +1,82 @@
+{
+  // === tks-auth - configuration ===
+  //
+  // This file declares the daemon's WHOLE configurable surface, each key with its default. It is
+  // the floor; an environment variable overrides one key of it by spelling that key's path with
+  // "__" - Auth__ListenAddress, Logging__LogLevel__Default. A variable naming a key that is not
+  // declared here binds to nothing, which is what stops a stale override from looking applied.
+  //
+  // Every key below maps 1:1 onto a property of ServerSettings, which the daemon binds in one step.
+
+  "Auth": {
+    // Where the browser reaches this provider. A person signs in here directly, so this is a TCP
+    // surface with TLS terminated in front of it.
+    "ListenAddress": "http://0.0.0.0:8098",
+
+    // The account store: accounts, credentials, roles, permissions and assignments, in the unit's
+    // StateDirectory=.
+    "UserStorePath": "/var/lib/tks-auth/accounts.db",
+
+    // Where live sessions are recorded, so a revoke outlives the process that issued it and a
+    // restart does not sign everybody out. Inside the unit's StateDirectory=.
+    "SessionStorePath": "/var/lib/tks-auth/sessions.db",
+
+    // The private key sessions are signed with. Generated on first start if absent, 0600, and never
+    // leaves this machine. Deleting it invalidates every session ever minted.
+    "SigningKeyPath": "/var/lib/tks-auth/session-signing.pem",
+
+    // The provider's pages - sign-in, registration, the wait for approval, the account page and the
+    // admin pages - installed beside the binary and served at /ui/. Absent, people still sign in
+    // through a plain form this daemon renders itself.
+    "UiPath": "/opt/tks-auth/ui",
+
+    // How long an access bearer lives before it has to be refreshed. Short, because it bounds how
+    // long a stolen one is worth anything.
+    "AccessLifetimeMinutes": 15,
+
+    // The absolute session cap: how long somebody stays signed in, rotating access tokens, before a
+    // fresh sign-in.
+    "RefreshLifetimeDays": 30,
+
+    // Whether a person with no account may create one from the sign-in page. It is an unauthenticated
+    // write, so it is off unless the deployment decides otherwise - and the account it creates holds
+    // nothing until an administrator grants it something. The provider door creates the same kind of
+    // account for anybody who can complete a sign-in at a configured provider, and both are bounded
+    // by the same limit below.
+    "AllowSelfRegistration": false,
+
+    // How many accounts that arrived on their own may await approval at once. Signing in with an
+    // external account nobody has approved creates one, and that door is open to anyone who can
+    // complete a login at a configured provider - so this bounds what a stranger can fill up.
+    "PendingCap": 25,
+
+    // How long an unapproved account that arrived on its own survives before it is removed. It only
+    // ever removes an account nobody has granted anything to.
+    "PendingTtlDays": 14,
+
+    // How long after proving a credential somebody may keep changing how they sign in on the account
+    // page. Being signed in on a browser is not the same as having proved you own the account, and
+    // attaching an identity outlives the session: afterwards whoever holds that provider account can
+    // sign in as this one.
+    "ReauthWindowMinutes": 5,
+
+    // How often dead session rows are swept. The sweep only deletes what is already past its cap;
+    // it is housekeeping, not revocation.
+    "SessionCleanupMinutes": 60,
+
+    // How often every registered application's action manifest is read again from where it serves
+    // it. Registering an application, or changing where its manifest is, reads it at once.
+    "ManifestRefreshMinutes": 15,
+
+    // The longest Discord's answer about one of its access tokens is held when an application exchanges
+    // it, never past the token's own expiry. Zero asks Discord on every exchange.
+    "DiscordTokenCacheMinutes": 10
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}

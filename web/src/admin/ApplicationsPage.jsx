@@ -1,7 +1,7 @@
 // ApplicationsPage — the applications this provider signs people in to: register one and open one.
 //
 // An application is the API its clients' tokens are for: an id that is also the namespace of its
-// actions and the audience its resource server checks. KGSM and tks-auth itself are built in, listed and
+// actions and the audience its resource server checks. tks-auth itself is built in, listed and
 // never edited. Registering one with a confidential client answers with that client's secret, which the
 // application page opened next shows once.
 

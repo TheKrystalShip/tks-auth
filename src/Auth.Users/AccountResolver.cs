@@ -26,14 +26,14 @@ public enum AccountOutcome
 /// <summary>The account an identity resolves to, and where it stands.</summary>
 /// <param name="Outcome">Which of the three answers this is.</param>
 /// <param name="User">The account, or <see langword="null"/> when there is none.</param>
-public readonly record struct AccountAnswer(AccountOutcome Outcome, KgsmUser? User);
+public readonly record struct AccountAnswer(AccountOutcome Outcome, UserAccount? User);
 
 /// <summary>
 /// The account a verified identity proves, read from the account store.
 /// </summary>
 /// <remarks>
 /// <para>
-/// An identity provider says who someone is and contributes nothing else; this finds the KGSM account
+/// An identity provider says who someone is and contributes nothing else; this finds the account
 /// that identity is a credential of. What the account may do is not answered here — it is the roles
 /// assigned to it, evaluated by <c>TheKrystalShip.Auth.Access</c>.
 /// </para>
@@ -43,7 +43,7 @@ public readonly record struct AccountAnswer(AccountOutcome Outcome, KgsmUser? Us
 /// they belong to elsewhere.
 /// </para>
 /// <para>
-/// A store that cannot be read throws <see cref="KgsmAuthProviderException"/> instead of answering.
+/// A store that cannot be read throws <see cref="AuthProviderException"/> instead of answering.
 /// "We could not find out" is a different fact from "there is no account", and reporting the first as
 /// the second signs an Owner out mid-incident.
 /// </para>
@@ -64,17 +64,17 @@ public sealed class AccountResolver(IUserStore store, TimeSpan ttl = default)
     /// What this identity resolves to: the account it proves, and whether that account may be used.
     /// </summary>
     /// <remarks>
-    /// A read failure throws <see cref="KgsmAuthProviderException"/> and is never cached — caching an
+    /// A read failure throws <see cref="AuthProviderException"/> and is never cached — caching an
     /// outage would turn a momentary one into a full-TTL lockout for someone who really has an account.
     /// </remarks>
-    public async Task<AccountAnswer> ResolveAsync(KgsmIdentity identity, CancellationToken ct)
+    public async Task<AccountAnswer> ResolveAsync(AccountIdentity identity, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(identity);
 
         if (TryCached(identity.Handle, out AccountAnswer cached))
             return cached;
 
-        KgsmUser? user = await FindAsync(identity, ct).ConfigureAwait(false);
+        UserAccount? user = await FindAsync(identity, ct).ConfigureAwait(false);
         AccountAnswer answer = user is null
             ? new AccountAnswer(AccountOutcome.NoAccount, null)
             : new AccountAnswer(user.Status == UserStatus.Disabled ? AccountOutcome.Disabled : AccountOutcome.Ok, user);
@@ -105,20 +105,20 @@ public sealed class AccountResolver(IUserStore store, TimeSpan ttl = default)
     /// through a credential row — an account whose password has been removed, or which never had one,
     /// is still the account it is.
     /// </remarks>
-    public async Task<KgsmUser?> FindAsync(KgsmIdentity identity, CancellationToken ct)
+    public async Task<UserAccount?> FindAsync(AccountIdentity identity, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(identity);
 
         try
         {
-            return identity.Provider == KgsmActorProvider.Local
+            return identity.Provider == ActorProvider.Local
                 ? await store.FindByIdAsync(identity.Subject, ct).ConfigureAwait(false)
                 : await store.FindByCredentialAsync(identity.Handle, ct).ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not (OperationCanceledException or KgsmAuthProviderException))
+        catch (Exception e) when (e is not (OperationCanceledException or AuthProviderException))
         {
-            throw new KgsmAuthProviderException(
-                $"The KGSM user store could not be read while resolving '{identity.Handle}'.", e);
+            throw new AuthProviderException(
+                $"The user store could not be read while resolving '{identity.Handle}'.", e);
         }
     }
 

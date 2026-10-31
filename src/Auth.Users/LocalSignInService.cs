@@ -57,8 +57,8 @@ public enum LocalSignInOutcome
 /// </param>
 public sealed record LocalSignInResult(
     LocalSignInOutcome Outcome,
-    KgsmIdentity? Identity,
-    KgsmUser? User,
+    AccountIdentity? Identity,
+    UserAccount? User,
     DateTimeOffset? RetryAfter,
     LoginLockout? Lockout = null,
     bool JustLocked = false)
@@ -68,7 +68,7 @@ public sealed record LocalSignInResult(
 }
 
 /// <summary>
-/// Signing in with a KGSM password — the path that needs no external provider reachable, or
+/// Signing in with a password — the path that needs no external provider reachable, or
 /// configured at all.
 /// </summary>
 /// <remarks>
@@ -118,7 +118,7 @@ public sealed class LocalSignInService(
         // whoever is trying to sign in, and every wrong answer takes the same path and the same time.
         password ??= string.Empty;
 
-        KgsmUser? user = string.IsNullOrWhiteSpace(username)
+        UserAccount? user = string.IsNullOrWhiteSpace(username)
             ? null
             : await store.FindByUsernameAsync(username, ct).ConfigureAwait(false);
 

@@ -7,6 +7,45 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — 7.0.0 (breaking)
+
+- **tks-auth is a standalone OpenID Connect provider.** It joins no cluster, publishes no gossip fact,
+  answers no bus message and writes no KGSM journal. Deleted: the cluster module (membership, the standing
+  and the founding claim, the authority broadcast, the session broadcast, the member snapshot, the
+  roster, `/auth/cluster/public-key`, `/auth/identity`), the component surface (`/auth/config`,
+  `/auth/logs`) and its descriptor, `Auth.Cluster` and `Auth.Testing`, the member-sourced and
+  configuration-declared clients (`Anchor__PanelOrigins`), and the `catalog.declared` and
+  `instance.uninstalled` handlers. An application's tokens are checked against `/.well-known/jwks.json`.
+- **Assignments are held organization-wide.** Node and instance scopes are gone, with service accounts,
+  their requirements and `auth:services.manage`. An assignment is an account and a role; `GET /me/access`
+  answers `{version, actions, owner}`.
+- **The account store is upgraded when it is opened,** to schema version 3, after a copy named
+  `accounts.db.pre-7.0.0`. It drops the replication tables, the service accounts and requirements, and every
+  assignment at a node or an instance (each logged with its account, role and scope); it keeps accounts,
+  credentials, roles, permissions, cluster-wide assignments and the catalog. What cluster members had
+  reported stays in the catalog as the report of the application `kgsm` until that application's manifest
+  replaces it; the reports applications hold stay as they are.
+- **The audit is the log.** Each fact is a line `audit <event> actor=… origin=… {payload}` through the
+  logger; the KGSM event journal is no longer written. Refusals are `{"error":{"code","message"}}` of the
+  daemon's own types.
+- **Renamed.** The project and namespace `Auth.Anchor` is `Auth.Server`. The `Anchor__*` configuration is
+  `Auth__*`; `MemberId`, `ClusterId`, `ConfigDescriptorPath`, `ConfigOverridePath`, `PanelOrigins`,
+  `AuthorityHeartbeatSeconds` and `StalenessBoundSeconds` no longer exist. `KgsmAuth__Providers__*` is
+  `Auth__Providers__*`. The admin routes `/auth/cluster/*` are `/auth/admin/*`. The cookies `kgsm_anchor`,
+  `kgsm_authz`, `kgsm_oauth_state` and `kgsm_link_ticket` are `tks_auth_session`, `tks_auth_authz`,
+  `tks_auth_oauth_state` and `tks_auth_link_ticket`; everyone is signed out once. The pseudo-clients
+  `kgsm-account` and `kgsm-device` are `tks-account` and `tks-device`. `KgsmIdentity`, `KgsmUser`,
+  `KgsmActor`, `KgsmAuthClaims` and `KgsmTokenKind` are `AccountIdentity`, `UserAccount`, `ActorStrings`,
+  `AuthClaims` and `SessionTokenKind`.
+- **The libraries are internal.** `Auth`, `Auth.Access`, `Auth.Users` and `Auth.Journal` are referenced by
+  project and published to no feed.
+- **`tks-auth migrate kgsm` is gone.** A role that holds every action of an application is made on the
+  admin pages.
+- **Deploy.** The unit loads no `kgsm-cluster.env`, has no config-override drop-in and no restart grant, and
+  the descriptor and anchor directories are not provisioned. The package depends on `systemd` alone,
+  creates the `tks-auth` system user and is no longer in the `kgsm-node` group; a checkout deploy still
+  runs the unit as the deploying user.
+
 ### Changed — 6.0.0
 
 - **KGSM is an ordinary stored application.** `Application.IsKgsm` and `KgsmId` are gone, and with them

@@ -1,7 +1,7 @@
 namespace TheKrystalShip.Auth.Users.Tests;
 
 /// <summary>
-/// Signing in with a KGSM password — the path that must work with no external provider configured
+/// Signing in with a password — the path that must work with no external provider configured
 /// at all, which is the whole point of the account store existing.
 /// </summary>
 public class LocalSignInServiceTests
@@ -17,8 +17,8 @@ public class LocalSignInServiceTests
         return (temp, signIn);
     }
 
-    private static async Task<KgsmUser> Enrol(
-        TempStore temp, LocalSignInService signIn, KgsmUser user, string password = Password)
+    private static async Task<UserAccount> Enrol(
+        TempStore temp, LocalSignInService signIn, UserAccount user, string password = Password)
     {
         await temp.Store.CreateAsync(user);
         await signIn.SetPasswordAsync(user.UserId, password, Make.Now);
@@ -31,11 +31,11 @@ public class LocalSignInServiceTests
         (TempStore temp, LocalSignInService signIn) = Build();
         using TempStore _ = temp;
 
-        KgsmUser user = await Enrol(temp, signIn, Make.User("haru"));
+        UserAccount user = await Enrol(temp, signIn, Make.User("haru"));
         LocalSignInResult result = await signIn.SignInAsync("haru", Password, Make.Now);
 
         Assert.Equal(LocalSignInOutcome.Success, result.Outcome);
-        Assert.Equal(KgsmActorProvider.Local, result.Identity!.Provider);
+        Assert.Equal(ActorProvider.Local, result.Identity!.Provider);
         Assert.Equal(user.UserId, result.Identity.Subject);
         Assert.Equal("local:haru", result.Identity.ActorString);
     }
@@ -140,7 +140,7 @@ public class LocalSignInServiceTests
         (TempStore temp, LocalSignInService signIn) = Build();
         using TempStore _ = temp;
 
-        KgsmUser user = Make.User("haru");
+        UserAccount user = Make.User("haru");
         await temp.Store.CreateAsync(user);
         await temp.Store.AddCredentialAsync(Make.Identity(user.UserId, "discord:1234"));
 
@@ -192,7 +192,7 @@ public class LocalSignInServiceTests
         (TempStore temp, LocalSignInService signIn) = Build(lockout: policy);
         using TempStore _ = temp;
 
-        KgsmUser user = await Enrol(temp, signIn, Make.User("haru"));
+        UserAccount user = await Enrol(temp, signIn, Make.User("haru"));
 
         for (int i = 0; i < policy.Threshold; i++)
             await signIn.SignInAsync("haru", "wrong", Make.Now);
@@ -210,7 +210,7 @@ public class LocalSignInServiceTests
         (TempStore temp, LocalSignInService signIn) = Build();
         using TempStore _ = temp;
 
-        KgsmUser user = await Enrol(temp, signIn, Make.User("haru"));
+        UserAccount user = await Enrol(temp, signIn, Make.User("haru"));
         await signIn.SignInAsync("haru", Password, Make.Now.AddDays(3));
 
         UserCredential credential =
@@ -228,7 +228,7 @@ public class LocalSignInServiceTests
         (TempStore temp, LocalSignInService signIn) = Build(hasher);
         using TempStore _ = temp;
 
-        KgsmUser user = await Enrol(temp, signIn, Make.User("haru"));
+        UserAccount user = await Enrol(temp, signIn, Make.User("haru"));
         string before =
             (await temp.Store.FindCredentialAsync(UserCredentials.LocalHandle(user.UserId)))!.Secret!;
 
@@ -249,7 +249,7 @@ public class LocalSignInServiceTests
         (TempStore temp, LocalSignInService signIn) = Build();
         using TempStore _ = temp;
 
-        KgsmUser user = await Enrol(temp, signIn, Make.User("haru"));
+        UserAccount user = await Enrol(temp, signIn, Make.User("haru"));
         await signIn.SetPasswordAsync(user.UserId, "a-new-one", Make.Now);
 
         Assert.Single(await temp.Store.ListCredentialsAsync(user.UserId));
@@ -268,7 +268,7 @@ public class LocalSignInServiceTests
         (TempStore temp, LocalSignInService signIn) = Build(lockout: policy);
         using TempStore _ = temp;
 
-        KgsmUser user = await Enrol(temp, signIn, Make.User("haru"));
+        UserAccount user = await Enrol(temp, signIn, Make.User("haru"));
         for (int i = 0; i <= policy.Threshold; i++)
             await signIn.SignInAsync("haru", "wrong", Make.Now);
 

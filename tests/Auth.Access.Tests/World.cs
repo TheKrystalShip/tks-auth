@@ -1,13 +1,11 @@
-using Microsoft.Extensions.Time.Testing;
-
 namespace TheKrystalShip.Auth.Access.Tests;
 
 /// <summary>
-/// A cluster's authority, built up line by line, so a test states only what it is about.
+/// An authority, built up line by line, so a test states only what it is about.
 /// </summary>
 /// <remarks>
-/// The catalog starts with the anchor's own actions and a handful of engine and leaf actions of each
-/// scope kind and effect, which is what most tests need to have something to grant.
+/// The catalog starts with the provider's own actions and a handful of actions of each effect, which is
+/// what most tests need to have something to grant.
 /// </remarks>
 internal sealed class World
 {
@@ -19,23 +17,17 @@ internal sealed class World
     public const string Prefs = "api:preferences.write";
     public const string Autorun = "assistant:autorun";
 
-    public static readonly AccessScope Walter = AccessScope.ForNode("walter");
-    public static readonly AccessScope Jessie = AccessScope.ForNode("jessie");
-    public static readonly AccessScope Terraria = AccessScope.ForInstance("walter", "terraria", "9f3c");
-    public static readonly AccessScope Factorio = AccessScope.ForInstance("walter", "factorio", "11aa");
-    public static readonly AccessScope JessieTerraria = AccessScope.ForInstance("jessie", "terraria", "77bb");
-
     private readonly List<AccessAccount> _accounts = [];
     private readonly List<CatalogAction> _catalog =
     [
         .. AuthActions.Declared,
-        new(Start, "Start servers", ActionEffect.Execute, ScopeKind.Instance),
-        new(Console, "Read consoles", ActionEffect.Read, ScopeKind.Instance),
-        new(Library, "Read the library", ActionEffect.Read, ScopeKind.Cluster),
-        new(Metrics, "Read metrics", ActionEffect.Read, ScopeKind.Node),
-        new(Thresholds, "Change thresholds", ActionEffect.Write, ScopeKind.Node),
-        new(Prefs, "Change own preferences", ActionEffect.Write, ScopeKind.Cluster, Self: true),
-        new(Autorun, "Skip confirmation", ActionEffect.Execute, ScopeKind.Cluster),
+        new(Start, "Start servers", ActionEffect.Execute),
+        new(Console, "Read consoles", ActionEffect.Read),
+        new(Library, "Read the library", ActionEffect.Read),
+        new(Metrics, "Read metrics", ActionEffect.Read),
+        new(Thresholds, "Change thresholds", ActionEffect.Write),
+        new(Prefs, "Change own preferences", ActionEffect.Write, Self: true),
+        new(Autorun, "Skip confirmation", ActionEffect.Execute),
     ];
     private readonly List<Permission> _permissions = [];
     private readonly List<Role> _roles =
@@ -44,34 +36,19 @@ internal sealed class World
         new(BuiltInRoles.EveryoneId, BuiltInRoles.EveryoneName, RoleKind.Everyone, RoleRanks.Everyone, new HashSet<string>()),
     ];
     private readonly List<Assignment> _assignments = [];
-    private readonly List<ServiceRequirement> _requirements = [];
     private int _next;
-
-    public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 9, 25, 12, 0, 0, TimeSpan.Zero));
-
-    public AuthorityFreshness Freshness { get; set; } = AuthorityFreshness.Authoritative;
-
-    public int MinimumContract { get; set; } = AccessContract.Version;
 
     public string Person(string name, AccountStatus status = AccountStatus.Active)
     {
         string id = "usr_" + name;
-        _accounts.Add(new AccessAccount(id, name, AccountKind.Person, status));
-        return id;
-    }
-
-    public string Service(string component, string member, AccountStatus status = AccountStatus.Active)
-    {
-        ServiceIdentity service = new(component, member);
-        string id = "usr_svc_" + component + "_" + member;
-        _accounts.Add(new AccessAccount(id, service.Name, AccountKind.Service, status, service));
+        _accounts.Add(new AccessAccount(id, name, status));
         return id;
     }
 
     public string Owner(string name = "owner")
     {
         string id = Person(name);
-        Assign(id, BuiltInRoles.OwnerId, AccessScope.Cluster);
+        Assign(id, BuiltInRoles.OwnerId);
         return id;
     }
 
@@ -112,23 +89,16 @@ internal sealed class World
         _roles[at] = _roles[at] with { Permissions = new HashSet<string> { permission } };
     }
 
-    public string Assign(string account, string role, AccessScope scope)
+    public string Assign(string account, string role)
     {
         string id = "asg_" + _next++;
-        _assignments.Add(new Assignment(id, account, role, scope));
+        _assignments.Add(new Assignment(id, account, role));
         return id;
     }
 
-    public void Require(
-        string service, string action, AccessScope? grant, RequirementState state = RequirementState.Approved,
-        bool declared = true, ScopeKind kind = ScopeKind.Instance, string? decidedBy = null) =>
-        _requirements.Add(new ServiceRequirement(service, action, kind, "because", state, grant, decidedBy, declared));
+    public AuthoritySnapshot Snapshot() => new(7, _accounts, _catalog, _permissions, _roles, _assignments);
 
-    public AuthoritySnapshot Snapshot() =>
-        new(7, _accounts, _catalog, _permissions, _roles, _assignments, _requirements, Freshness, MinimumContract);
+    public AccessEvaluator Evaluator() => new(Snapshot());
 
-    public AccessEvaluator Evaluator() => new(Snapshot(), Clock);
-
-    public AuthorityRefusal? Check(string actor, AuthorityEdit edit) =>
-        AuthorityRules.Check(Snapshot(), actor, edit, Clock);
+    public AuthorityRefusal? Check(string actor, AuthorityEdit edit) => AuthorityRules.Check(Snapshot(), actor, edit);
 }

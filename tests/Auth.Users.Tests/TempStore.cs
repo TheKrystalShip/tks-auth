@@ -82,7 +82,7 @@ internal static class Make
 {
     public static readonly DateTimeOffset Now = new(2026, 8, 9, 12, 0, 0, TimeSpan.Zero);
 
-    public static KgsmUser User(
+    public static UserAccount User(
         string username = "haru",
         UserStatus status = UserStatus.Active,
         AccountOrigin origin = AccountOrigin.Admitted,

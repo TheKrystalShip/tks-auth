@@ -25,7 +25,7 @@
  *   own cache when the network is down, because the client cannot read a stored session without
  *   knowing the client id.
  * @property {string} [redirectPath] The callback, a real path. Default `/signed-in`.
- * @property {string} [postSignOutPath] Where the anchor sends the browser after signing out. Default `/`.
+ * @property {string} [postSignOutPath] Where the provider sends the browser after signing out. Default `/`.
  * @property {number} [graceMs] How long a refused session may recover before `ended`. Default 30000.
  * @property {number} [renewAheadS] How long before expiry the timer renews. Default 60.
  *

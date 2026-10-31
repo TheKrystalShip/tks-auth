@@ -15,7 +15,7 @@ const peoplesRoles = (view) => (view ? view.roles.filter((r) => PEOPLES.has(r.ki
 // "N permissions", singular where it is one.
 const countOf = (n, unit) => n + " " + unit + (n === 1 ? "" : "s");
 
-// What a role holds, in a line: "Every action of kgsm" for one that holds an application's whole catalog, and
+// What a role holds, in a line: "Every action of an application" for one that holds an application's whole catalog, and
 // its permissions besides when it files any.
 const holdsText = (role) => {
   const permissions = role.permissions.length ? countOf(role.permissions.length, "permission") : null;

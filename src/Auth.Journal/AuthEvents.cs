@@ -1,22 +1,9 @@
 namespace TheKrystalShip.Auth.Journal;
 
 /// <summary>
-/// The account events a KGSM host records, by name.
+/// The account events the provider records, by name.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <b>The names are the contract, and they say nothing about who wrote them.</b> Whichever component
-/// holds a host's accounts records what happened to them: a standalone host's own API, or the auth
-/// anchor when a cluster's accounts are held by one. A reader establishes which from the journal the
-/// line was read out of — a fact it can check — so neither producer names itself in a payload and
-/// neither needs a family of names of its own.
-/// </para>
-/// <para>
-/// That is what lets the two coexist without a reader learning either. A cluster whose anchor takes
-/// over from a member's own door produces one unbroken series of <c>auth.signed_in</c> rows, worded
-/// by one mapper, filterable as one type.
-/// </para>
-/// </remarks>
+/// <remarks>The names are the contract between the audit lines and whoever reads them.</remarks>
 public static class AuthEvents
 {
     /// <summary>A session began.</summary>
@@ -81,20 +68,11 @@ public static class AuthEvents
     /// <summary>A permission was deleted.</summary>
     public const string PermissionRemoved = "auth.permission.removed";
 
-    /// <summary>An account was given a role within a scope.</summary>
+    /// <summary>An account was given a role.</summary>
     public const string AssignmentGranted = "auth.assignment.granted";
 
-    /// <summary>An account lost a role within a scope.</summary>
+    /// <summary>An account lost a role.</summary>
     public const string AssignmentRevoked = "auth.assignment.revoked";
-
-    /// <summary>A service's requirement was approved, automatically or by a person, or narrowed.</summary>
-    public const string ServiceRequirementApproved = "auth.service.requirement.approved";
-
-    /// <summary>A service's requirement was revoked.</summary>
-    public const string ServiceRequirementRevoked = "auth.service.requirement.revoked";
-
-    /// <summary>A service was refused an action.</summary>
-    public const string ServiceRefused = "auth.service.refused";
 
     /// <summary>The catalog of declared actions changed.</summary>
     public const string CatalogChanged = "auth.catalog.changed";
