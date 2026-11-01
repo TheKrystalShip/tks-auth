@@ -1,27 +1,31 @@
-// A session with the sign-in package's interface and no provider behind it, so a test sets the
-// snapshot it draws: `adopt` signs a person in from claims, `end` ends, `signOut` clears.
+// A session with the package's interface and no provider behind it, so a site's test sets the snapshot it
+// draws: `adopt` signs a person in from claims, `end` ends, `signOut` clears. `useSession` from
+// `@thekrystalship/auth-client/react` reads it like any session.
 
-import { useSyncExternalStore } from "react";
+const NONE = Object.freeze({ status: "none", reason: null, account: null, claims: {}, expiresAt: null });
 
-const NONE = { status: "none", reason: null, account: null, claims: {}, expiresAt: null };
-
-/** A session that implements the interface with no sign-in behind it. */
+/**
+ * A session that implements the interface with no sign-in behind it.
+ * @returns {import("./types.js").Session & { adopt: (tokens: { claims?: Record<string, any> }) => void }}
+ */
 export function createStandInSession() {
+  /** @type {import("./types.js").Snapshot} */
   let snapshot = NONE;
   const listeners = new Set();
   const set = (next) => {
     snapshot = next;
     listeners.forEach((l) => l());
   };
-  return {
+  return /** @type {any} */ ({
     restore: async () => null,
-    // Resolves true once the redirect has started, false when the provider cannot be reached; never rejects.
+    // Resolves false: there is no provider to leave for.
     signIn: async () => false,
     signOut: async () => set(NONE),
     // Rejects with `code` "ended" or "none" when there is no token to offer.
     fresh: async () => {
       throw Object.assign(new Error("No session."), { code: snapshot.status === "ended" ? "ended" : "none" });
     },
+    token: () => null,
     authorizedFetch: (input, init) => fetch(input, init),
     adopt: (tokens) => {
       const claims = (tokens && tokens.claims) || {};
@@ -41,10 +45,5 @@ export function createStandInSession() {
       // `poll` resolves "signed-in", "refused", "expired" or "cancelled".
       start: async () => ({ userCode: "", verificationUri: "", verificationUriComplete: "", expiresIn: 0, poll: async () => "cancelled", cancel() {} }),
     },
-  };
-}
-
-/** The session's snapshot, redrawing the caller when it changes. */
-export function useSession(s) {
-  return useSyncExternalStore(s.subscribe, s.getSnapshot);
+  });
 }

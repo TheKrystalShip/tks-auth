@@ -84,6 +84,43 @@ the stored session cannot be found without the client id. If it throws, `restore
 The client requests `openid` with authorization code and PKCE S256, and renews through the refresh
 grant alone: no iframe, no `prompt=none`.
 
+## The site's API
+
+`@thekrystalship/auth-client/api` is a site's calls to its own API over the session: bodies go in and come
+out as JSON, the bearer rides on `authorizedFetch` (renewed and replayed once on a 401), and every failure
+is an `ApiError` with a sentence fit to show.
+
+```js
+import { createApi, ApiError } from "@thekrystalship/auth-client/api";
+
+export const api = createApi({ session, base: () => config.api, headers: () => ({ "Accept-Language": lang }) });
+
+await api.get("/recipes");             // also post, put, patch, delete; upload(path, formData)
+await api.stream("/imports", body, (line) => ...);   // an application/x-ndjson answer, line by line
+const photo = await api.blob("/photos/1");
+```
+
+| Option | Does |
+|---|---|
+| `base` | Prefixed to every path. A function is asked on each call, and an empty answer fails the call as "no API is configured" without sending it. |
+| `headers` | Added to every request, asked on each call. |
+| `credentials` | The requests' `credentials`, such as `omit` on an origin whose own cookie must not ride along. |
+| `anonymous` | With nobody signed in, the call goes out without a bearer instead of failing. |
+| `endOnRefusal` | A 401 the renewal did not cure ends a live session as `refused`. |
+| `answered`, `onReach` | Whether a response came from the site's own server and not a gateway or a portal (one that did not is a status-0 failure), and a hook told after each call whether the server answered. |
+| `words` | The sentences a failure with no body of its own says: `unreachable`, `unconfigured`, `signIn`, and `failed(status, statusText)`, which by default is the status text. |
+
+`ApiError` carries `status` (0 when no server answered, 401 when there is no session), the answer's
+sentence as its message, its `code` and the parsed `body`. The sentence and code are read from whichever of
+the organization's error shapes the answer is: `{ error: { code, message } }`, `{ error, detail }`,
+`{ error }`, or a problem's `{ title, detail }` (`failureOf`).
+
+## Tests
+
+`@thekrystalship/auth-client/testing` holds `createStandInSession()`: the session's interface with no
+provider behind it. A test signs a person in with `adopt({ claims })`, ends the session with `end(reason)`
+and reads it through `useSession` like any other.
+
 ## Development
 
 ```bash

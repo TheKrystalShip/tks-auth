@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — client 0.3.0
+
+- **`@thekrystalship/auth-client/api`**: `createApi({ session, base, headers, ... })`, a site's JSON calls
+  over the session, with uploads, an ndjson stream and blobs, and one `ApiError` whose sentence and code are
+  read from any of the organization's error shapes (`failureOf`). Options cover a site that serves people
+  who are not signed in, ends its session on an uncured refusal, or tells a portal's answer from its own.
+- **`@thekrystalship/auth-client/testing`**: `createStandInSession()`, the session's interface with no
+  provider behind it, for a site's tests.
+
 ### Added — Sessions 1.0.0-dev.1
 
 - **`TheKrystalShip.Auth.Sessions` and `TheKrystalShip.Auth.Sessions.Testing`**, how every service checks
