@@ -14,7 +14,8 @@
 // offline the probe repeats on a lengthening wait, from `firstWaitMs` doubling up to `longestWaitMs`,
 // and at once on the browser's `online` event or the page coming back into view. While online nothing
 // is polled: the site's own requests keep the flag true. The browser's `offline` event is believed at
-// once; its `online` event only starts a probe.
+// once, and while the browser has no network an answer to a request sent before it went is no measure;
+// its `online` event only starts a probe.
 //
 //   const connectivity = createConnectivity({ probe: () => config.api + "/health" });
 //   connectivity.start();
@@ -156,8 +157,15 @@ export function createConnectivity(options) {
     },
     /** Whether the site can reach its API, as last measured; `checking` counts as reachable. */
     isOnline: () => snapshot.state !== "offline",
-    /** A request the server answered (`true`) or one that did not reach it (`false`). */
-    report: (/** @type {boolean} */ reached) => set(reached),
+    /**
+     * A request the server answered (`true`) or one that did not reach it (`false`). An answer while the
+     * browser has no network is to a request sent before it went, and says nothing of now.
+     * @param {boolean} reached
+     */
+    report(reached) {
+      if (reached && browserOffline()) return;
+      set(reached);
+    },
     answered,
     probe,
     /**

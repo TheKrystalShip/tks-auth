@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — client 0.4.2
+
+- **A site that loses its network stays offline until the network is back.** A request in flight when the
+  network went still answers, and each such answer turned the flag back on for a moment; while the browser
+  has no network an answer is no measure now.
+
 ### Fixed — client 0.4.1
 
 - **A connectivity with no probe address comes back online.** With nothing to ask (a site that names no

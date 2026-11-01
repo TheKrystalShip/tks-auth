@@ -1,6 +1,6 @@
 {
   "name": "@thekrystalship/auth-client",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "The browser sign-in client for tks-auth: a session that renews itself, survives outages and tabs, and shows only an end it cannot recover.",
   "license": "GPL-3.0-only",
   "type": "module",

@@ -127,6 +127,18 @@ describe("createConnectivity", () => {
     expect(c.getSnapshot().state).toBe("online");
   });
 
+  it("takes no answer as a measure while the browser has no network", () => {
+    const c = createConnectivity({ probe: "" });
+    c.report(true);
+    vi.stubGlobal("navigator", { onLine: false });
+    c.report(false);
+    c.report(true);
+    expect(c.getSnapshot().state).toBe("offline");
+    vi.stubGlobal("navigator", { onLine: true });
+    c.report(true);
+    expect(c.getSnapshot().state).toBe("online");
+  });
+
   it("tells its subscribers of a change and only of a change", () => {
     const c = createConnectivity({ probe: "" });
     const seen = vi.fn();

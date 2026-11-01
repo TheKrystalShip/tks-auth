@@ -143,8 +143,9 @@ connectivity.onReconnect(() => refresh());        // what went stale while offli
   nothing is asked and the browser's own word is the measure), on a wait that
   starts at `firstWaitMs` (2 s) and doubles up to `longestWaitMs` (60 s), and at once when the browser
   says it is online again or the page comes back into view. While online nothing is polled.
-- **The browser's `offline` is believed at once; its `online` only starts a probe**, because a network
-  that is there can still be one that does not reach the API.
+- **The browser's `offline` is believed at once, and while it has no network an answer is no measure**
+  (a request in flight when the network went still answers). Its `online` only starts a probe, because a
+  network that is there can still be one that does not reach the API.
 - **The flag is the API's alone.** The sign-in provider is another server: its outage is the session's
   (`unreachable`), not the site's.
 
