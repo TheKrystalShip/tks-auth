@@ -17,8 +17,6 @@
 #                                     unprivileged.
 #   2. ${ENV_DIR}/…env              — operator config, seeded from the repo template if absent.
 #                                     NEVER overwritten: your secrets survive every redeploy.
-#      ${PROVIDERS_FILE}            — the sign-in providers' applications, seeded blank on the
-#                                     same terms.
 #   3. ${UNIT_DIR}                  — a directory YOU own that holds the real systemd unit files.
 #   4. /etc/systemd/system/<unit>   — a symlink into ${UNIT_DIR}. systemd resolves and enables
 #                                     units through symlinks, so this is what lets deploy.sh
@@ -106,14 +104,24 @@ else
     ENV_SEEDED=0
 fi
 
-# ── 2a. The sign-in providers file ────────────────────────────────────────────
-# Seeded blank and NEVER overwritten: a re-run on a configured host must not wipe the values set in
-# it. Owned by the deploying user so it can be edited without privilege; 0600 because it holds the
-# application secrets.
-if [[ ! -f "$PROVIDERS_FILE" ]]; then
-    log "seeding ${PROVIDERS_FILE} — fill it in to offer a provider's sign-in beside passwords"
-    $SUDO install -d -m 0755 "$(dirname "$PROVIDERS_FILE")"
-    $SUDO install -m 0600 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" "$PROVIDERS_EXAMPLE" "$PROVIDERS_FILE"
+# ── 2a. The configuration this project's units read ──────────────────────────
+# Defined in deploy-common.sh's PROJECT BLOCK; a project with nothing to configure leaves it out.
+if declare -F setup_project_config >/dev/null; then
+    setup_project_config
+fi
+
+# ── 2b. The shared leaf-descriptor directory ──────────────────────────────────
+# Where this component declares its configurable surface. Two directories, because a leaf and an
+# anchor are different things: a leaf is one this node runs and kgsm-api scans for, an anchor serves
+# one capability to the whole cluster and merely happens to be here. Only the one this project's
+# descriptor belongs in is created, and it is created once by whichever project's setup.sh runs first
+# and owned by the deploying user — deploy.sh then writes the descriptor with no privilege. Skipped
+# entirely for a project that ships no descriptor.
+if [[ -n "${LEAF_DESCRIPTOR:-}" && -f "$LEAF_DESCRIPTOR" ]]; then
+    if descriptor_dir="$(descriptor_dir_for "$LEAF_DESCRIPTOR")" && [[ ! -d "$descriptor_dir" ]]; then
+        log "creating ${descriptor_dir} (owned by ${DEPLOY_USER}) — the config descriptors"
+        $SUDO install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" "$descriptor_dir"
+    fi
 fi
 
 # ── 3. The user-owned unit directory ──────────────────────────────────────────

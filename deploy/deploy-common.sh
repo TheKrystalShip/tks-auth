@@ -6,9 +6,10 @@
 # deploy/deploy.sh (the headless code delivery). Every path, unit name and user lives here
 # exactly once, so the two entry points can never disagree about what this project installs.
 #
-# This file is vendored per repo — each kgsm-* repo carries its own copy so a standalone clone
-# deploys with no umbrella checkout present. The canonical source is
-# tks/scripts/deploy-template/; edit the PROJECT BLOCK below and leave the rest alone.
+# This file is vendored per repo — each repo carries its own copy so a standalone clone deploys with
+# no umbrella checkout present. The canonical source is tks/scripts/deploy-template/. A repo's own
+# lines are its PROJECT BLOCK and, at the end, its PROJECT HELPERS; everything else is the template's,
+# written by the template's vendor.sh and checked by `vendor.sh --check`.
 #
 # Not executable on its own.
 
@@ -75,6 +76,17 @@ setup_serving() {
     $SUDO env TKS_AUTH_SERVING="$SERVING_DIR" bash "${SERVING_DIR}/tks-auth-serve"
 }
 
+# The sign-in providers file, seeded blank and NEVER overwritten: a re-run on a configured host must
+# not wipe the values set in it. Owned by the deploying user so it can be edited without privilege;
+# 0600 because it holds the application secrets.
+setup_project_config() {
+    if [[ ! -f "$PROVIDERS_FILE" ]]; then
+        log "seeding ${PROVIDERS_FILE} — fill it in to offer a provider's sign-in beside passwords"
+        $SUDO install -d -m 0755 "$(dirname "$PROVIDERS_FILE")"
+        $SUDO install -m 0600 -o "$DEPLOY_USER" -g "$DEPLOY_GROUP" "$PROVIDERS_EXAMPLE" "$PROVIDERS_FILE"
+    fi
+}
+
 setup_project_extras() {
     setup_serving
 }
@@ -114,8 +126,21 @@ render_polkit_rule() {
     printf '%s\n' "$rendered"
 }
 
-SERVICE="${UNITS[0]}"           # the primary unit, e.g. tks-auth.service
+SERVICE="${UNITS[0]}"           # the primary unit, e.g. kgsm-api.service
 PUBLISH_DIR="${REPO_DIR}/artifacts/publish"
+
+# Where a component's config descriptor lands, and the two are separate directories because leaves and
+# anchors are separate things. A LEAF is run by this node: kgsm-api scans the leaves directory, holds
+# no list of its own, and a new leaf becomes configurable by landing a file there. An ANCHOR serves one
+# capability to the whole cluster and is a peer of every node in it — sharing a machine with one is a
+# deployment coincidence — so its descriptor records what runs here and is read by nothing that
+# administers this node's services.
+#
+# Which directory a project uses is decided by the SUFFIX of the descriptor its build produced, and the
+# generator refuses a suffix that disagrees with the identity the component declares. So a component
+# cannot reach the wrong directory without failing its own build.
+LEAF_DESCRIPTOR_DIR="${KGSM_LEAF_DESCRIPTOR_DIR:-/var/lib/kgsm/leaves}"
+ANCHOR_DESCRIPTOR_DIR="${KGSM_ANCHOR_DESCRIPTOR_DIR:-/var/lib/kgsm/anchors}"
 
 # Privileged-call indirection, used by setup.sh ONLY. deploy.sh never calls this. An automated
 # run can set SUDO='sudo -A' + SUDO_ASKPASS=… to provision without an interactive prompt; no
@@ -206,3 +231,110 @@ install_units_unprivileged() {
         rm -f "$tmp"
     done
 }
+
+# Where this project's descriptor belongs, from the suffix its build produced. An unrecognised suffix
+# is refused rather than guessed at: guessing puts an anchor on some node's service board, which has
+# no symptom until somebody reads that board and believes it.
+descriptor_dir_for() {
+    case "$1" in
+        *.anchor.json) printf '%s' "$ANCHOR_DESCRIPTOR_DIR" ;;
+        *.leaf.json)   printf '%s' "$LEAF_DESCRIPTOR_DIR" ;;
+        *)             return 1 ;;
+    esac
+}
+
+# Install this project's config descriptor into the discovery directory its kind belongs to.
+# Unprivileged: the directory is owned by DEPLOY_USER (setup.sh created it), so this is a plain file
+# write.
+#
+# A project with no descriptor file describes nothing — nothing is installed and nothing fails. When
+# the file IS present it is validated before it lands, because a reader skips a malformed one
+# silently: catching it here is the difference between "the panel has no page for this" and knowing
+# why.
+install_leaf_descriptor() {
+    [[ -n "${LEAF_DESCRIPTOR:-}" && -f "$LEAF_DESCRIPTOR" ]] || return 0
+
+    local dir
+    if ! dir="$(descriptor_dir_for "$LEAF_DESCRIPTOR")"; then
+        err "${LEAF_DESCRIPTOR} ends in neither .leaf.json nor .anchor.json, so there is no"
+        err "directory it belongs in. The suffix is what says whether this component is one of"
+        err "this node's leaves or an anchor serving the whole cluster."
+        return 1
+    fi
+
+    local dst="${dir}/${LEAF_ID}.json"
+
+    # Validate what we can before it lands: it must parse, and its "id" must be the id this
+    # project deploys under — a mismatch would install the file under a name kgsm-api then reads
+    # back as a different leaf.
+    if command -v python3 >/dev/null 2>&1; then
+        if ! python3 - "$LEAF_DESCRIPTOR" "$LEAF_ID" <<'PY'
+import json, sys
+path, want = sys.argv[1], sys.argv[2]
+try:
+    d = json.load(open(path))
+except Exception as e:
+    sys.exit(f"{path} is not valid JSON: {e}")
+if d.get("id") != want:
+    sys.exit(f"{path} declares id={d.get('id')!r}, but this project deploys leaf id {want!r}.")
+PY
+        then
+            err "refusing to install the leaf descriptor — kgsm-api would skip it and the"
+            err "Control Panel would show no configuration for ${PROJECT}."
+            return 1
+        fi
+    fi
+
+    if [[ ! -d "$dir" ]]; then
+        err "descriptor directory ${dir} is missing."
+        err "run ONCE (it will ask for your sudo password):   ${REPO_DIR}/deploy/setup.sh"
+        return 1
+    fi
+
+    if ! cmp -s "$LEAF_DESCRIPTOR" "$dst"; then
+        log "config descriptor changed → ${dst}"
+        install -m 0644 "$LEAF_DESCRIPTOR" "$dst"
+    fi
+
+    # The action manifest the build writes beside the descriptor, installed under the same name in
+    # the actions/ directory beside it: the actions this component performs, which kgsm-api serves
+    # for the node at /.well-known/tks-actions.json.
+    local manifest="${LEAF_DESCRIPTOR%.json}.actions.json"
+    if [[ -f "$manifest" ]]; then
+        install -d -m 0755 "${dir}/actions"
+        if ! cmp -s "$manifest" "${dir}/actions/${LEAF_ID}.json"; then
+            log "action manifest changed → ${dir}/actions/${LEAF_ID}.json"
+            install -m 0644 "$manifest" "${dir}/actions/${LEAF_ID}.json"
+        fi
+    fi
+
+    # A component that declares another namespace's actions has one more manifest per namespace,
+    # <name>.<namespace>.actions.json beside the descriptor, installed as <namespace>.json.
+    local stem="${LEAF_DESCRIPTOR%.json}" extra space
+    stem="${stem%.*}"
+    for extra in "${stem}".*.actions.json; do
+        [[ -f "$extra" ]] || continue
+        space="${extra#"${stem}".}"
+        space="${space%.actions.json}"
+        [[ "$space" == leaf || "$space" == anchor ]] && continue
+        install -d -m 0755 "${dir}/actions"
+        if ! cmp -s "$extra" "${dir}/actions/${space}.json"; then
+            log "action manifest changed → ${dir}/actions/${space}.json"
+            install -m 0644 "$extra" "${dir}/actions/${space}.json"
+        fi
+    done
+
+    # A component that has changed kind leaves its old files behind, and a stale descriptor in the
+    # leaves directory is read as a leaf however the component now describes itself.
+    local other_dir
+    [[ "$dir" == "$ANCHOR_DESCRIPTOR_DIR" ]] && other_dir="$LEAF_DESCRIPTOR_DIR" || other_dir="$ANCHOR_DESCRIPTOR_DIR"
+    local other
+    for other in "${other_dir}/${LEAF_ID}.json" "${other_dir}/actions/${LEAF_ID}.json"; do
+        if [[ -f "$other" ]]; then
+            log "removing ${other} — this component is described in ${dir}"
+            rm -f "$other"
+        fi
+    done
+}
+
+# ── PROJECT HELPERS — this project's own functions, if any, below this line ────
