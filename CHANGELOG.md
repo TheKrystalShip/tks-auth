@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — Sessions 1.0.0-dev.1
+
+- **`TheKrystalShip.Auth.Sessions` and `TheKrystalShip.Auth.Sessions.Testing`**, how every service checks
+  this provider's access tokens, published to the NuGet feed on a version clock of their own
+  (`sessions-v*`). A service names its settings section, its refusal body, the actions it declares (the
+  host refuses to start while a route checks any other), a hook run on each admitted person, and other
+  schemes a route also takes. The person carries the `act` claim's client as `Via`. The test issuer serves
+  a token endpoint whose exchanges a test answers, and can share another issuer's keys.
+
 ### Fixed — 7.0.1
 
 - **The Assignments page offers its accounts.** The account picker kept only accounts of kind `person`,

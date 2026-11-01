@@ -10,8 +10,11 @@ are in `README.md`.
 - `src/Auth` (`TheKrystalShip.Auth`): identity, actor convention, claim names. `src/Auth.Access`: the
   access model and `AccessEvaluator`. `src/Auth.Users`: the account store. `src/Auth.Journal`: the audit
   events.
-- `src/Auth.Server`: the `tks-auth` daemon, built from the libraries by project reference. Nothing here is
-  published to a feed. Its minter is `src/Auth.Server/Minting/`.
+- `src/Auth.Server`: the `tks-auth` daemon, built from the libraries by project reference. Its minter is
+  `src/Auth.Server/Minting/`.
+- `src/Sessions` and `src/Sessions.Testing`: `TheKrystalShip.Auth.Sessions`, how every service checks the
+  access tokens this daemon mints, and its test issuer. The only projects published to the NuGet feed
+  (`src/Sessions/CLAUDE.md`).
 - `client/`: `@thekrystalship/auth-client`, the browser sign-in package every site configures (own
   `package.json`, Vitest over a fake provider; `client/README.md`).
 - `web/`: the sign-in, wait, account, device and admin pages (Vite + React on krystal-ui), built into `ui/`
@@ -68,11 +71,12 @@ The pages are checked in a real browser by the workspace harness (`scripts/visua
 ## Version tracking
 
 The daemon versions on its own clock, in `src/Auth.Server/Server.csproj`; `deploy/version.sh` reads it,
-because that is the one the pacman package ships. The browser client versions in `client/package.json`.
+because that is the one the pacman package ships. The browser client versions in `client/package.json`,
+and the Sessions packages in their two csproj files, together.
 
-**Tags carry the prefix of the thing they version:** a bare `v*` for the daemon and `client-v*` for the
-browser client. Only the bare `v*` fires the release workflow, which asserts the tag against
-`deploy/version.sh`.
+**Tags carry the prefix of the thing they version:** a bare `v*` for the daemon, `client-v*` for the
+browser client and `sessions-v*` for the Sessions packages. Only the bare `v*` fires the release workflow,
+which asserts the tag against `deploy/version.sh`.
 
 - Bump on any user-facing change; patch for fixes, minor for additions, major for a breaking change, with a
   `CHANGELOG.md` entry under `## [Unreleased]`.

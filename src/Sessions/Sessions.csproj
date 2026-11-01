@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TheKrystalShip.Auth.Sessions</RootNamespace>
+    <AssemblyName>TheKrystalShip.Auth.Sessions</AssemblyName>
+
+    <!-- Native-AOT-safe: the stock JwtBearer handler, no reflection of its own, and every body it reads or
+         writes goes through a source-generated JsonSerializerContext. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+
+    <PackageId>TheKrystalShip.Auth.Sessions</PackageId>
+    <Authors>Heisenberg</Authors>
+    <Version>1.0.0-dev.1</Version>
+    <Description>
+      How a service admits a person signed in at tks-auth: the bearer token the provider issued is checked
+      against the issuer's discovery and keys (issuer, audience, lifetime, ES256, at+jwt), and what the person
+      may do is read from the token's actions claim. Provides the person a request acts as, the action
+      requirement, refusals in the service's own error shape, a startup check that every route names a
+      declared action, and the token's expiry for streams that end with it. AOT-safe.
+    </Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

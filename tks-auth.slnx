@@ -4,8 +4,11 @@
   <Project Path="src/Auth.Users/Auth.Users.csproj" />
   <Project Path="src/Auth.Journal/Auth.Journal.csproj" />
   <Project Path="src/Auth.Server/Server.csproj" />
+  <Project Path="src/Sessions/Sessions.csproj" />
+  <Project Path="src/Sessions.Testing/Sessions.Testing.csproj" />
   <Project Path="tests/Auth.Tests/Auth.Tests.csproj" />
   <Project Path="tests/Auth.Access.Tests/Auth.Access.Tests.csproj" />
   <Project Path="tests/Auth.Users.Tests/Auth.Users.Tests.csproj" />
   <Project Path="tests/Auth.Server.Tests/Auth.Server.Tests.csproj" />
+  <Project Path="tests/Sessions.Tests/Sessions.Tests.csproj" />
 </Solution>
