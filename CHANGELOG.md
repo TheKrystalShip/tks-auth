@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — client 0.4.1
+
+- **A connectivity with no probe address comes back online.** With nothing to ask (a site that names no
+  API), a probe takes the browser's own word: its `online` event, after an `offline` one, set the flag
+  offline for good.
+
 ### Added — client 0.4.0
 
 - **`@thekrystalship/auth-client/connectivity`**: whether the site can reach its own API, the one flag a

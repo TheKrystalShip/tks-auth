@@ -87,13 +87,19 @@ describe("createConnectivity", () => {
     expect(c.getSnapshot().state).toBe("offline");
   });
 
-  it("asks a probe function each time, and skips the probe when it names nothing", async () => {
+  it("asks a probe function each time, and with no address takes the browser's word", async () => {
     const fetch = vi.fn().mockResolvedValue(json(200));
     vi.stubGlobal("fetch", fetch);
     let base = "";
     const c = createConnectivity({ probe: () => base && base + "/health" });
+    c.report(false);
     await c.probe();
     expect(fetch).not.toHaveBeenCalled();
+    expect(c.getSnapshot().state).toBe("online");
+    vi.stubGlobal("navigator", { onLine: false });
+    await c.probe();
+    expect(c.getSnapshot().state).toBe("offline");
+    vi.stubGlobal("navigator", { onLine: true });
     base = "https://api.test";
     await c.probe();
     expect(fetch.mock.calls[0][0]).toBe("https://api.test/health");

@@ -32,7 +32,7 @@
 
 /**
  * @typedef {object} ConnectivityOptions
- * @property {string | (() => string | null | undefined)} probe The address asked while offline: one that answers without a credential, such as the API's `/health`. A function is asked each time; an empty answer skips the probe.
+ * @property {string | (() => string | null | undefined)} probe The address asked while offline: one that answers without a credential, such as the API's `/health`. A function is asked each time; with no address there is nothing to ask, and the browser's own word is the measure.
  * @property {(response: Response) => boolean} [answered] Whether a response came from the site's own server; `answeredByServer` by default.
  * @property {number} [timeoutMs] How long a probe waits for an answer; 5000 by default.
  * @property {number} [firstWaitMs] The first wait between probes while offline; 2000 by default.
@@ -124,7 +124,11 @@ export function createConnectivity(options) {
   function probe() {
     probing ??= (async () => {
       const url = probeUrl();
-      if (!url) return snapshot.state !== "offline";
+      if (!url) {
+        const ok = !browserOffline();
+        set(ok);
+        return ok;
+      }
       try {
         const response = await fetch(url, {
           headers: { Accept: "application/json" },

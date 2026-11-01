@@ -139,7 +139,8 @@ connectivity.onReconnect(() => refresh());        // what went stale while offli
 - **Every call is a measure.** A call the server answered, whatever it answered, is online. One that failed
   on the network, or was answered by a gateway's 502, 503 or 504 or by an HTML page where the API answers
   JSON or nothing (a captive portal), is offline (`answeredByServer`).
-- **While offline it probes** the `probe` address, one that answers with no credential, on a wait that
+- **While offline it probes** the `probe` address, one that answers with no credential (with no address,
+  nothing is asked and the browser's own word is the measure), on a wait that
   starts at `firstWaitMs` (2 s) and doubles up to `longestWaitMs` (60 s), and at once when the browser
   says it is online again or the page comes back into view. While online nothing is polled.
 - **The browser's `offline` is believed at once; its `online` only starts a probe**, because a network
