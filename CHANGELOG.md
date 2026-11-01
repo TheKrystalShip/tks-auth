@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed — 7.0.2
+
+- **The admin pages call the provider through the client's API** (`@thekrystalship/auth-client/api`,
+  client 0.3.0): a refusal shows the provider's own sentence and code as before, read the way every site
+  reads one, and the provider's cookie still never rides along. Their tests use the client's stand-in
+  session.
+
 ### Added — client 0.3.0
 
 - **`@thekrystalship/auth-client/api`**: `createApi({ session, base, headers, ... })`, a site's JSON calls

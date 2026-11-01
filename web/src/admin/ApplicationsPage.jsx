@@ -28,7 +28,7 @@ function ApplicationsPage() {
   const [registering, setRegistering] = React.useState(false);
 
   if (!allowed) return <Brief icon="lock" title="You don’t have access to this" />;
-  if (status === "error" && !list) return <Brief icon="wifi-off" tone="warn" title="Couldn’t read the applications" sub={error && error.userMessage} />;
+  if (status === "error" && !list) return <Brief icon="wifi-off" tone="warn" title="Couldn’t read the applications" sub={error && error.message} />;
   if (!list) return <Loading />;
 
   const registered = (id, answer) => {

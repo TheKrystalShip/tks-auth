@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 
 vi.mock("../auth.js", async () => {
-  const { createStandInSession, useSession } = await import("./standInSession.js");
+  const { createStandInSession } = await import("@thekrystalship/auth-client/testing");
+  const { useSession } = await import("@thekrystalship/auth-client/react");
   return { session: createStandInSession(), useSession };
 });
 vi.mock("../AdminApp.jsx", () => ({ AdminApp: ({ account }) => <div>admin app for {account.username}</div> }));

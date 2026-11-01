@@ -79,8 +79,8 @@ function refreshAuthority() {
 // A refusal, in the shape every page shows it.
 function refusalOf(e) {
   return {
-    code: (e && e.envCode) || null,
-    message: (e && e.userMessage) || "The change was refused.",
+    code: (e && e.code) || null,
+    message: (e && e.message) || "The change was refused.",
     actions: (e && e.body && Array.isArray(e.body.actions)) ? e.body.actions : null,
   };
 }

@@ -112,8 +112,8 @@ function authorityGate(state) {
   if (state.view) return null;
   if (state.status === "error") {
     const e = state.error;
-    if (e && e.status === 403) return <Brief icon="lock" title="You don’t have access to this" sub={e.userMessage} />;
-    return <Brief icon="wifi-off" tone="warn" title="Couldn’t read access" sub={(e && e.userMessage) || null} />;
+    if (e && e.status === 403) return <Brief icon="lock" title="You don’t have access to this" sub={e.message} />;
+    return <Brief icon="wifi-off" tone="warn" title="Couldn’t read access" sub={(e && e.message) || null} />;
   }
   return <Loading />;
 }

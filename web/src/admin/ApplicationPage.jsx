@@ -36,7 +36,7 @@ function ApplicationPage({ id }) {
   React.useEffect(() => () => issuedStore.setState(null), []);
 
   if (!allowed) return <Brief icon="lock" title="You don’t have access to this" />;
-  if (status === "error" && !list) return <Brief icon="wifi-off" tone="warn" title="Couldn’t read the applications" sub={error && error.userMessage} />;
+  if (status === "error" && !list) return <Brief icon="wifi-off" tone="warn" title="Couldn’t read the applications" sub={error && error.message} />;
   const app = list && list.find((a) => a.id === id);
   if (list && !app) return <Brief icon="app-window" title="No such application" actions={backToList} />;
 

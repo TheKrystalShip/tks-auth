@@ -1,44 +1,24 @@
-// client.js — the admin pages' calls: same-origin, to the provider's admin routes, through the
-// session's `authorizedFetch`, which carries the bearer, renews a refused one and replays the call once.
+// client.js — the admin pages' calls: same-origin, to the provider's admin routes, through the sign-in
+// package's API client over the session's `authorizedFetch`, which carries the bearer, renews a refused
+// one and replays the call once. The provider's own cookie never rides along.
 //
-// A refusal is thrown as the provider wrote it — `status`, `envCode`, `userMessage` and the body — so a
-// page shows the provider's sentence beside the control it is about. A call the session cannot
-// authorize at all is a 401 here; the session's own end is what the gate draws.
+// A refusal is thrown as the provider wrote it: an `ApiError` with its `status`, its sentence as the
+// message, its `code` and the body, so a page shows the provider's sentence beside the control it is
+// about. A call the session cannot authorize at all is a 401 here; the session's own end is what the gate
+// draws.
 
+import { createApi } from "@thekrystalship/auth-client/api";
 import { session } from "./auth.js";
 
-class ApiError extends Error {
-  constructor(status, body) {
-    const envelope = body && body.error;
-    super((envelope && envelope.message) || "The provider answered " + status + ".");
-    this.status = status;
-    this.envCode = (envelope && envelope.code) || null;
-    this.userMessage = status === 0 ? "The provider didn’t answer." : this.message;
-    this.body = body;
-  }
-}
-
-async function call(method, path, body) {
-  const headers = { Accept: "application/json" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  let res;
-  try {
-    res = await session.authorizedFetch(path, {
-      method, headers, credentials: "omit",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-  } catch (err) {
-    throw new ApiError(err && (err.code === "ended" || err.code === "none") ? 401 : 0, null);
-  }
-  if (!res) throw new ApiError(0, null);
-
-  let data = null;
-  if (res.status !== 204) {
-    try { data = await res.json(); } catch { data = null; }
-  }
-  if (!res.ok) throw new ApiError(res.status, data);
-  return data;
-}
+const { call } = createApi({
+  session,
+  credentials: "omit",
+  words: {
+    unreachable: "The provider didn’t answer.",
+    signIn: "Sign in to carry on.",
+    failed: (status) => "The provider answered " + status + ".",
+  },
+});
 
 const ACCOUNTS = "/auth/admin/users";
 const EDITS = "/auth/admin/authority/edits";
