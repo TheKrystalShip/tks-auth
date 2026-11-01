@@ -107,13 +107,45 @@ const photo = await api.blob("/photos/1");
 | `credentials` | The requests' `credentials`, such as `omit` on an origin whose own cookie must not ride along. |
 | `anonymous` | With nobody signed in, the call goes out without a bearer instead of failing. |
 | `endOnRefusal` | A 401 the renewal did not cure ends a live session as `refused`. |
-| `answered`, `onReach` | Whether a response came from the site's own server and not a gateway or a portal (one that did not is a status-0 failure), and a hook told after each call whether the server answered. |
+| `connectivity` | The site's connectivity (below): every call reports to it whether the server answered, and its test of an answer is the API's. |
+| `answered`, `onReach` | Whether a response came from the site's own server and not a gateway or a portal (one that did not is a status-0 failure), and a hook told after each call whether the server answered. Each overrides what `connectivity` gives. |
 | `words` | The sentences a failure with no body of its own says: `unreachable`, `unconfigured`, `signIn`, and `failed(status, statusText)`, which by default is the status text. |
 
 `ApiError` carries `status` (0 when no server answered, 401 when there is no session), the answer's
 sentence as its message, its `code` and the parsed `body`. The sentence and code are read from whichever of
 the organization's error shapes the answer is: `{ error: { code, message } }`, `{ error, detail }`,
 `{ error }`, or a problem's `{ title, detail }` (`failureOf`).
+
+## Whether the site is online
+
+`@thekrystalship/auth-client/connectivity` is the one flag a site's pages draw their offline state by:
+whether the site can reach its own API, kept true by measuring it. The design system draws what it means
+(`Live` and `NavItem`'s `disabled` in `@thekrystalship/krystal`).
+
+```js
+import { createConnectivity } from "@thekrystalship/auth-client/connectivity";
+import { useOnline } from "@thekrystalship/auth-client/react";
+
+export const connectivity = createConnectivity({ probe: () => config.api && config.api + "/health" });
+connectivity.start();
+export const api = createApi({ session, base: () => config.api, connectivity });
+
+const online = useOnline(connectivity);            // in a component
+connectivity.onReconnect(() => refresh());        // what went stale while offline
+```
+
+- **It is measured, never assumed.** The state is `checking` until the first measure, then `online` or
+  `offline`; `checking` counts as online, so the first request goes out and is itself the measure.
+- **Every call is a measure.** A call the server answered, whatever it answered, is online. One that failed
+  on the network, or was answered by a gateway's 502, 503 or 504 or by an HTML page where the API answers
+  JSON or nothing (a captive portal), is offline (`answeredByServer`).
+- **While offline it probes** the `probe` address, one that answers with no credential, on a wait that
+  starts at `firstWaitMs` (2 s) and doubles up to `longestWaitMs` (60 s), and at once when the browser
+  says it is online again or the page comes back into view. While online nothing is polled.
+- **The browser's `offline` is believed at once; its `online` only starts a probe**, because a network
+  that is there can still be one that does not reach the API.
+- **The flag is the API's alone.** The sign-in provider is another server: its outage is the session's
+  (`unreachable`), not the site's.
 
 ## Tests
 

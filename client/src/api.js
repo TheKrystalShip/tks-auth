@@ -67,8 +67,9 @@ export async function readLines(body, onLine) {
  * @property {RequestCredentials} [credentials] The requests' `credentials`, such as `omit` on an origin whose cookie must not ride along.
  * @property {boolean} [anonymous] Nobody signed in sends the call without a bearer, instead of failing it.
  * @property {boolean} [endOnRefusal] A 401 the session's renewal did not cure ends a live session as `refused`.
- * @property {(response: Response) => boolean} [answered] Whether a response came from the site's own server and not a gateway or a portal; one that did not is a status-0 failure.
+ * @property {(response: Response) => boolean} [answered] Whether a response came from the site's own server and not a gateway or a portal; one that did not is a status-0 failure. The connectivity's own test by default when `connectivity` is given.
  * @property {(reached: boolean) => void} [onReach] Told after each call whether the server answered.
+ * @property {{ report: (reached: boolean) => void, answered: (response: Response) => boolean }} [connectivity] The site's connectivity (`./connectivity`): every call reports to it whether the server answered, so the site's offline flag stays true with no wiring of its own.
  * @property {{ unreachable?: string, unconfigured?: string, signIn?: string, failed?: (status: number, statusText: string) => string }} [words] The sentences a failure with no body of its own says.
  */
 
@@ -89,8 +90,9 @@ export function createApi(options) {
     ...options.words,
   };
   const headersOf = options.headers ?? (() => ({}));
-  const answered = options.answered ?? (() => true);
-  const onReach = options.onReach ?? (() => {});
+  const { connectivity } = options;
+  const answered = options.answered ?? connectivity?.answered ?? (() => true);
+  const onReach = options.onReach ?? connectivity?.report ?? (() => {});
   const credentials = options.credentials ? { credentials: options.credentials } : {};
 
   function urlOf(path) {

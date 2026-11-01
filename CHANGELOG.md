@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — client 0.4.0
+
+- **`@thekrystalship/auth-client/connectivity`**: whether the site can reach its own API, the one flag a
+  site's pages draw their offline state by. `createConnectivity({ probe })` is measured, never assumed
+  (`checking`, then `online` or `offline`): every call `createApi({ connectivity })` makes reports whether
+  the server answered, a gateway's or a captive portal's page counting as no answer (`answeredByServer`),
+  and while offline it probes on a doubling wait and at once on the browser's `online` or the page coming
+  into view. `onReconnect` for what went stale; `useOnline(connectivity)` in `./react`.
+
 ### Removed — 7.0.3
 
 - The admin pages read their session only from the sign-in package's key. A browser still holding one
