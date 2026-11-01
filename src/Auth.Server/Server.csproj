@@ -14,7 +14,7 @@
 
     <RootNamespace>TheKrystalShip.Auth.Server</RootNamespace>
     <AssemblyName>tks-auth</AssemblyName>
-    <Version>7.0.2</Version>
+    <Version>7.0.3</Version>
     <Description>
       tks-auth: an OpenID Connect provider holding accounts, registered applications and each
       application's roles, and signing people in to them.

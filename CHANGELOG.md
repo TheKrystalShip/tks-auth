@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed — 7.0.3
+
+- The admin pages read their session only from the sign-in package's key. A browser still holding one
+  under `tks-auth.admin.user:…` signs in once more.
+
 ### Changed — 7.0.2
 
 - **The admin pages call the provider through the client's API** (`@thekrystalship/auth-client/api`,
